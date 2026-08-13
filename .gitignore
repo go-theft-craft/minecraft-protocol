@@ -1,0 +1,25 @@
+# Build and test output
+/build/
+*.test
+*.out
+coverage.*
+
+# Local dependencies and workspaces
+/vendor/
+go.work
+go.work.sum
+
+# Local configuration
+.env
+.env.*
+!.env.example
+.direnv/
+.devbox/
+.task/
+
+# Editors
+.idea/
+.vscode/
+
+# Local design documents
+/docs/

@@ -1,0 +1,99 @@
+version: "3"
+
+vars:
+  MODULE:
+    sh: go list -m
+
+tasks:
+  deps:
+    desc: Download and normalize Go dependencies
+    sources:
+      - go.mod
+      - go.sum
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  fmt:
+    desc: Format Go source
+    deps: [deps]
+    cmds:
+      - gci write -s standard -s default -s "prefix(github.com/go-theft-craft)" -s "prefix({{.MODULE}})" .
+      - gofumpt -w .
+
+  fmt:check:
+    desc: Check Go formatting without changing files
+    deps: [deps]
+    cmds:
+      - |
+        formatting_diff="$(golangci-lint fmt --diff)"
+        if [ -n "$formatting_diff" ]; then
+          printf '%s\n' "$formatting_diff"
+          exit 1
+        fi
+
+  lint:
+    desc: Run static analysis
+    deps: [fmt:check]
+    cmds:
+      - golangci-lint run
+
+  secrets:
+    desc: Scan the repository tree for secrets and private keys
+    cmds:
+      - gitleaks dir --no-banner --redact --verbose .
+
+  secrets:staged:
+    desc: Scan staged changes for secrets and private keys
+    cmds:
+      - gitleaks git --no-banner --redact --verbose --staged
+
+  precommit:
+    desc: Run checks required before a commit
+    cmds:
+      - task: lint
+      - task: secrets:staged
+
+  test:
+    desc: Run unit tests with the race detector
+    deps: [deps]
+    cmds:
+      - go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+  vuln:
+    desc: Check dependencies for known vulnerabilities
+    deps: [deps]
+    cmds:
+      - govulncheck ./...
+
+  build:
+    desc: Build every package
+    deps: [deps]
+    cmds:
+      - go build ./...
+
+  verify:
+    desc: Run all local and CI checks
+    cmds:
+      - task: lint
+      - task: secrets
+      - task: test
+      - task: vuln
+      - task: build
+
+  release:check:
+    desc: Verify a clean release candidate
+    requires:
+      vars: [VERSION]
+    cmds:
+      - task: verify
+      - cmd: test -z "$(git status --porcelain)"
+        platforms: [linux, darwin]
+      - cmd: '! grep -Eq ''^replace[[:space:]]'' go.mod'
+        platforms: [linux, darwin]
+      - cmd: printf '%s\n' '{{.VERSION}}' | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)\.[1-9][0-9]*)?$'
+        platforms: [linux, darwin]
+
+  default:
+    cmds:
+      - task --list
