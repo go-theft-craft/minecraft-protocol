@@ -6,9 +6,11 @@ versioned wire codecs and generated game data behind small, injectable
 interfaces.
 
 > [!IMPORTANT]
-> This project is pre-alpha. It has no published release or built-in wire codec
-> yet. The current code defines the protocol contracts and bounded resource
-> limits on which those implementations will depend.
+> This project is pre-alpha and has no published release or built-in protocol
+> descriptor. The `wire/java` package implements bounded Java wire primitives,
+> reflection-based `mc` struct tags, and uncompressed packet frames. It does not
+> provide compression, encryption, login, generated codecs, or a complete
+> server session.
 
 ## Why this repository exists
 
@@ -25,7 +27,7 @@ interfaces.
 | Protocol or data | Status |
 | --- | --- |
 | Edition-neutral contracts and resource limits | In progress |
-| Java Edition 1.8, protocol 47 | Planned extraction from the sibling server |
+| Java Edition 1.8, protocol 47 | Uncompressed primitives and frames implemented; built-in protocol 47 descriptor planned |
 | Java Edition 26.1, protocol 775 | Planned generated built-in |
 | PrismarineJS blocks, items, entities, recipes, registries, and other datasets | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
