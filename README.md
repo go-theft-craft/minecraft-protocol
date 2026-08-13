@@ -2,8 +2,8 @@
 
 `minecraft-protocol` is a Go toolkit for building Minecraft clients, servers,
 proxies, packet analyzers, and custom protocol implementations. It provides
-versioned wire codecs and generated game data behind small, injectable
-interfaces.
+bounded Java wire primitives and typed game-data contracts behind small,
+injectable interfaces.
 
 > [!IMPORTANT]
 > This project is pre-alpha and has no published release or built-in protocol
@@ -26,9 +26,9 @@ interfaces.
 
 | Protocol or data | Status |
 | --- | --- |
-| Edition-neutral contracts and resource limits | In progress |
-| Java Edition 1.8, protocol 47 | Uncompressed primitives and frames implemented; built-in protocol 47 descriptor planned |
-| Java Edition 26.1, protocol 775 | Planned generated built-in |
+| Edition-neutral contracts, resource limits, and game-data registry | Implemented |
+| Java Edition 1.8, protocol 47 | Uncompressed primitives and frames implemented; generated built-in descriptor and dataset planned |
+| Java Edition 26.1, protocol 775 | Generated built-in descriptor and dataset planned |
 | PrismarineJS blocks, items, entities, recipes, registries, and other datasets | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
 | Bedrock Edition | Deferred; it will use a separate transport and authentication implementation |
@@ -56,7 +56,59 @@ codec, err := selectedProtocol.NewCodec(protocol.RoleClient, limits)
 of `protocol.Protocol`. A codec works with `io.Reader` and `io.Writer`, so the
 caller retains ownership of connections, buffering, deadlines, and capture.
 
-## Game-data provenance
+## Game-data contracts
+
+The `data` package provides typed game-data values, read-only lookup
+interfaces, immutable `Set` values, raw-dataset lookup, and a version registry.
+`NewSet` copies raw dataset bytes and mutable schema values. Registry lookups
+return caller-owned values and collections, so callers can modify a result
+without changing the stored data. `DatasetNames` and `RegisteredVersions`
+return sorted names.
+
+Use `NewSet` in a factory, register that factory, then load a version by name:
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/go-theft-craft/minecraft-protocol/data"
+)
+
+func newExampleSet() (*data.Set, error) {
+	set, err := data.NewSet(data.SetOptions{
+		Raw: []data.RawDataset{{
+			Name:      "example.json",
+			MediaType: "application/json",
+			Data:      []byte(`{}`),
+		}},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create example data: %w", err)
+	}
+
+	return set, nil
+}
+
+func main() {
+	if err := data.Register("example", newExampleSet); err != nil {
+		panic(fmt.Errorf("register example data: %w", err))
+	}
+
+	set, err := data.Load("example")
+	if err != nil {
+		panic(fmt.Errorf("load example data: %w", err))
+	}
+
+	fmt.Println(set.DatasetNames()) // [example.json]
+}
+```
+
+The example registers a package-level version once. Use `NewRegistry` when an
+application needs an isolated registry, such as a test or a plugin host.
+
+## Planned game-data sources
 
 Built-in datasets will be generated from a pinned
 [PrismarineJS minecraft-data](https://github.com/PrismarineJS/minecraft-data)

@@ -1,5 +1,10 @@
 package data
 
+import "errors"
+
+// ErrInvalidDataset reports an empty or duplicate raw dataset name.
+var ErrInvalidDataset = errors.New("invalid raw dataset")
+
 // RawDataset preserves an upstream data file that has no typed representation.
 type RawDataset struct {
 	Name      string
