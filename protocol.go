@@ -1,9 +1,5 @@
 package protocol
 
-import (
-	"io"
-)
-
 // Edition identifies a protocol family without imposing transport semantics.
 type Edition string
 
@@ -18,9 +14,9 @@ const (
 type Role uint8
 
 const (
-	// RoleClient creates a codec from the client endpoint's perspective.
+	// RoleClient creates a session from the client endpoint's perspective.
 	RoleClient Role = iota + 1
-	// RoleServer creates a codec from the server endpoint's perspective.
+	// RoleServer creates a session from the server endpoint's perspective.
 	RoleServer
 )
 
@@ -44,7 +40,7 @@ type Version struct {
 }
 
 // UnknownPacket retains an unrecognized packet body. The payload returned by
-// a Codec is owned by the caller and does not alias Packet.Payload.
+// a Session is owned by the caller and does not alias Packet.Payload.
 type UnknownPacket struct {
 	Payload []byte
 }
@@ -59,18 +55,10 @@ type Packet struct {
 	Payload   []byte
 }
 
-// Codec owns stateful encoding and decoding for one connection.
-type Codec interface {
-	Read(io.Reader) (Packet, error)
-	Write(io.Writer, Packet) error
-	State() State
-	SetState(State) error
-}
-
-// Protocol creates per-connection codecs for one immutable version.
+// Protocol creates per-connection sessions for one immutable version.
 type Protocol interface {
 	ID() string
 	Edition() Edition
 	Version() Version
-	NewCodec(Role, Limits) (Codec, error)
+	NewSession(Role, Limits) (Session, error)
 }
