@@ -60,6 +60,13 @@ tasks:
     cmds:
       - go test -race -covermode=atomic -coverprofile=coverage.out {{.CLI_ARGS | default "./..."}}
 
+  test:interop:
+    desc: Run loopback interoperability tests against pinned Node minecraft-protocol
+    deps: [deps]
+    cmds:
+      - npm ci --prefix interop/node
+      - go test -race -count=1 ./interop
+
   vuln:
     desc: Check dependencies for known vulnerabilities
     deps: [deps]
@@ -89,6 +96,7 @@ tasks:
       - task: lint
       - task: secrets
       - task: test
+      - task: test:interop
       - task: vuln
       - task: build
 

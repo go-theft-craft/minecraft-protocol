@@ -37,3 +37,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## PrismarineJS node-minecraft-protocol
+
+The interoperability tests in `interop/` run the PrismarineJS
+`minecraft-protocol` npm package as a separate process on the loopback
+interface. No part of it is vendored, linked, or redistributed here: only
+`interop/node/package.json` and `interop/node/package-lock.json` reference it.
+
+- Package: <https://www.npmjs.com/package/minecraft-protocol>
+- Repository: <https://github.com/PrismarineJS/node-minecraft-protocol>
+- Pinned version: `1.66.2`
+- License identifier declared upstream: `BSD-3-Clause`
+
+The pinned lock file records the exact integrity hash for that version and for
+every transitive dependency it installs.

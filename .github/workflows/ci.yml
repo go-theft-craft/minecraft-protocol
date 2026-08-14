@@ -19,5 +19,14 @@ jobs:
       - name: Install Devbox
         uses: jetify-com/devbox-install-action@v0.12.0
 
+      # Devbox supplies Node, so only the npm download cache is cached here.
+      # node_modules stays out of the repository and out of the cache.
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('interop/node/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
       - name: Verify
         run: devbox run -- task verify

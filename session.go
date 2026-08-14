@@ -117,6 +117,10 @@ func emptyIfNil(pipeline map[string]string) map[string]string {
 // performs no I/O of its own: it turns bytes into packets, packets into bytes,
 // and packets into proposed transitions, while a stream owns the transport.
 //
+// A Session is not safe for concurrent use. Once it is handed to a Stream, the
+// stream owns it exclusively and callers must use Stream.Snapshot rather than
+// reading the session directly.
+//
 // Validation and application are deliberately split. Every check that can fail
 // belongs in a Validate method so the matching Apply method cannot fail after
 // bytes have already left the process.

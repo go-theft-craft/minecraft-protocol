@@ -1,0 +1,14 @@
+{
+  "name": "minecraft-protocol-interop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Loopback-only conformance runner for the Go managed stream against the pinned Node minecraft-protocol implementation.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "minecraft-protocol": "1.66.2"
+  }
+}
