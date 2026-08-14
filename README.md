@@ -28,7 +28,7 @@ injectable interfaces.
 | Protocol or data | Status |
 | --- | --- |
 | Edition-neutral contracts, resource limits, and game-data registry | Implemented |
-| Java Edition 1.8, protocol 47 | Built-in descriptor, generated packet codecs, uncompressed primitives and frames, and generated game data implemented |
+| Java Edition 1.8, protocol 47 | Built-in descriptor, generated packet sessions, managed asynchronous stream, compression, automatic transitions, graceful disconnect, and generated game data implemented |
 | Java Edition 26.1, protocol 775 | Generated built-in descriptor and dataset planned |
 | Additional PrismarineJS versions and datasets beyond the Java 1.8 bundle | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
@@ -50,12 +50,48 @@ if err != nil {
 	return err
 }
 
-codec, err := selectedProtocol.NewCodec(protocol.RoleClient, limits)
+session, err := selectedProtocol.NewSession(protocol.RoleClient, limits)
 ```
 
 `selectedProtocol` can be `v1_8.Protocol()` or any application implementation of
-`protocol.Protocol`. A codec works with `io.Reader` and `io.Writer`, so the
-caller retains ownership of connections, buffering, deadlines, and capture.
+`protocol.Protocol`. A session owns packet coding and pipeline state for one
+connection and performs no I/O of its own.
+
+A `protocol.Stream` drives a session over a transport. Construction performs no
+I/O and starts no goroutine; `Start` does both:
+
+```go
+stream, err := protocol.NewStream(session, protocol.Transport{
+	Reader:    conn,
+	Writer:    conn,
+	Interrupt: conn.Close,
+})
+if err != nil {
+	return err
+}
+
+if err := stream.Start(ctx); err != nil {
+	return err
+}
+
+packet, err := stream.Read(ctx)     // waits for the next decoded packet
+err = stream.Write(ctx, packet)     // returns after the complete frame is written
+err = stream.SetState(ctx, state)   // applied at a frame boundary
+err = stream.Control(ctx, java.CompressionControl{
+	Enabled:   true,
+	Threshold: 256,
+	Policy:    java.StrictCompression,
+})
+snapshot, err := stream.Snapshot(ctx) // current state and pipeline settings
+
+err = stream.Shutdown(ctx, reason)  // drains, sends disconnect, then closes
+err = stream.Close()                // abortive close, safe to call repeatedly
+err = stream.Wait()                 // first fatal cause, or nil after Shutdown
+```
+
+`Transport.Interrupt` must unblock a blocked reader and writer from any
+goroutine; `net.Conn.Close` satisfies that. A running stream owns its session
+exclusively, so use `Stream.Snapshot` rather than reading the session directly.
 
 ## Game-data contracts
 
@@ -131,18 +167,87 @@ set, err := v1_8.Data()
 The same package exposes the built-in protocol 47 descriptor:
 
 ```go
-codec, err := v1_8.Protocol().NewCodec(protocol.RoleClient, limits)
+session, err := v1_8.Protocol().NewSession(protocol.RoleClient, limits)
 ```
 
-Each codec starts in `v1_8.StateHandshaking`. Call `SetState` to select the
-status, login, or play packet set. Reads return concrete generated packet
-pointers. Writes validate the packet state, direction, and ID before encoding.
-State transitions, compression, encryption, and login lifecycle remain the
-caller's responsibility.
+Each session starts in `v1_8.StateHandshaking`. Reads return concrete generated
+packet pointers. Writes validate the packet state, direction, and ID before
+encoding.
 
-The legacy server-list ping remains available in the protocol data inventory,
-but it is not part of the normal VarInt-framed codec. A transport that supports
-legacy ping must detect and handle its `FE 01` prefix before frame decoding.
+Protocol 47 proposes its own transitions, which a stream commits at frame
+boundaries: handshaking moves to status or login according to the handshake,
+login success moves to play, and a set-compression packet enables or disables
+compression. A nonnegative threshold enables compression, a negative one
+disables it, and the active validation policy survives both. Install a
+`protocol.TransitionPolicy` with `protocol.WithTransitionPolicy` to inspect,
+replace, or suppress any proposal before it takes effect.
+
+Compression validation comes in two policies. `java.StrictCompression` requires
+a peer to compress exactly the packets the threshold selects.
+`java.CompatibleCompression` relaxes only that size-to-threshold relationship.
+Neither can relax the frame limit, the decompressed limit, exact decompressed
+length, zlib validity, trailing-data rejection, or allocation safety.
+
+The legacy server-list ping is not a VarInt-framed packet. A server that wants
+to answer it installs the opt-in hook, which claims a connection only when it
+begins with `FE 01` and otherwise leaves every inspected byte for the framer:
+
+```go
+hook, err := java.NewLegacyPingHook(func(ctx context.Context, _ java.LegacyPing) (java.LegacyStatus, error) {
+	return java.LegacyStatus{
+		ProtocolVersion: 47,
+		Version:         "1.8.9",
+		MOTD:            "A Minecraft Server",
+		OnlinePlayers:   0,
+		MaxPlayers:      20,
+	}, nil
+})
+
+stream, err := protocol.NewStream(session, transport, protocol.WithPreFrameHook(hook))
+```
+
+## Observation points
+
+A stream can publish a lossless record of everything it moves. Install a sink
+with `protocol.WithObservationSink`:
+
+```go
+stream, err := protocol.NewStream(session, transport, protocol.WithObservationSink(sink))
+```
+
+Each `protocol.Observation` carries a stream-wide sequence number, a frame
+correlation ID, a direction, a stage, the session snapshots either side of the
+commit, packet metadata where available, and owned bytes. Raw-frame records
+hold the complete frame including its length prefix; packet records hold the
+decoded body. Delivery is lossless and bounded by the shared budget, so a slow
+sink applies backpressure and a failing sink terminates the stream. Mutable
+generated packet values are deliberately not exposed to observers.
+
+## Resource budgets
+
+`MaxBufferedBytes` bounds everything a stream keeps in memory. It defaults to
+32 MiB with a 1 GiB hard ceiling, and construction rejects a configuration that
+cannot hold one maximum frame plus one maximum decompressed body.
+`MaxQueueItems` is a stream-wide count budget rather than a per-queue one, so
+unread inbound packets eventually apply backpressure to writes. Part of the
+byte budget stays reserved as processing headroom for the frame in flight in
+each direction, which is why an accepted write and the final disconnect can
+still make progress while the inbound queue is full.
+
+## Error model
+
+A stream keeps running after an operation that fails before any byte is
+written: an invalid outbound packet, an unsupported control, or a transition
+policy rejection fails only that call. These failures terminate the stream and
+become the cause `Wait` reports: a malformed inbound frame, a compression or
+decode failure, an impossible inbound transition, a partial or failed transport
+write, a peer EOF outside local shutdown, a pre-frame hook failure, and an
+observation sink failure. The first cause is stable; later ones do not replace
+it.
+
+Cancelling a `Write` before the transport write starts guarantees no byte was
+sent. Cancelling it afterwards reports `protocol.ErrAmbiguousWrite` and aborts
+the stream, because the caller cannot know how much the peer received.
 
 To activate the `java/1.8.9` registry entry, blank-import the generated package
 before calling `data.Load`:

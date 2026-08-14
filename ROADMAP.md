@@ -7,16 +7,20 @@ flowchart LR
     P0["P0: repository foundation<br/>in progress"]
     P1["P1: extract Java 1.8<br/>wire, data, and generator<br/>complete"]
     P2["P2: generate Java 26.1<br/>and all PrismarineJS data"]
-    P3["P3: stream, router,<br/>capture, and mcproto CLI"]
+    P3a["P3a: managed stream<br/>and compression<br/>complete"]
+    P3b["P3b: encryption and<br/>login lifecycle"]
+    P3c["P3c: router, capture,<br/>replay, and mcproto CLI"]
     P4["P4: migrate server<br/>and proxy consumers"]
     P5["P5: stable v1 contracts"]
     PX["Later: Bedrock family"]
 
     P0 --> P1
     P1 --> P2
-    P1 --> P3
-    P2 --> P4
-    P3 --> P4
+    P1 --> P3a
+    P3a --> P3b
+    P3b --> P4
+    P2 --> P3c
+    P3c --> P5
     P4 --> P5
     P2 -. protocol-family contract .-> PX
 ```
@@ -43,14 +47,44 @@ Status: complete.
 - Import every dataset exposed by the pinned PrismarineJS manifest.
 - Preserve unknown JSON, YAML, and future source formats as raw datasets.
 
-## P3: reusable protocol tools
+## P3a: managed stream and compression
 
-- Add the bounded managed stream.
-- Add compression, encryption, routing, middleware, capture, replay, status,
-  and complete login helpers.
+Status: complete.
+
+- Replaced `protocol.Codec` with session, packet, frame, and compression
+  boundaries.
+- Added the asynchronous managed stream with a read pump, a write pump, and one
+  coordinator that orders every state change, control, observation, and
+  shutdown step.
+- Added bounded Java compression envelopes with strict and compatible policies.
+- Added protocol 47 automatic transitions, developer-controllable transition
+  policy, runtime controls, and state-appropriate graceful disconnect.
+- Added the opt-in legacy `FE 01` pre-frame hook.
+- Added lossless observation points that later capture work can subscribe to.
+- Added loopback TCP scenarios and pinned Node `minecraft-protocol` 1.66.2
+  interoperability tests as a required gate.
+
+## P3b: encryption and login lifecycle
+
+- Add AES-CFB8 at the transport boundary, in the correct pipeline order.
+- Support offline and Microsoft-backed identities without coupling
+  authentication to the stream.
+- Add configuration and play transitions for modern Java login, keeping every
+  automatic transition optional.
+
+## P3c: routing, capture, replay, and CLI
+
+Depends on the protocol 775 datasets from P2.
+
+- Add packet routing and ordered middleware outside framing.
+- Add bounded in-memory history and durable capture sinks on top of the
+  observation points P3a already publishes.
+- Add deterministic replay with explicit timing modes.
 - Add the non-interactive `mcproto` command.
 
 ## P4: shared consumers
+
+Server and `headless-minecraft` migration comes before protocol 775.
 
 - Migrate `server` to the shared Java 1.8 packages.
 - Migrate `proxy` imports while keeping legacy internal.
@@ -61,6 +95,21 @@ Status: complete.
 - Publish `v1.0.0` after public APIs have compatibility tests.
 - Document support windows for built-in protocol versions.
 - Require migration notes for every later breaking change.
+
+## Deferred conformance work
+
+The P3a gate runs the pinned Node `minecraft-protocol` implementation on
+loopback. These wider conformance lanes are deliberately deferred, with the
+repository that owns each one named:
+
+| Lane | Owner |
+| --- | --- |
+| Paper 26.1 compatibility matrix | `minecraft-protocol` |
+| MCProtocolLib compatibility matrix | `minecraft-protocol` |
+| Instrumented vanilla-client scenarios | `headless-minecraft` |
+| Movement, combat, and crafting scenario matrix | `minecraft-simulation`, `server` |
+
+An archived Paper 1.8 run is optional and is not a P3 gate.
 
 ## Deferred work
 
