@@ -8,7 +8,8 @@ import (
 // PacketID identifies a protocol packet.
 type PacketID int32
 
-// Protocol describes a Minecraft protocol schema.
+// Protocol summarizes a Minecraft protocol schema. Complex arrays, switches,
+// containers, and other structured definitions are represented as "complex".
 type Protocol struct {
 	Types  ProtocolTypes
 	Phases ProtocolPhases

@@ -72,9 +72,20 @@ tasks:
     cmds:
       - go build ./...
 
+  generate:
+    desc: Generate the Java 1.8 game-data package
+    cmds:
+      - go run ./cmd/mcdata-gen -source ./source/java/1.8 -out ./generated/java -package v1_8 -version java/1.8.9
+
+  generate:check:
+    desc: Verify that the checked-in Java 1.8 generated output is current
+    cmds:
+      - go run ./cmd/mcdata-gen -check -source ./source/java/1.8 -out ./generated/java -package v1_8 -version java/1.8.9
+
   verify:
     desc: Run all local and CI checks
     cmds:
+      - task: generate:check
       - task: lint
       - task: secrets
       - task: test

@@ -20,15 +20,15 @@ func (*fakeItemRegistry) All() Items                 { return nil }
 
 type fakeEntityRegistry struct{}
 
-func (*fakeEntityRegistry) ByID(EntityID) (Entity, bool) { return Entity{}, false }
-func (*fakeEntityRegistry) ByName(string) (Entity, bool) { return Entity{}, false }
-func (*fakeEntityRegistry) All() Entities                { return nil }
+func (*fakeEntityRegistry) ByID(EntityType, EntityID) (Entity, bool) { return Entity{}, false }
+func (*fakeEntityRegistry) ByName(string) Entities                   { return nil }
+func (*fakeEntityRegistry) All() Entities                            { return nil }
 
 type fakeBiomeRegistry struct{}
 
-func (*fakeBiomeRegistry) ByID(BiomeID) (Biome, bool)  { return Biome{}, false }
-func (*fakeBiomeRegistry) ByName(string) (Biome, bool) { return Biome{}, false }
-func (*fakeBiomeRegistry) All() Biomes                 { return nil }
+func (*fakeBiomeRegistry) ByID(BiomeID) Biomes  { return nil }
+func (*fakeBiomeRegistry) ByName(string) Biomes { return nil }
+func (*fakeBiomeRegistry) All() Biomes          { return nil }
 
 type fakeEffectRegistry struct{}
 

@@ -33,12 +33,16 @@ type Block struct {
 	Variations   Variations
 }
 
-// Drop describes an item dropped by a block.
+// Drop describes an item dropped by a block. MinCount and MaxCount retain the
+// source values only when HasMinCount or HasMaxCount is true. The generated
+// data does not infer defaults for omitted counts.
 type Drop struct {
-	ID       ItemID
-	Metadata Metadata
-	MinCount int
-	MaxCount int
+	ID          ItemID
+	Metadata    Metadata
+	MinCount    float64
+	MaxCount    float64
+	HasMinCount bool
+	HasMaxCount bool
 }
 
 // Variation describes a metadata variant of a game-data value.

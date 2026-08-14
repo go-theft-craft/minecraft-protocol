@@ -1,0 +1,29 @@
+{
+  "edition": "java",
+  "targetMinecraftVersion": "1.8.9",
+  "sourceMinecraftVersion": "1.8.8",
+  "protocol": 47,
+  "sourceRepository": "https://github.com/PrismarineJS/minecraft-data",
+  "sourceRevision": "3f0dd2ac525607b21be7cd6ddd003fa9057a72d2",
+  "sourcePath": "data/pc/1.8",
+  "license": "MIT",
+  "files": {
+    "attributes.json": "7b44f604ed7c806f2f1ef717cf6c5576ccd7859461fe82e6426dae8c344c41e3",
+    "biomes.json": "157e5272d4fb9317806c31d6fb886f293bb05d627176bdede8eb7dd968c73c05",
+    "blockCollisionShapes.json": "b345dfaac91c3c0d5f6b4a748a85790fbb4b26260b7eb9190332f44c8de6a65f",
+    "blocks.json": "efc19622bb57292685d199bb341cae8c6bf82f1c700b157755c4a4edf9202aa0",
+    "effects.json": "852a195f2e706068bf9c663ecf46c6076f17bd8c11edb977e5ec894669753fc3",
+    "enchantments.json": "b19ce88f422b7a40d14d9c9c2da7c014c0e6415943a0fbb519dc6e8f3a4b73d5",
+    "entities.json": "beb35bc8b11597f83fe75c474d594fd36be3b25fc39a5460a4218006c6adc62e",
+    "foods.json": "6127b1ba58abc30049b5625cf7a67903bf0a002641b9503226e2489f00c4c70f",
+    "instruments.json": "9c05e0ef3e1ca1d445f34dcb2955bda824ca2216ad30368272be275cf4c70e29",
+    "items.json": "a4efc1a0044cfa1996507502cfde5e60a330e2a6f97b7d8d65268819788ecd48",
+    "language.json": "e39ef2c81a0fd3330b87e9c1635237c34066f2bb379f86157a6d7eb6b8ee9c1c",
+    "materials.json": "2db7889998bf3f70f17dd1d2a34b0828cbb7a7f96b8b4c99683367a5d7c1b303",
+    "particles.json": "8aa8858bdf4f3d50cf5805424b995321bc6fbb2e3c74330a18af89f332aae36e",
+    "protocol.json": "96751b6f49f279bce0cbed2e649d17fb21d0292c1d22d8f6e3a31424ea949ce8",
+    "recipes.json": "2a817ee814c6e1c7049866bde9023e54be48af3fd4436c4a2ccc66c6e2b8be1d",
+    "version.json": "0c9b87109c740d355971fa1a0b0ba56696a2883b1141e4e1661fb0abd43057ec",
+    "windows.json": "8e090f0868c7f9ee5958a107fa10a061084b33a6ccbf8be2605493eb7e236d88"
+  }
+}

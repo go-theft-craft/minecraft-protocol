@@ -19,16 +19,16 @@ type ItemRegistry interface {
 // EntityRegistry provides read-only entity lookup. The caller owns returned
 // collections and nested reference fields and may mutate them.
 type EntityRegistry interface {
-	ByID(EntityID) (Entity, bool)
-	ByName(string) (Entity, bool)
+	ByID(EntityType, EntityID) (Entity, bool)
+	ByName(string) Entities
 	All() Entities
 }
 
 // BiomeRegistry provides read-only biome lookup. The caller owns returned
 // collections and nested reference fields and may mutate them.
 type BiomeRegistry interface {
-	ByID(BiomeID) (Biome, bool)
-	ByName(string) (Biome, bool)
+	ByID(BiomeID) Biomes
+	ByName(string) Biomes
 	All() Biomes
 }
 

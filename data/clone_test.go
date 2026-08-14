@@ -128,14 +128,20 @@ func TestMutableCloneIsolation(t *testing.T) {
 						RecipeIngredients{{ID: 2}},
 						RecipeIngredients{{ID: 3}},
 					},
+					OutShape: RecipeOutputShape{
+						RecipeOutputRow{{Ingredient: &Ingredient{ID: 4}}},
+						RecipeOutputRow{{Ingredient: nil}},
+					},
 				}
 				clone := source.Clone()
 
 				clone.Ingredients[0].ID = 4
 				clone.InShape[0][0].ID = 4
 				clone.InShape[1] = RecipeIngredients{{ID: 5}}
+				clone.OutShape[0][0].Ingredient.ID = 5
+				clone.OutShape[1][0].Ingredient = &Ingredient{ID: 6}
 
-				if source.Ingredients[0].ID != 1 || source.InShape[0][0].ID != 2 || source.InShape[1][0].ID != 3 {
+				if source.Ingredients[0].ID != 1 || source.InShape[0][0].ID != 2 || source.InShape[1][0].ID != 3 || source.OutShape[0][0].Ingredient.ID != 4 || source.OutShape[1][0].Ingredient != nil {
 					t.Fatal("Recipe clone modified source")
 				}
 			},
@@ -272,7 +278,7 @@ func TestMutableClonePreservesNil(t *testing.T) {
 			name: "recipe",
 			test: func(t *testing.T) {
 				clone := (Recipe{}).Clone()
-				if clone.Ingredients != nil || clone.InShape != nil {
+				if clone.Ingredients != nil || clone.InShape != nil || clone.OutShape != nil {
 					t.Fatal("Recipe clone did not preserve nil fields")
 				}
 			},
@@ -664,6 +670,12 @@ func TestNamedCollectionClonePreservesNil(t *testing.T) {
 	if RecipeShape(nil).Clone() != nil {
 		t.Fatal("RecipeShape clone did not preserve nil")
 	}
+	if RecipeOutputRow(nil).Clone() != nil {
+		t.Fatal("RecipeOutputRow clone did not preserve nil")
+	}
+	if RecipeOutputShape(nil).Clone() != nil {
+		t.Fatal("RecipeOutputShape clone did not preserve nil")
+	}
 	if Recipes(nil).Clone() != nil {
 		t.Fatal("Recipes clone did not preserve nil")
 	}
@@ -736,9 +748,9 @@ func TestNamedCollectionClonePreservesNil(t *testing.T) {
 }
 
 func TestNamedFieldContracts(t *testing.T) {
-	block := Block{ID: BlockID(1), Drops: Drops{{ID: ItemID(2), Metadata: Metadata(3)}}, HarvestTools: HarvestToolSet{ItemID(4): true}, Variations: Variations{{Metadata: Metadata(5)}}}
+	block := Block{ID: BlockID(1), Drops: Drops{{ID: ItemID(2), Metadata: Metadata(3), MinCount: 0.5, HasMinCount: true}}, HarvestTools: HarvestToolSet{ItemID(4): true}, Variations: Variations{{Metadata: Metadata(5)}}}
 	item := Item{ID: ItemID(6), Variations: Variations{{Metadata: Metadata(7)}}}
-	entity := Entity{ID: EntityID(8), InternalID: EntityInternalID(9)}
+	entity := Entity{ID: EntityID(8), InternalID: EntityInternalID(9), Type: EntityTypeMob}
 	biome := Biome{ID: BiomeID(10)}
 	effect := Effect{ID: EffectID(11)}
 	enchantment := Enchantment{ID: EnchantmentID(12)}
@@ -747,12 +759,12 @@ func TestNamedFieldContracts(t *testing.T) {
 	instrument := Instrument{ID: InstrumentID(16)}
 	window := Window{ID: WindowID("window")}
 	material := Material{ToolSpeeds: ToolSpeedIndex{ItemID(17): 1}}
-	recipe := Recipe{Ingredients: RecipeIngredients{{ID: ItemID(18), Metadata: Metadata(19)}}, Result: RecipeResult{ID: ItemID(20), Metadata: Metadata(21)}}
+	recipe := Recipe{Ingredients: RecipeIngredients{{ID: ItemID(18), Metadata: Metadata(19)}}, OutShape: RecipeOutputShape{{{Ingredient: &Ingredient{ID: ItemID(20)}}}}, Result: RecipeResult{ID: ItemID(20), Metadata: Metadata(21)}}
 	shapes := CollisionShapes{Blocks: BlockShapeIndex{"stone": ShapeIDs{ShapeID(22)}}, Shapes: BoundingBoxIndex{ShapeID(22): BoundingBoxes{{}}}}
 	protocol := Protocol{Phases: ProtocolPhases{"play": {ToClient: ProtocolDirection{Packets: Packets{{ID: PacketID(23)}}}}}}
 	version := Version{Protocol: ProtocolNumber(24)}
 
-	if block.ID != 1 || block.Drops[0].ID != 2 || block.Drops[0].Metadata != 3 || !block.HarvestTools[4] || block.Variations[0].Metadata != 5 || item.ID != 6 || item.Variations[0].Metadata != 7 || entity.ID != 8 || entity.InternalID != 9 || biome.ID != 10 || effect.ID != 11 || enchantment.ID != 12 || food.ID != 13 || food.Variations[0].Metadata != 14 || particle.ID != 15 || instrument.ID != 16 || window.ID != "window" || material.ToolSpeeds[17] != 1 || recipe.Ingredients[0].ID != 18 || recipe.Ingredients[0].Metadata != 19 || recipe.Result.ID != 20 || recipe.Result.Metadata != 21 || shapes.Blocks["stone"][0] != 22 || len(shapes.Shapes[22]) != 1 || protocol.Phases["play"].ToClient.Packets[0].ID != 23 || version.Protocol != 24 {
+	if block.ID != 1 || block.Drops[0].ID != 2 || block.Drops[0].Metadata != 3 || block.Drops[0].MinCount != 0.5 || !block.Drops[0].HasMinCount || !block.HarvestTools[4] || block.Variations[0].Metadata != 5 || item.ID != 6 || item.Variations[0].Metadata != 7 || entity.ID != 8 || entity.InternalID != 9 || entity.Type != EntityTypeMob || biome.ID != 10 || effect.ID != 11 || enchantment.ID != 12 || food.ID != 13 || food.Variations[0].Metadata != 14 || particle.ID != 15 || instrument.ID != 16 || window.ID != "window" || material.ToolSpeeds[17] != 1 || recipe.Ingredients[0].ID != 18 || recipe.Ingredients[0].Metadata != 19 || recipe.OutShape[0][0].Ingredient.ID != 20 || recipe.Result.ID != 20 || recipe.Result.Metadata != 21 || shapes.Blocks["stone"][0] != 22 || len(shapes.Shapes[22]) != 1 || protocol.Phases["play"].ToClient.Packets[0].ID != 23 || version.Protocol != 24 {
 		t.Fatal("named field contracts did not retain typed values")
 	}
 }

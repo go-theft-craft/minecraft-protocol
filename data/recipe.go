@@ -9,6 +9,7 @@ import (
 type Recipe struct {
 	Ingredients RecipeIngredients
 	InShape     RecipeShape
+	OutShape    RecipeOutputShape
 	Result      RecipeResult
 }
 
@@ -43,6 +44,52 @@ func (r RecipeShape) Clone() RecipeShape {
 		clone[index] = r[index].Clone()
 	}
 
+	return clone
+}
+
+// RecipeOutputCell describes one nullable cell in a shaped recipe output.
+// Ingredient is nil when the source cell is null.
+type RecipeOutputCell struct {
+	Ingredient *Ingredient
+}
+
+// Clone returns an output cell that does not alias the source.
+func (r RecipeOutputCell) Clone() RecipeOutputCell {
+	clone := r
+	if r.Ingredient != nil {
+		ingredient := *r.Ingredient
+		clone.Ingredient = &ingredient
+	}
+	return clone
+}
+
+// RecipeOutputRow is one row of nullable recipe output cells.
+type RecipeOutputRow []RecipeOutputCell
+
+// Clone returns an output row that does not alias the source.
+func (r RecipeOutputRow) Clone() RecipeOutputRow {
+	if r == nil {
+		return nil
+	}
+	clone := make(RecipeOutputRow, len(r))
+	for index := range clone {
+		clone[index] = r[index].Clone()
+	}
+	return clone
+}
+
+// RecipeOutputShape is a collection of shaped recipe output rows.
+type RecipeOutputShape []RecipeOutputRow
+
+// Clone returns an output shape that does not alias the source.
+func (r RecipeOutputShape) Clone() RecipeOutputShape {
+	if r == nil {
+		return nil
+	}
+	clone := make(RecipeOutputShape, len(r))
+	for index := range clone {
+		clone[index] = r[index].Clone()
+	}
 	return clone
 }
 
@@ -81,6 +128,7 @@ func (r Recipe) Clone() Recipe {
 	clone := r
 	clone.Ingredients = r.Ingredients.Clone()
 	clone.InShape = r.InShape.Clone()
+	clone.OutShape = r.OutShape.Clone()
 
 	return clone
 }

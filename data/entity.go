@@ -6,13 +6,23 @@ type EntityID int
 // EntityInternalID identifies a Minecraft entity in the protocol internals.
 type EntityInternalID int
 
+// EntityType identifies the source namespace for an entity ID.
+type EntityType string
+
+const (
+	// EntityTypeMob identifies entities from the mob ID namespace.
+	EntityTypeMob EntityType = "mob"
+	// EntityTypeObject identifies entities from the object ID namespace.
+	EntityTypeObject EntityType = "object"
+)
+
 // Entity describes a Minecraft entity.
 type Entity struct {
 	ID          EntityID
 	InternalID  EntityInternalID
 	Name        string
 	DisplayName string
-	Type        string
+	Type        EntityType
 	Width       *float64
 	Height      *float64
 	Category    string

@@ -22,14 +22,14 @@ injectable interfaces.
 - Preserve raw packet access and unknown upstream fields for modded servers and
   future protocol changes.
 
-## Planned support
+## Support status
 
 | Protocol or data | Status |
 | --- | --- |
 | Edition-neutral contracts, resource limits, and game-data registry | Implemented |
-| Java Edition 1.8, protocol 47 | Uncompressed primitives and frames implemented; generated built-in descriptor and dataset planned |
+| Java Edition 1.8, protocol 47 | Uncompressed primitives, frames, and generated game data implemented; built-in protocol descriptor planned |
 | Java Edition 26.1, protocol 775 | Generated built-in descriptor and dataset planned |
-| PrismarineJS blocks, items, entities, recipes, registries, and other datasets | Planned generated built-ins |
+| Additional PrismarineJS versions and datasets beyond the Java 1.8 bundle | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
 | Bedrock Edition | Deferred; it will use a separate transport and authentication implementation |
 
@@ -108,13 +108,41 @@ func main() {
 The example registers a package-level version once. Use `NewRegistry` when an
 application needs an isolated registry, such as a test or a plugin host.
 
-## Planned game-data sources
+## Built-in game-data sources
 
-Built-in datasets will be generated from a pinned
+The Java 1.8 game-data package is generated from a pinned
 [PrismarineJS minecraft-data](https://github.com/PrismarineJS/minecraft-data)
-revision. Generated artifacts will record the source revision and digest.
-Unknown source files and fields will remain available as raw datasets instead
-of being silently discarded.
+snapshot. `source/java/1.8/manifest.json` records the source repository and a
+verified revision, the upstream path and license identifier, and a SHA-256
+digest for every required source file. The generator renders typed registries
+and packet values from that fixed input set. See
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for attribution and license
+details.
+
+Use the generated Java 1.8 data directly:
+
+```go
+import v1_8 "github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8"
+
+set, err := v1_8.Data()
+```
+
+To activate the `java/1.8.9` registry entry, blank-import the generated package
+before calling `data.Load`:
+
+```go
+import (
+	"github.com/go-theft-craft/minecraft-protocol/data"
+	_ "github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8"
+)
+
+set, err := data.Load("java/1.8.9")
+```
+
+`data.Protocol` is a lossy protocol summary in this milestone. It keeps packet
+names, IDs, and field names, but represents arrays, switches, containers, and
+other structured definitions as `complex`. Use the pinned `protocol.json` when
+you need the complete upstream schema.
 
 Minecraft data changes independently of the wire protocol. Applications can
 therefore select or replace a protocol implementation and a data bundle
@@ -133,6 +161,24 @@ formatting, runs the Go linters, and scans staged content for secrets and privat
 keys. CI scans the complete committed tree. Run `devbox run -- task --list` to
 see the individual tasks.
 
+### Generate Java 1.8 game data
+
+To regenerate the checked-in Java 1.8 package, run:
+
+```bash
+devbox run -- task generate
+```
+
+To verify that the checked-in generated files match the pinned source, run:
+
+```bash
+devbox run -- task generate:check
+```
+
+`task generate:check` compares an explicit inventory of generated files and
+allows only `data_test.go` as a hand-written exception. The generator preserves
+that file without creating it.
+
 The public API is still changing. Before starting a substantial contribution,
 [open an issue](https://github.com/go-theft-craft/minecraft-protocol/issues) to
 agree on the contract and compatibility fixtures.
@@ -143,6 +189,7 @@ agree on the contract and compatibility fixtures.
 - [Release and versioning rules](RELEASING.md)
 - [Changelog](CHANGELOG.md)
 - [Apache-2.0 license](LICENSE)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Headless client](https://github.com/go-theft-craft/headless-minecraft)
 
 This project is not an official Minecraft product. It is not approved by or
