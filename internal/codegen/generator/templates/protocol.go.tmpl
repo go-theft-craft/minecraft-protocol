@@ -4,7 +4,7 @@ package {{ .Package }}
 import (
 	"bytes"
 	"fmt"
-	"io"
+	"strconv"
 
 	protocol "github.com/go-theft-craft/minecraft-protocol"
 	"github.com/go-theft-craft/minecraft-protocol/data"
@@ -24,15 +24,21 @@ const (
 
 type protocolDescriptor struct{}
 
-type protocolCodec struct {
-	limits    protocol.Limits
-	state     protocol.State
-	inbound   protocol.Direction
-	outbound  protocol.Direction
+// protocolSession owns mutable coding state for one {{ .RegistrationKey }}
+// connection. It performs no I/O: a managed stream owns the transport and
+// calls these methods at complete frame boundaries.
+type protocolSession struct {
+	limits      protocol.Limits
+	role        protocol.Role
+	state       protocol.State
+	inbound     protocol.Direction
+	outbound    protocol.Direction
+	framer      protocol.Framer
+	compression java.CompressionControl
 }
 
 var _ protocol.Protocol = protocolDescriptor{}
-var _ protocol.Codec = (*protocolCodec)(nil)
+var _ protocol.Session = (*protocolSession)(nil)
 
 // Protocol returns the immutable {{ .RegistrationKey }} descriptor.
 func Protocol() protocol.Protocol { return protocolDescriptor{} }
@@ -43,9 +49,9 @@ func (protocolDescriptor) Edition() protocol.Edition { return protocol.EditionJa
 
 func (protocolDescriptor) Version() protocol.Version { return Version() }
 
-func (protocolDescriptor) NewCodec(role protocol.Role, limits protocol.Limits) (protocol.Codec, error) {
+func (protocolDescriptor) NewSession(role protocol.Role, limits protocol.Limits) (protocol.Session, error) {
 	if !limits.Valid() {
-		return nil, fmt.Errorf("create {{ .RegistrationKey }} codec: %w", java.ErrInvalidLimits)
+		return nil, fmt.Errorf("create {{ .RegistrationKey }} session: %w", java.ErrInvalidLimits)
 	}
 
 	var inbound protocol.Direction
@@ -58,39 +64,78 @@ func (protocolDescriptor) NewCodec(role protocol.Role, limits protocol.Limits) (
 		inbound = protocol.DirectionServerbound
 		outbound = protocol.DirectionClientbound
 	default:
-		return nil, fmt.Errorf("create {{ .RegistrationKey }} codec: unsupported role %d", role)
+		return nil, fmt.Errorf("create {{ .RegistrationKey }} session: unsupported role %d", role)
 	}
 
-	return &protocolCodec{
-		limits: limits, state: StateHandshaking,
-		inbound: inbound, outbound: outbound,
+	frameCodec, err := java.NewFramer(limits)
+	if err != nil {
+		return nil, fmt.Errorf("create {{ .RegistrationKey }} session: %w", err)
+	}
+
+	return &protocolSession{
+		limits: limits, role: role, state: StateHandshaking,
+		inbound: inbound, outbound: outbound, framer: frameCodec,
+		// Compression starts disabled. The policy is retained so enabling
+		// compression later does not silently change validation strictness.
+		compression: java.CompressionControl{Policy: java.StrictCompression},
 	}, nil
 }
 
-func (codec *protocolCodec) State() protocol.State { return codec.state }
+func (session *protocolSession) Framer() protocol.Framer { return session.framer }
 
-func (codec *protocolCodec) SetState(state protocol.State) error {
+func (session *protocolSession) Role() protocol.Role { return session.role }
+
+func (session *protocolSession) Limits() protocol.Limits { return session.limits }
+
+func (session *protocolSession) State() protocol.State { return session.state }
+
+func (session *protocolSession) Inbound() protocol.Direction { return session.inbound }
+
+func (session *protocolSession) Outbound() protocol.Direction { return session.outbound }
+
+func (session *protocolSession) Snapshot() protocol.Snapshot {
+	policy := ""
+	if session.compression.Policy != nil {
+		policy = session.compression.Policy.Name()
+	}
+
+	return protocol.NewSnapshot(session.state, map[string]string{
+		"compression.enabled":   strconv.FormatBool(session.compression.Enabled),
+		"compression.threshold": strconv.FormatInt(int64(session.compression.Threshold), 10),
+		"compression.policy":    policy,
+	})
+}
+
+func (session *protocolSession) ValidateState(state protocol.State) error {
 	switch state {
 	case StateHandshaking, StateStatus, StateLogin, StatePlay:
-		codec.state = state
 		return nil
 	default:
-		return fmt.Errorf("set {{ .RegistrationKey }} codec state: unsupported state %q", state)
+		return fmt.Errorf("set {{ .RegistrationKey }} session state: unsupported state %q", state)
 	}
 }
 
-func (codec *protocolCodec) Read(reader io.Reader) (protocol.Packet, error) {
-	raw, err := java.ReadRawPacket(reader, codec.limits)
+func (session *protocolSession) SetState(state protocol.State) { session.state = state }
+
+// DecodeFrame turns one frame payload into a packet. The returned packet owns
+// its payload, so a stream can queue it after the frame buffer is reused.
+func (session *protocolSession) DecodeFrame(framePayload []byte) (protocol.Packet, error) {
+	body, err := java.DecodeCompression(framePayload, session.compression, session.limits)
 	if err != nil {
 		return protocol.Packet{}, err
 	}
 
-	key := packetKey{State: codec.state, Direction: codec.inbound, ID: raw.ID}
-	raw.State = codec.state
-	raw.Direction = codec.inbound
+	raw, err := java.SplitPacketBody(body)
+	if err != nil {
+		return protocol.Packet{}, err
+	}
+	raw.State = session.state
+	raw.Direction = session.inbound
+	raw.Payload = bytes.Clone(raw.Payload)
+
+	key := packetKey{State: session.state, Direction: session.inbound, ID: raw.ID}
 	value, known := newPacket(key.State, key.Direction, key.ID)
 	if !known {
-		raw.Payload = bytes.Clone(raw.Payload)
 		raw.Value = protocol.UnknownPacket{Payload: bytes.Clone(raw.Payload)}
 		return raw, nil
 	}
@@ -99,7 +144,7 @@ func (codec *protocolCodec) Read(reader io.Reader) (protocol.Packet, error) {
 	if !named {
 		return protocol.Packet{}, fmt.Errorf("read {{ .RegistrationKey }} packet state %q direction %d ID %#x: missing packet name", key.State, key.Direction, key.ID)
 	}
-	buffer, err := java.NewReadBuffer(raw.Payload, codec.limits)
+	buffer, err := java.NewReadBuffer(raw.Payload, session.limits)
 	if err != nil {
 		return protocol.Packet{}, fmt.Errorf("read {{ .RegistrationKey }} packet %s: %w", name, err)
 	}
@@ -114,54 +159,117 @@ func (codec *protocolCodec) Read(reader io.Reader) (protocol.Packet, error) {
 	return raw, nil
 }
 
-func (codec *protocolCodec) Write(writer io.Writer, packet protocol.Packet) error {
-	if packet.State != codec.state {
-		return fmt.Errorf("write {{ .RegistrationKey }} packet: state %q does not match codec state %q", packet.State, codec.state)
+// EncodeFrame turns one packet into a frame payload, applying the current
+// compression configuration.
+func (session *protocolSession) EncodeFrame(packet protocol.Packet) ([]byte, error) {
+	if packet.State != session.state {
+		return nil, fmt.Errorf("write {{ .RegistrationKey }} packet: state %q does not match session state %q", packet.State, session.state)
 	}
-	if packet.Direction != codec.outbound {
-		return fmt.Errorf("write {{ .RegistrationKey }} packet: direction %d does not match codec direction %d", packet.Direction, codec.outbound)
+	if packet.Direction != session.outbound {
+		return nil, fmt.Errorf("write {{ .RegistrationKey }} packet: direction %d does not match session direction %d", packet.Direction, session.outbound)
 	}
 
-	key := packetKey{State: codec.state, Direction: codec.outbound, ID: packet.ID}
+	body, err := session.encodePacketBody(packet)
+	if err != nil {
+		return nil, err
+	}
+
+	return java.EncodeCompression(body, session.compression, session.limits)
+}
+
+func (session *protocolSession) encodePacketBody(packet protocol.Packet) ([]byte, error) {
+	key := packetKey{State: session.state, Direction: session.outbound, ID: packet.ID}
 	if value, knownValue := packet.Value.(packetCodec); knownValue {
 		valueKey, registeredValue := packetKeyForValue(value)
 		if !registeredValue {
-			return fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: generated value type %T is not registered", packet.ID, packet.Value)
+			return nil, fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: generated value type %T is not registered", packet.ID, packet.Value)
 		}
 		if valueKey != key {
-			return fmt.Errorf("write {{ .RegistrationKey }} packet: value belongs to state %q direction %d ID %#x, envelope has state %q direction %d ID %#x", valueKey.State, valueKey.Direction, valueKey.ID, key.State, key.Direction, key.ID)
+			return nil, fmt.Errorf("write {{ .RegistrationKey }} packet: value belongs to state %q direction %d ID %#x, envelope has state %q direction %d ID %#x", valueKey.State, valueKey.Direction, valueKey.ID, key.State, key.Direction, key.ID)
 		}
 		if _, registered := newPacket(key.State, key.Direction, key.ID); !registered {
-			return fmt.Errorf("write {{ .RegistrationKey }} packet: no generated packet for state %q direction %d ID %#x", key.State, key.Direction, key.ID)
-		}
-		buffer, err := java.NewWriteBuffer(codec.limits)
-		if err != nil {
-			return fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: %w", packet.ID, err)
-		}
-		if err := value.Encode(buffer); err != nil {
-			return fmt.Errorf("encode {{ .RegistrationKey }} packet ID %#x: %w", packet.ID, err)
+			return nil, fmt.Errorf("write {{ .RegistrationKey }} packet: no generated packet for state %q direction %d ID %#x", key.State, key.Direction, key.ID)
 		}
 		if value.PacketID() != packet.ID {
-			return fmt.Errorf("write {{ .RegistrationKey }} packet: value ID %#x does not match envelope ID %#x", value.PacketID(), packet.ID)
+			return nil, fmt.Errorf("write {{ .RegistrationKey }} packet: value ID %#x does not match envelope ID %#x", value.PacketID(), packet.ID)
 		}
-		return java.WriteRawPacket(writer, codec.limits, protocol.Packet{ID: packet.ID, Payload: buffer.Bytes()})
+		buffer, err := java.NewWriteBuffer(session.limits)
+		if err != nil {
+			return nil, fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: %w", packet.ID, err)
+		}
+		if err := value.Encode(buffer); err != nil {
+			return nil, fmt.Errorf("encode {{ .RegistrationKey }} packet ID %#x: %w", packet.ID, err)
+		}
+		return java.JoinPacketBody(protocol.Packet{ID: packet.ID, Payload: buffer.Bytes()}, session.limits)
 	}
 
 	raw := protocol.Packet{ID: packet.ID}
 	switch value := packet.Value.(type) {
 	case nil:
-		raw.Payload = bytes.Clone(packet.Payload)
+		raw.Payload = packet.Payload
 	case protocol.UnknownPacket:
-		raw.Payload = bytes.Clone(value.Payload)
+		raw.Payload = value.Payload
 	case *protocol.UnknownPacket:
 		if value == nil {
-			return fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: nil UnknownPacket", packet.ID)
+			return nil, fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: nil UnknownPacket", packet.ID)
 		}
-		raw.Payload = bytes.Clone(value.Payload)
+		raw.Payload = value.Payload
 	default:
-		return fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: unsupported value type %T", packet.ID, packet.Value)
+		return nil, fmt.Errorf("write {{ .RegistrationKey }} packet ID %#x: unsupported value type %T", packet.ID, packet.Value)
 	}
-	return java.WriteRawPacket(writer, codec.limits, raw)
+	return java.JoinPacketBody(raw, session.limits)
+}
+
+func (session *protocolSession) ValidateControl(control protocol.Control) error {
+	switch typed := control.(type) {
+	case protocol.StateControl:
+		return session.ValidateState(typed.State)
+	case java.CompressionControl:
+		if !typed.Enabled {
+			return nil
+		}
+		if typed.Threshold < 0 {
+			return fmt.Errorf("{{ .RegistrationKey }} compression control: negative threshold %d", typed.Threshold)
+		}
+		if typed.Policy == nil {
+			return fmt.Errorf("{{ .RegistrationKey }} compression control: missing policy")
+		}
+		return nil
+	case nil:
+		return fmt.Errorf("{{ .RegistrationKey }} control: nil control")
+	default:
+		return fmt.Errorf("{{ .RegistrationKey }} control: unsupported control %q of type %T", control.ControlName(), control)
+	}
+}
+
+// ApplyControl mutates the session. ValidateControl must have accepted the
+// control first, which is why this method cannot fail.
+func (session *protocolSession) ApplyControl(control protocol.Control) {
+	switch typed := control.(type) {
+	case protocol.StateControl:
+		session.state = typed.State
+	case java.CompressionControl:
+		session.compression = typed
+	}
+}
+
+// ProposeTransition reports the state or pipeline change a packet implies.
+func (session *protocolSession) ProposeTransition(protocol.Packet) (protocol.Transition, bool, error) {
+	return protocol.Transition{}, false, nil
+}
+
+func (session *protocolSession) ValidateTransition(transition protocol.Transition) error {
+	if !transition.IsZero() {
+		return fmt.Errorf("{{ .RegistrationKey }} transition: no transitions are defined")
+	}
+	return nil
+}
+
+func (session *protocolSession) ApplyTransition(protocol.Transition) {}
+
+// Disconnect builds the state-appropriate disconnect packet.
+func (session *protocolSession) Disconnect(string) (protocol.Packet, bool, error) {
+	return protocol.Packet{}, false, nil
 }
 
 var packetNames = map[packetKey]string{

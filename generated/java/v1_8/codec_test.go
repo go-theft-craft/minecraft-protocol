@@ -96,7 +96,7 @@ func TestProtocol47CodecByteVectors(t *testing.T) {
 		},
 	}
 
-	limits := protocol47CodecLimits(t)
+	limits := protocol47SessionLimits(t)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
@@ -105,32 +105,32 @@ func TestProtocol47CodecByteVectors(t *testing.T) {
 			if test.direction == protocol.DirectionServerbound {
 				decoderRole, encoderRole = protocol.RoleServer, protocol.RoleClient
 			}
-			decoder := protocol47Codec(t, decoderRole, test.state, limits)
-			encoder := protocol47Codec(t, encoderRole, test.state, limits)
+			decoder := protocol47Session(t, decoderRole, test.state, limits)
+			encoder := protocol47Session(t, encoderRole, test.state, limits)
 
-			packet, err := decoder.Read(bytes.NewReader(test.wire))
+			packet, err := readWire(t, decoder, test.wire)
 			if err != nil {
-				t.Fatalf("Read() error = %v", err)
+				t.Fatalf("DecodeFrame() error = %v", err)
 			}
 			if packet.State != test.state || packet.Direction != test.direction || packet.ID != test.id || packet.Name != test.packet {
-				t.Fatalf("Read() envelope = {%q %d %#x %q}, want {%q %d %#x %q}", packet.State, packet.Direction, packet.ID, packet.Name, test.state, test.direction, test.id, test.packet)
+				t.Fatalf("DecodeFrame() envelope = {%q %d %#x %q}, want {%q %d %#x %q}", packet.State, packet.Direction, packet.ID, packet.Name, test.state, test.direction, test.id, test.packet)
 			}
 			if !bytes.Equal(packet.Payload, test.payload) {
-				t.Fatalf("Read() payload = %x, want %x", packet.Payload, test.payload)
+				t.Fatalf("DecodeFrame() payload = %x, want %x", packet.Payload, test.payload)
 			}
 			if gotType, wantType := reflect.TypeOf(packet.Value), reflect.TypeOf(test.value); gotType != wantType {
-				t.Fatalf("Read() concrete value type = %v, want %v", gotType, wantType)
+				t.Fatalf("DecodeFrame() concrete value type = %v, want %v", gotType, wantType)
 			}
 			if !reflect.DeepEqual(packet.Value, test.value) {
-				t.Fatalf("Read() value = %#v, want %#v", packet.Value, test.value)
+				t.Fatalf("DecodeFrame() value = %#v, want %#v", packet.Value, test.value)
 			}
 
-			var encoded bytes.Buffer
-			if err := encoder.Write(&encoded, packet); err != nil {
-				t.Fatalf("Write() error = %v", err)
+			encoded, err := writeWire(t, encoder, packet)
+			if err != nil {
+				t.Fatalf("EncodeFrame() error = %v", err)
 			}
-			if got := encoded.Bytes(); !bytes.Equal(got, test.wire) {
-				t.Fatalf("Write() = %x, want %x", got, test.wire)
+			if !bytes.Equal(encoded, test.wire) {
+				t.Fatalf("EncodeFrame() = %x, want %x", encoded, test.wire)
 			}
 		})
 	}
@@ -139,32 +139,32 @@ func TestProtocol47CodecByteVectors(t *testing.T) {
 func TestProtocol47UnknownPacketOwnershipAndReencoding(t *testing.T) {
 	t.Parallel()
 
-	limits := protocol47CodecLimits(t)
-	decoder := protocol47Codec(t, protocol.RoleClient, StateStatus, limits)
-	encoder := protocol47Codec(t, protocol.RoleServer, StateStatus, limits)
+	limits := protocol47SessionLimits(t)
+	decoder := protocol47Session(t, protocol.RoleClient, StateStatus, limits)
+	encoder := protocol47Session(t, protocol.RoleServer, StateStatus, limits)
 	wire := []byte{0x04, 0x7f, 0x01, 0x02, 0x03}
 
-	packet, err := decoder.Read(bytes.NewReader(wire))
+	packet, err := readWire(t, decoder, wire)
 	if err != nil {
-		t.Fatalf("Read() error = %v", err)
+		t.Fatalf("DecodeFrame() error = %v", err)
 	}
 	unknown, ok := packet.Value.(protocol.UnknownPacket)
 	if !ok {
-		t.Fatalf("Read() concrete value type = %T, want protocol.UnknownPacket", packet.Value)
+		t.Fatalf("DecodeFrame() concrete value type = %T, want protocol.UnknownPacket", packet.Value)
 	}
 	if packet.State != StateStatus || packet.Direction != protocol.DirectionClientbound || packet.ID != 0x7f || packet.Name != "" {
-		t.Fatalf("Read() envelope = {%q %d %#x %q}", packet.State, packet.Direction, packet.ID, packet.Name)
+		t.Fatalf("DecodeFrame() envelope = {%q %d %#x %q}", packet.State, packet.Direction, packet.ID, packet.Name)
 	}
 	if !bytes.Equal(packet.Payload, []byte{0x01, 0x02, 0x03}) || !bytes.Equal(unknown.Payload, []byte{0x01, 0x02, 0x03}) {
-		t.Fatalf("Read() payloads = %x and %x", packet.Payload, unknown.Payload)
+		t.Fatalf("DecodeFrame() payloads = %x and %x", packet.Payload, unknown.Payload)
 	}
 
-	var encoded bytes.Buffer
-	if err := encoder.Write(&encoded, packet); err != nil {
-		t.Fatalf("Write() error = %v", err)
+	encoded, err := writeWire(t, encoder, packet)
+	if err != nil {
+		t.Fatalf("EncodeFrame() error = %v", err)
 	}
-	if got := encoded.Bytes(); !bytes.Equal(got, wire) {
-		t.Fatalf("Write() = %x, want %x", got, wire)
+	if !bytes.Equal(encoded, wire) {
+		t.Fatalf("EncodeFrame() = %x, want %x", encoded, wire)
 	}
 
 	packet.Payload[0] = 0xff
@@ -180,23 +180,23 @@ func TestProtocol47UnknownPacketOwnershipAndReencoding(t *testing.T) {
 func TestProtocol47LegacyPingIsNotAFramedPacket(t *testing.T) {
 	t.Parallel()
 
-	limits := protocol47CodecLimits(t)
-	decoder := protocol47Codec(t, protocol.RoleServer, StateHandshaking, limits)
+	limits := protocol47SessionLimits(t)
+	decoder := protocol47Session(t, protocol.RoleServer, StateHandshaking, limits)
 	wire := []byte{0x03, 0xfe, 0x01, 0x01}
 
-	packet, err := decoder.Read(bytes.NewReader(wire))
+	packet, err := readWire(t, decoder, wire)
 	if err != nil {
-		t.Fatalf("Read() error = %v", err)
+		t.Fatalf("DecodeFrame() error = %v", err)
 	}
 	if packet.ID != 0xfe || packet.Name != "" {
-		t.Fatalf("Read() envelope = {%#x %q}, want unknown packet ID 0xfe", packet.ID, packet.Name)
+		t.Fatalf("DecodeFrame() envelope = {%#x %q}, want unknown packet ID 0xfe", packet.ID, packet.Name)
 	}
 	if _, ok := packet.Value.(protocol.UnknownPacket); !ok {
-		t.Fatalf("Read() concrete value type = %T, want protocol.UnknownPacket", packet.Value)
+		t.Fatalf("DecodeFrame() concrete value type = %T, want protocol.UnknownPacket", packet.Value)
 	}
 }
 
-func protocol47CodecLimits(t *testing.T) protocol.Limits {
+func protocol47SessionLimits(t *testing.T) protocol.Limits {
 	t.Helper()
 
 	limits, err := protocol.NewLimits()
@@ -206,15 +206,47 @@ func protocol47CodecLimits(t *testing.T) protocol.Limits {
 	return limits
 }
 
-func protocol47Codec(t *testing.T, role protocol.Role, state protocol.State, limits protocol.Limits) protocol.Codec {
+func protocol47Session(t *testing.T, role protocol.Role, state protocol.State, limits protocol.Limits) protocol.Session {
 	t.Helper()
 
-	codec, err := Protocol().NewCodec(role, limits)
+	session, err := Protocol().NewSession(role, limits)
 	if err != nil {
-		t.Fatalf("NewCodec() error = %v", err)
+		t.Fatalf("NewSession() error = %v", err)
 	}
-	if err := codec.SetState(state); err != nil {
-		t.Fatalf("SetState(%q) error = %v", state, err)
+	if err := session.ValidateState(state); err != nil {
+		t.Fatalf("ValidateState(%q) error = %v", state, err)
 	}
-	return codec
+	session.SetState(state)
+	return session
+}
+
+// readWire runs the complete inbound path for one frame, so the byte vectors
+// below stay expressed as exactly what crosses the transport.
+func readWire(t *testing.T, session protocol.Session, wire []byte) (protocol.Packet, error) {
+	t.Helper()
+
+	frame, err := session.Framer().ReadFrame(bytes.NewReader(wire))
+	if err != nil {
+		return protocol.Packet{}, err
+	}
+	return session.DecodeFrame(frame.Payload())
+}
+
+// writeWire runs the complete outbound path for one packet.
+func writeWire(t *testing.T, session protocol.Session, packet protocol.Packet) ([]byte, error) {
+	t.Helper()
+
+	payload, err := session.EncodeFrame(packet)
+	if err != nil {
+		return nil, err
+	}
+	frame, err := session.Framer().BuildFrame(payload)
+	if err != nil {
+		return nil, err
+	}
+	var encoded bytes.Buffer
+	if err := session.Framer().WriteFrame(&encoded, frame); err != nil {
+		return nil, err
+	}
+	return encoded.Bytes(), nil
 }

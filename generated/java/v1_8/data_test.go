@@ -272,76 +272,120 @@ func TestProtocolDescriptorAndExplicitStates(t *testing.T) {
 	}
 
 	limits := protocolLimits(t)
-	codec, err := descriptor.NewCodec(protocol.RoleClient, limits)
+	session, err := descriptor.NewSession(protocol.RoleClient, limits)
 	if err != nil {
-		t.Fatalf("NewCodec() error = %v", err)
+		t.Fatalf("NewSession() error = %v", err)
 	}
-	if codec.State() != StateHandshaking {
-		t.Fatalf("initial state = %q, want %q", codec.State(), StateHandshaking)
+	if session.State() != StateHandshaking {
+		t.Fatalf("initial state = %q, want %q", session.State(), StateHandshaking)
+	}
+	if session.Role() != protocol.RoleClient {
+		t.Fatalf("Role() = %d, want %d", session.Role(), protocol.RoleClient)
+	}
+	if session.Limits() != limits {
+		t.Fatal("Limits() did not return the limits the session was built with")
+	}
+	if session.Framer() == nil {
+		t.Fatal("Framer() = nil")
 	}
 	for _, state := range []protocol.State{StateHandshaking, StateStatus, StateLogin, StatePlay} {
-		if err := codec.SetState(state); err != nil {
-			t.Fatalf("SetState(%q) error = %v", state, err)
+		if err := session.ValidateState(state); err != nil {
+			t.Fatalf("ValidateState(%q) error = %v", state, err)
 		}
-		if codec.State() != state {
-			t.Fatalf("State() = %q, want %q", codec.State(), state)
+		session.SetState(state)
+		if session.State() != state {
+			t.Fatalf("State() = %q, want %q", session.State(), state)
 		}
 	}
-	if err := codec.SetState(protocol.State("configuration")); err == nil {
-		t.Fatal("SetState(configuration) error = nil")
+	if err := session.ValidateState(protocol.State("configuration")); err == nil {
+		t.Fatal("ValidateState(configuration) error = nil")
 	}
-	if codec.State() != StatePlay {
-		t.Fatalf("invalid SetState changed state to %q", codec.State())
+	if session.State() != StatePlay {
+		t.Fatalf("rejected ValidateState changed state to %q", session.State())
 	}
 
-	if _, err := descriptor.NewCodec(protocol.Role(0), limits); err == nil {
-		t.Fatal("NewCodec(invalid role) error = nil")
+	if _, err := descriptor.NewSession(protocol.Role(0), limits); err == nil {
+		t.Fatal("NewSession(invalid role) error = nil")
 	}
-	if _, err := descriptor.NewCodec(protocol.RoleClient, protocol.Limits{}); !errors.Is(err, java.ErrInvalidLimits) {
-		t.Fatalf("NewCodec(invalid limits) error = %v, want ErrInvalidLimits", err)
+	if _, err := descriptor.NewSession(protocol.RoleClient, protocol.Limits{}); !errors.Is(err, java.ErrInvalidLimits) {
+		t.Fatalf("NewSession(invalid limits) error = %v, want ErrInvalidLimits", err)
 	}
 }
 
-func TestProtocolCodecKnownPacketAndEnvelopeValidation(t *testing.T) {
+func TestProtocolSessionDirectionsFollowRole(t *testing.T) {
 	limits := protocolLimits(t)
-	server, err := Protocol().NewCodec(protocol.RoleServer, limits)
+
+	client, err := Protocol().NewSession(protocol.RoleClient, limits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := Protocol().NewCodec(protocol.RoleClient, limits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := server.SetState(StateStatus); err != nil {
-		t.Fatal(err)
-	}
-	if err := client.SetState(StateStatus); err != nil {
-		t.Fatal(err)
+	if client.Inbound() != protocol.DirectionClientbound || client.Outbound() != protocol.DirectionServerbound {
+		t.Fatalf("client directions = %d, %d", client.Inbound(), client.Outbound())
 	}
 
-	var wire bytes.Buffer
+	server, err := Protocol().NewSession(protocol.RoleServer, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if server.Inbound() != protocol.DirectionServerbound || server.Outbound() != protocol.DirectionClientbound {
+		t.Fatalf("server directions = %d, %d", server.Inbound(), server.Outbound())
+	}
+}
+
+func TestProtocolSessionSnapshotIsIndependent(t *testing.T) {
+	session := newTestSession(t, protocol.RoleClient, StateLogin)
+
+	snapshot := session.Snapshot()
+	if snapshot.State != StateLogin {
+		t.Fatalf("Snapshot() state = %q, want %q", snapshot.State, StateLogin)
+	}
+	want := map[string]string{
+		"compression.enabled":   "false",
+		"compression.threshold": "0",
+		"compression.policy":    "strict",
+	}
+	for key, value := range want {
+		if snapshot.Pipeline[key] != value {
+			t.Errorf("Snapshot() pipeline[%q] = %q, want %q", key, snapshot.Pipeline[key], value)
+		}
+	}
+
+	snapshot.Pipeline["compression.enabled"] = "true"
+	if session.Snapshot().Pipeline["compression.enabled"] != "false" {
+		t.Fatal("Snapshot() shares its pipeline map between calls")
+	}
+}
+
+func TestProtocolSessionKnownPacketAndEnvelopeValidation(t *testing.T) {
+	limits := protocolLimits(t)
+	server := newTestSession(t, protocol.RoleServer, StateStatus)
+	client := newTestSession(t, protocol.RoleClient, StateStatus)
+
 	wantValue := &StatusClientboundServerInfo{Response: `{"version":{"name":"1.8.9","protocol":47}}`}
 	wantPacket := protocol.Packet{
 		State: StateStatus, Direction: protocol.DirectionClientbound,
 		ID: wantValue.PacketID(), Value: wantValue,
 	}
-	if err := server.Write(&wire, wantPacket); err != nil {
-		t.Fatalf("Write() error = %v", err)
-	}
-	got, err := client.Read(&wire)
+	payload, err := server.EncodeFrame(wantPacket)
 	if err != nil {
-		t.Fatalf("Read() error = %v", err)
+		t.Fatalf("EncodeFrame() error = %v", err)
+	}
+
+	got, err := client.DecodeFrame(payload)
+	if err != nil {
+		t.Fatalf("DecodeFrame() error = %v", err)
 	}
 	gotValue, ok := got.Value.(*StatusClientboundServerInfo)
 	if !ok || gotValue.Response != wantValue.Response {
-		t.Fatalf("Read() Value = %#v", got.Value)
+		t.Fatalf("DecodeFrame() Value = %#v", got.Value)
 	}
 	if got.State != StateStatus || got.Direction != protocol.DirectionClientbound || got.ID != 0 || got.Name != "server_info" {
-		t.Fatalf("Read() envelope = %+v", got)
+		t.Fatalf("DecodeFrame() envelope = %+v", got)
 	}
 	if server.State() != StateStatus || client.State() != StateStatus {
-		t.Fatalf("codec changed state automatically: server=%q client=%q", server.State(), client.State())
+		t.Fatalf("session changed state during coding: server=%q client=%q", server.State(), client.State())
 	}
+	_ = limits
 
 	invalid := []protocol.Packet{
 		{State: StateLogin, Direction: protocol.DirectionServerbound, ID: 0, Value: &StatusServerboundPingStart{}},
@@ -351,40 +395,30 @@ func TestProtocolCodecKnownPacketAndEnvelopeValidation(t *testing.T) {
 		{State: StateStatus, Direction: protocol.DirectionServerbound, ID: 0, Value: &LoginServerboundLoginStart{}},
 	}
 	for index, packet := range invalid {
-		var output bytes.Buffer
-		if err := client.Write(&output, packet); err == nil {
-			t.Errorf("Write(invalid envelope %d) error = nil", index)
-		}
-		if output.Len() != 0 {
-			t.Errorf("Write(invalid envelope %d) wrote %d bytes", index, output.Len())
+		if _, err := client.EncodeFrame(packet); err == nil {
+			t.Errorf("EncodeFrame(invalid envelope %d) error = nil", index)
 		}
 	}
 }
 
-func TestProtocolCodecUnknownPacketOwnershipAndRawWrite(t *testing.T) {
+func TestProtocolSessionUnknownPacketOwnershipAndRawEncode(t *testing.T) {
 	limits := protocolLimits(t)
-	codec, err := Protocol().NewCodec(protocol.RoleClient, limits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := codec.SetState(StateStatus); err != nil {
-		t.Fatal(err)
-	}
+	session := newTestSession(t, protocol.RoleClient, StateStatus)
 
-	var wire bytes.Buffer
-	if err := java.WriteRawPacket(&wire, limits, protocol.Packet{ID: 0x7f, Payload: []byte{1, 2, 3}}); err != nil {
+	body, err := java.JoinPacketBody(protocol.Packet{ID: 0x7f, Payload: []byte{1, 2, 3}}, limits)
+	if err != nil {
 		t.Fatal(err)
 	}
-	packet, err := codec.Read(&wire)
+	packet, err := session.DecodeFrame(body)
 	if err != nil {
-		t.Fatalf("Read() error = %v", err)
+		t.Fatalf("DecodeFrame() error = %v", err)
 	}
 	unknown, ok := packet.Value.(protocol.UnknownPacket)
 	if !ok {
-		t.Fatalf("Read() Value = %T, want protocol.UnknownPacket", packet.Value)
+		t.Fatalf("DecodeFrame() Value = %T, want protocol.UnknownPacket", packet.Value)
 	}
 	if packet.State != StateStatus || packet.Direction != protocol.DirectionClientbound || packet.ID != 0x7f || packet.Name != "" {
-		t.Fatalf("Read() unknown envelope = %+v", packet)
+		t.Fatalf("DecodeFrame() unknown envelope = %+v", packet)
 	}
 	packet.Payload[0] = 9
 	if unknown.Payload[0] != 1 {
@@ -393,6 +427,13 @@ func TestProtocolCodecUnknownPacketOwnershipAndRawWrite(t *testing.T) {
 	unknown.Payload[1] = 9
 	if packet.Payload[1] != 2 {
 		t.Fatal("Packet.Payload aliases UnknownPacket.Payload")
+	}
+
+	// A queued packet must not change when the frame buffer it came from is
+	// reused, so the decoded payload owns its bytes.
+	body[1] = 0xee
+	if packet.Payload[0] != 9 {
+		t.Fatal("DecodeFrame() payload aliases the frame buffer")
 	}
 
 	for _, test := range []struct {
@@ -418,38 +459,123 @@ func TestProtocolCodecUnknownPacketOwnershipAndRawWrite(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			var output bytes.Buffer
-			if err := codec.Write(&output, test.packet); err != nil {
-				t.Fatalf("Write() error = %v", err)
+			encoded, err := session.EncodeFrame(test.packet)
+			if err != nil {
+				t.Fatalf("EncodeFrame() error = %v", err)
 			}
-			got, err := java.ReadRawPacket(&output, limits)
+			got, err := java.SplitPacketBody(encoded)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got.ID != test.packet.ID || !bytes.Equal(got.Payload, test.payload) {
-				t.Fatalf("raw packet = %+v, want ID %d payload %x", got, test.packet.ID, test.payload)
+				t.Fatalf("packet body = %+v, want ID %d payload %x", got, test.packet.ID, test.payload)
 			}
 		})
 	}
 }
 
-func TestProtocolCodecRejectsKnownPacketTrailingBytes(t *testing.T) {
+func TestProtocolSessionRejectsKnownPacketTrailingBytes(t *testing.T) {
 	limits := protocolLimits(t)
-	codec, err := Protocol().NewCodec(protocol.RoleServer, limits)
+	session := newTestSession(t, protocol.RoleServer, StateStatus)
+
+	body, err := java.JoinPacketBody(protocol.Packet{ID: 0, Payload: []byte{0xff}}, limits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := codec.SetState(StateStatus); err != nil {
-		t.Fatal(err)
+	if _, err := session.DecodeFrame(body); !errors.Is(err, java.ErrTrailingBytes) {
+		t.Fatalf("DecodeFrame() error = %v, want ErrTrailingBytes", err)
+	}
+}
+
+func TestProtocolSessionCompressionControl(t *testing.T) {
+	limits := protocolLimits(t)
+	session := newTestSession(t, protocol.RoleServer, StatePlay)
+
+	control := java.CompressionControl{Enabled: true, Threshold: 8, Policy: java.StrictCompression}
+	if err := session.ValidateControl(control); err != nil {
+		t.Fatalf("ValidateControl() error = %v", err)
+	}
+	session.ApplyControl(control)
+
+	snapshot := session.Snapshot()
+	if snapshot.Pipeline["compression.enabled"] != "true" ||
+		snapshot.Pipeline["compression.threshold"] != "8" ||
+		snapshot.Pipeline["compression.policy"] != "strict" {
+		t.Fatalf("Snapshot() pipeline = %v", snapshot.Pipeline)
 	}
 
-	var wire bytes.Buffer
-	if err := java.WriteRawPacket(&wire, limits, protocol.Packet{ID: 0, Payload: []byte{0xff}}); err != nil {
+	// A compressed round trip proves the control reached both directions.
+	client := newTestSession(t, protocol.RoleClient, StatePlay)
+	client.ApplyControl(control)
+
+	want := &PlayClientboundKickDisconnect{Reason: `{"text":"` + string(bytes.Repeat([]byte{'x'}, 64)) + `"}`}
+	payload, err := session.EncodeFrame(protocol.Packet{
+		State: StatePlay, Direction: protocol.DirectionClientbound,
+		ID: want.PacketID(), Value: want,
+	})
+	if err != nil {
+		t.Fatalf("EncodeFrame() error = %v", err)
+	}
+	declared, _, err := java.ReadVarInt(bytes.NewReader(payload))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := codec.Read(&wire); !errors.Is(err, java.ErrTrailingBytes) {
-		t.Fatalf("Read() error = %v, want ErrTrailingBytes", err)
+	if declared == 0 {
+		t.Fatal("EncodeFrame() left a packet above the threshold uncompressed")
 	}
+
+	got, err := client.DecodeFrame(payload)
+	if err != nil {
+		t.Fatalf("DecodeFrame() error = %v", err)
+	}
+	value, ok := got.Value.(*PlayClientboundKickDisconnect)
+	if !ok || value.Reason != want.Reason {
+		t.Fatalf("DecodeFrame() Value = %#v", got.Value)
+	}
+	_ = limits
+}
+
+func TestProtocolSessionRejectsUnsupportedControls(t *testing.T) {
+	session := newTestSession(t, protocol.RoleServer, StatePlay)
+
+	if err := session.ValidateControl(protocol.StateControl{State: StatePlay}); err != nil {
+		t.Fatalf("ValidateControl(state) error = %v", err)
+	}
+	if err := session.ValidateControl(protocol.StateControl{State: protocol.State("configuration")}); err == nil {
+		t.Fatal("ValidateControl(unsupported state) error = nil")
+	}
+	if err := session.ValidateControl(nil); err == nil {
+		t.Fatal("ValidateControl(nil) error = nil")
+	}
+	if err := session.ValidateControl(unsupportedControl{}); err == nil {
+		t.Fatal("ValidateControl(unsupported) error = nil")
+	}
+	for _, control := range []java.CompressionControl{
+		{Enabled: true, Threshold: -1, Policy: java.StrictCompression},
+		{Enabled: true, Threshold: 8},
+	} {
+		if err := session.ValidateControl(control); err == nil {
+			t.Fatalf("ValidateControl(%+v) error = nil", control)
+		}
+	}
+}
+
+type unsupportedControl struct{}
+
+func (unsupportedControl) ControlName() string { return "test.unsupported" }
+
+func newTestSession(t *testing.T, role protocol.Role, state protocol.State) protocol.Session {
+	t.Helper()
+
+	session, err := Protocol().NewSession(role, protocolLimits(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := session.ValidateState(state); err != nil {
+		t.Fatal(err)
+	}
+	session.SetState(state)
+	return session
 }
 
 func protocolLimits(t *testing.T) protocol.Limits {

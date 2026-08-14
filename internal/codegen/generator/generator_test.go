@@ -359,7 +359,10 @@ func TestRunGeneratesStatefulPacketCodecInventory(t *testing.T) {
 		"protocol.go": {
 			"StateHandshaking protocol.State = \"handshaking\"",
 			"func Protocol() protocol.Protocol",
-			"func (codec *protocolCodec) SetState(state protocol.State) error",
+			"func (protocolDescriptor) NewSession(role protocol.Role, limits protocol.Limits) (protocol.Session, error)",
+			"func (session *protocolSession) SetState(state protocol.State)",
+			"func (session *protocolSession) DecodeFrame(framePayload []byte) (protocol.Packet, error)",
+			"func (session *protocolSession) EncodeFrame(packet protocol.Packet) ([]byte, error)",
 		},
 	}
 	for name, fragments := range wants {
