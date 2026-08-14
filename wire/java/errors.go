@@ -37,6 +37,15 @@ var (
 	ErrDuplicateMetadataIndex = errors.New("duplicate entity metadata index")
 	// ErrWrongBufferMode reports a read from a write buffer or a write to a read buffer.
 	ErrWrongBufferMode = errors.New("wrong buffer mode")
+	// ErrInvalidCompression reports a malformed compression envelope or an
+	// unusable compression configuration.
+	ErrInvalidCompression = errors.New("invalid compression envelope")
+	// ErrDecompressedTooLarge reports a packet body beyond the configured
+	// decompressed limit.
+	ErrDecompressedTooLarge = errors.New("decompressed packet body exceeds configured limit")
+	// ErrCompressionPolicy reports an envelope that a compression policy
+	// refused even though it was structurally valid.
+	ErrCompressionPolicy = errors.New("compression policy violation")
 )
 
 // PathError attaches a generated packet field path to a wire error.
