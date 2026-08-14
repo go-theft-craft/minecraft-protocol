@@ -14,6 +14,7 @@ const (
 	defaultPluginBytes       = 1 << 20
 	defaultRecursionDepth    = 512
 	defaultQueueItems        = 4096
+	defaultBufferedBytes     = 32 << 20
 
 	hardFrameBytes        = 64 << 20
 	hardDecompressedBytes = 256 << 20
@@ -23,6 +24,7 @@ const (
 	hardPluginBytes       = 16 << 20
 	hardRecursionDepth    = 2048
 	hardQueueItems        = 65536
+	hardBufferedBytes     = 1 << 30
 )
 
 // ErrLimitExceeded reports a value outside its supported range.
@@ -41,6 +43,7 @@ type Limits struct {
 	pluginBytes       int
 	recursionDepth    int
 	queueItems        int
+	bufferedBytes     int
 }
 
 // LimitOption changes one limit during construction.
@@ -58,6 +61,7 @@ func NewLimits(options ...LimitOption) (Limits, error) {
 		pluginBytes:       defaultPluginBytes,
 		recursionDepth:    defaultRecursionDepth,
 		queueItems:        defaultQueueItems,
+		bufferedBytes:     defaultBufferedBytes,
 	}
 
 	for _, option := range options {
@@ -67,6 +71,18 @@ func NewLimits(options ...LimitOption) (Limits, error) {
 		if err := option(&limits); err != nil {
 			return Limits{}, err
 		}
+	}
+
+	// The shared stream budget must hold at least one frame plus its
+	// decompressed payload, otherwise the coordinator cannot make progress.
+	if working := limits.frameBytes + limits.decompressedBytes; limits.bufferedBytes < working {
+		return Limits{}, fmt.Errorf(
+			"%w: buffered bytes is %d, which is below frame bytes %d plus decompressed bytes %d",
+			ErrLimitExceeded,
+			limits.bufferedBytes,
+			limits.frameBytes,
+			limits.decompressedBytes,
+		)
 	}
 
 	return limits, nil
@@ -131,6 +147,14 @@ func MaxQueueItems(value int) LimitOption {
 	})
 }
 
+// MaxBufferedBytes sets the total bytes a managed stream may hold across every
+// queue and working buffer it owns.
+func MaxBufferedBytes(value int) LimitOption {
+	return bounded("buffered bytes", value, hardBufferedBytes, func(limits *Limits) {
+		limits.bufferedBytes = value
+	})
+}
+
 // FrameBytes returns the largest encoded frame.
 func (l Limits) FrameBytes() int { return l.frameBytes }
 
@@ -154,6 +178,10 @@ func (l Limits) RecursionDepth() int { return l.recursionDepth }
 
 // QueueItems returns the largest managed stream queue.
 func (l Limits) QueueItems() int { return l.queueItems }
+
+// BufferedBytes returns the total bytes a managed stream may hold across every
+// queue and working buffer it owns.
+func (l Limits) BufferedBytes() int { return l.bufferedBytes }
 
 func bounded(name string, value, ceiling int, apply func(*Limits)) LimitOption {
 	return func(limits *Limits) error {
