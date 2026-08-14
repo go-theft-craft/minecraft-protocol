@@ -84,6 +84,7 @@ var generatedFileNames = []string{
 var preservedGeneratedTestNames = []string{
 	"codec_test.go",
 	"data_test.go",
+	"transition_test.go",
 }
 
 // Run validates source data and atomically replaces the selected generated package.

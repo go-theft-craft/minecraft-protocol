@@ -254,22 +254,115 @@ func (session *protocolSession) ApplyControl(control protocol.Control) {
 }
 
 // ProposeTransition reports the state or pipeline change a packet implies.
-func (session *protocolSession) ProposeTransition(protocol.Packet) (protocol.Transition, bool, error) {
-	return protocol.Transition{}, false, nil
+//
+// It matches concrete generated types rather than packet names, so a packet
+// that merely shares a name with a transition trigger in another state cannot
+// move the session. It never mutates the session: the stream commits an
+// accepted transition only after the packet is fully read or fully written.
+func (session *protocolSession) ProposeTransition(packet protocol.Packet) (protocol.Transition, bool, error) {
+	switch value := packet.Value.(type) {
+	case *HandshakingServerboundSetProtocol:
+		if session.state != StateHandshaking {
+			return protocol.Transition{}, false, fmt.Errorf("java/1.8.9 transition: handshake in state %q", session.state)
+		}
+		var next protocol.State
+		switch value.NextState {
+		case 1:
+			next = StateStatus
+		case 2:
+			next = StateLogin
+		default:
+			return protocol.Transition{}, false, fmt.Errorf("java/1.8.9 transition: unsupported handshake next state %d", value.NextState)
+		}
+		return protocol.Transition{State: &next}, true, nil
+
+	case *LoginClientboundSuccess:
+		if session.state != StateLogin {
+			return protocol.Transition{}, false, fmt.Errorf("java/1.8.9 transition: login success in state %q", session.state)
+		}
+		next := StatePlay
+		return protocol.Transition{State: &next}, true, nil
+
+	case *LoginClientboundCompress:
+		if session.state != StateLogin {
+			return protocol.Transition{}, false, fmt.Errorf("java/1.8.9 transition: set compression in state %q", session.state)
+		}
+		return protocol.Transition{Control: session.compressionForThreshold(value.Threshold)}, true, nil
+
+	case *PlayClientboundSetCompression:
+		if session.state != StatePlay {
+			return protocol.Transition{}, false, fmt.Errorf("java/1.8.9 transition: set compression in state %q", session.state)
+		}
+		return protocol.Transition{Control: session.compressionForThreshold(value.Threshold)}, true, nil
+
+	default:
+		return protocol.Transition{}, false, nil
+	}
+}
+
+// compressionForThreshold turns a set-compression threshold into a control. A
+// nonnegative threshold enables compression and a negative one disables it.
+// The active policy survives both changes, so enabling compression never
+// silently relaxes validation.
+func (session *protocolSession) compressionForThreshold(threshold int32) java.CompressionControl {
+	control := java.CompressionControl{Policy: session.compression.Policy}
+	if threshold >= 0 {
+		control.Enabled = true
+		control.Threshold = threshold
+	}
+	return control
 }
 
 func (session *protocolSession) ValidateTransition(transition protocol.Transition) error {
-	if !transition.IsZero() {
-		return fmt.Errorf("java/1.8.9 transition: no transitions are defined")
+	if transition.State != nil {
+		if err := session.ValidateState(*transition.State); err != nil {
+			return err
+		}
+	}
+	if transition.Control != nil {
+		if err := session.ValidateControl(transition.Control); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (session *protocolSession) ApplyTransition(protocol.Transition) {}
+// ApplyTransition commits both halves of a transition together, so a session
+// can never be left half changed. ValidateTransition has already accepted the
+// transition, which is why no step here can fail.
+func (session *protocolSession) ApplyTransition(transition protocol.Transition) {
+	if transition.State != nil {
+		session.state = *transition.State
+	}
+	if transition.Control != nil {
+		session.ApplyControl(transition.Control)
+	}
+}
 
-// Disconnect builds the state-appropriate disconnect packet.
-func (session *protocolSession) Disconnect(string) (protocol.Packet, bool, error) {
-	return protocol.Packet{}, false, nil
+// Disconnect builds the state-appropriate disconnect packet. The reason is a
+// JSON chat component, and the generated string field bounds its size when the
+// packet is encoded.
+func (session *protocolSession) Disconnect(reason string) (protocol.Packet, bool, error) {
+	if session.role != protocol.RoleServer {
+		return protocol.Packet{}, false, nil
+	}
+
+	switch session.state {
+	case StateLogin:
+		value := &LoginClientboundDisconnect{Reason: reason}
+		return protocol.Packet{
+			State: StateLogin, Direction: session.outbound,
+			ID: value.PacketID(), Value: value,
+		}, true, nil
+	case StatePlay:
+		value := &PlayClientboundKickDisconnect{Reason: reason}
+		return protocol.Packet{
+			State: StatePlay, Direction: session.outbound,
+			ID: value.PacketID(), Value: value,
+		}, true, nil
+	default:
+		return protocol.Packet{}, false, nil
+	}
 }
 
 var packetNames = map[packetKey]string{
