@@ -43,6 +43,12 @@ type Version struct {
 	Protocol int32
 }
 
+// UnknownPacket retains an unrecognized packet body. The payload returned by
+// a Codec is owned by the caller and does not alias Packet.Payload.
+type UnknownPacket struct {
+	Payload []byte
+}
+
 // Packet retains both decoded and raw access to one packet body.
 type Packet struct {
 	State     State
@@ -57,6 +63,8 @@ type Packet struct {
 type Codec interface {
 	Read(io.Reader) (Packet, error)
 	Write(io.Writer, Packet) error
+	State() State
+	SetState(State) error
 }
 
 // Protocol creates per-connection codecs for one immutable version.

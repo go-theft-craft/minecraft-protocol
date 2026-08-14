@@ -1,6 +1,8 @@
 package v1_8
 
 import (
+	"bytes"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -263,27 +265,200 @@ func TestDataCallsAreIndependent(t *testing.T) {
 	}
 }
 
-func TestChatPacketValues(t *testing.T) {
-	var _ java.PacketValue = ChatCB{}
-	var _ java.PacketValue = ChatSB{}
-	if got := (ChatCB{}).PacketID(); got != 0x02 {
-		t.Fatalf("ChatCB.PacketID() = %#x", got)
-	}
-	if got := (ChatSB{}).PacketID(); got != 0x01 {
-		t.Fatalf("ChatSB.PacketID() = %#x", got)
+func TestProtocolDescriptorAndExplicitStates(t *testing.T) {
+	descriptor := Protocol()
+	if descriptor.ID() != "java/1.8.9" || descriptor.Edition() != protocol.EditionJava || descriptor.Version() != Version() {
+		t.Fatalf("Protocol() metadata = %q, %q, %+v", descriptor.ID(), descriptor.Edition(), descriptor.Version())
 	}
 
-	clientType := reflect.TypeFor[ChatCB]()
-	serverType := reflect.TypeFor[ChatSB]()
-	if got := clientType.Field(0).Tag.Get("mc"); got != "string" {
-		t.Fatalf("ChatCB field 0 tag = %q", got)
+	limits := protocolLimits(t)
+	codec, err := descriptor.NewCodec(protocol.RoleClient, limits)
+	if err != nil {
+		t.Fatalf("NewCodec() error = %v", err)
 	}
-	if got := clientType.Field(1).Tag.Get("mc"); got != "i8" {
-		t.Fatalf("ChatCB field 1 tag = %q", got)
+	if codec.State() != StateHandshaking {
+		t.Fatalf("initial state = %q, want %q", codec.State(), StateHandshaking)
 	}
-	if got := serverType.Field(0).Tag.Get("mc"); got != "string" {
-		t.Fatalf("ChatSB field 0 tag = %q", got)
+	for _, state := range []protocol.State{StateHandshaking, StateStatus, StateLogin, StatePlay} {
+		if err := codec.SetState(state); err != nil {
+			t.Fatalf("SetState(%q) error = %v", state, err)
+		}
+		if codec.State() != state {
+			t.Fatalf("State() = %q, want %q", codec.State(), state)
+		}
 	}
+	if err := codec.SetState(protocol.State("configuration")); err == nil {
+		t.Fatal("SetState(configuration) error = nil")
+	}
+	if codec.State() != StatePlay {
+		t.Fatalf("invalid SetState changed state to %q", codec.State())
+	}
+
+	if _, err := descriptor.NewCodec(protocol.Role(0), limits); err == nil {
+		t.Fatal("NewCodec(invalid role) error = nil")
+	}
+	if _, err := descriptor.NewCodec(protocol.RoleClient, protocol.Limits{}); !errors.Is(err, java.ErrInvalidLimits) {
+		t.Fatalf("NewCodec(invalid limits) error = %v, want ErrInvalidLimits", err)
+	}
+}
+
+func TestProtocolCodecKnownPacketAndEnvelopeValidation(t *testing.T) {
+	limits := protocolLimits(t)
+	server, err := Protocol().NewCodec(protocol.RoleServer, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := Protocol().NewCodec(protocol.RoleClient, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.SetState(StateStatus); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SetState(StateStatus); err != nil {
+		t.Fatal(err)
+	}
+
+	var wire bytes.Buffer
+	wantValue := &StatusClientboundServerInfo{Response: `{"version":{"name":"1.8.9","protocol":47}}`}
+	wantPacket := protocol.Packet{
+		State: StateStatus, Direction: protocol.DirectionClientbound,
+		ID: wantValue.PacketID(), Value: wantValue,
+	}
+	if err := server.Write(&wire, wantPacket); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	got, err := client.Read(&wire)
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	gotValue, ok := got.Value.(*StatusClientboundServerInfo)
+	if !ok || gotValue.Response != wantValue.Response {
+		t.Fatalf("Read() Value = %#v", got.Value)
+	}
+	if got.State != StateStatus || got.Direction != protocol.DirectionClientbound || got.ID != 0 || got.Name != "server_info" {
+		t.Fatalf("Read() envelope = %+v", got)
+	}
+	if server.State() != StateStatus || client.State() != StateStatus {
+		t.Fatalf("codec changed state automatically: server=%q client=%q", server.State(), client.State())
+	}
+
+	invalid := []protocol.Packet{
+		{State: StateLogin, Direction: protocol.DirectionServerbound, ID: 0, Value: &StatusServerboundPingStart{}},
+		{State: StateStatus, Direction: protocol.DirectionClientbound, ID: 0, Value: &StatusServerboundPingStart{}},
+		{State: StateStatus, Direction: protocol.DirectionServerbound, ID: 1, Value: &StatusServerboundPingStart{}},
+		{State: StateStatus, Direction: protocol.DirectionServerbound, ID: 0, Value: &StatusClientboundServerInfo{}},
+		{State: StateStatus, Direction: protocol.DirectionServerbound, ID: 0, Value: &LoginServerboundLoginStart{}},
+	}
+	for index, packet := range invalid {
+		var output bytes.Buffer
+		if err := client.Write(&output, packet); err == nil {
+			t.Errorf("Write(invalid envelope %d) error = nil", index)
+		}
+		if output.Len() != 0 {
+			t.Errorf("Write(invalid envelope %d) wrote %d bytes", index, output.Len())
+		}
+	}
+}
+
+func TestProtocolCodecUnknownPacketOwnershipAndRawWrite(t *testing.T) {
+	limits := protocolLimits(t)
+	codec, err := Protocol().NewCodec(protocol.RoleClient, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := codec.SetState(StateStatus); err != nil {
+		t.Fatal(err)
+	}
+
+	var wire bytes.Buffer
+	if err := java.WriteRawPacket(&wire, limits, protocol.Packet{ID: 0x7f, Payload: []byte{1, 2, 3}}); err != nil {
+		t.Fatal(err)
+	}
+	packet, err := codec.Read(&wire)
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+	unknown, ok := packet.Value.(protocol.UnknownPacket)
+	if !ok {
+		t.Fatalf("Read() Value = %T, want protocol.UnknownPacket", packet.Value)
+	}
+	if packet.State != StateStatus || packet.Direction != protocol.DirectionClientbound || packet.ID != 0x7f || packet.Name != "" {
+		t.Fatalf("Read() unknown envelope = %+v", packet)
+	}
+	packet.Payload[0] = 9
+	if unknown.Payload[0] != 1 {
+		t.Fatal("UnknownPacket.Payload aliases Packet.Payload")
+	}
+	unknown.Payload[1] = 9
+	if packet.Payload[1] != 2 {
+		t.Fatal("Packet.Payload aliases UnknownPacket.Payload")
+	}
+
+	for _, test := range []struct {
+		name    string
+		packet  protocol.Packet
+		payload []byte
+	}{
+		{
+			name: "raw envelope",
+			packet: protocol.Packet{
+				State: StateStatus, Direction: protocol.DirectionServerbound, ID: 0x7e,
+				Payload: []byte{4, 5},
+			},
+			payload: []byte{4, 5},
+		},
+		{
+			name: "unknown value",
+			packet: protocol.Packet{
+				State: StateStatus, Direction: protocol.DirectionServerbound, ID: 0x7f,
+				Value: protocol.UnknownPacket{Payload: []byte{6, 7}}, Payload: []byte{0xff},
+			},
+			payload: []byte{6, 7},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var output bytes.Buffer
+			if err := codec.Write(&output, test.packet); err != nil {
+				t.Fatalf("Write() error = %v", err)
+			}
+			got, err := java.ReadRawPacket(&output, limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ID != test.packet.ID || !bytes.Equal(got.Payload, test.payload) {
+				t.Fatalf("raw packet = %+v, want ID %d payload %x", got, test.packet.ID, test.payload)
+			}
+		})
+	}
+}
+
+func TestProtocolCodecRejectsKnownPacketTrailingBytes(t *testing.T) {
+	limits := protocolLimits(t)
+	codec, err := Protocol().NewCodec(protocol.RoleServer, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := codec.SetState(StateStatus); err != nil {
+		t.Fatal(err)
+	}
+
+	var wire bytes.Buffer
+	if err := java.WriteRawPacket(&wire, limits, protocol.Packet{ID: 0, Payload: []byte{0xff}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := codec.Read(&wire); !errors.Is(err, java.ErrTrailingBytes) {
+		t.Fatalf("Read() error = %v, want ErrTrailingBytes", err)
+	}
+}
+
+func protocolLimits(t *testing.T) protocol.Limits {
+	t.Helper()
+	limits, err := protocol.NewLimits()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return limits
 }
 
 func containsEntity(entities data.Entities, want data.Entity) bool {

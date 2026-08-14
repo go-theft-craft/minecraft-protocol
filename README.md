@@ -6,11 +6,12 @@ bounded Java wire primitives and typed game-data contracts behind small,
 injectable interfaces.
 
 > [!IMPORTANT]
-> This project is pre-alpha and has no published release or built-in protocol
-> descriptor. The `wire/java` package implements bounded Java wire primitives,
-> reflection-based `mc` struct tags, and uncompressed packet frames. It does not
-> provide compression, encryption, login, generated codecs, or a complete
-> server session.
+> This project is pre-alpha and has no published release. The `wire/java`
+> package implements bounded Java wire primitives, reflection-based `mc` struct
+> tags, and uncompressed packet frames. The generated Java 1.8 package provides
+> a built-in protocol 47 descriptor and generated packet codecs. The project
+> does not provide compression, encryption, an automatic login lifecycle,
+> managed streams, or a complete server session.
 
 ## Why this repository exists
 
@@ -27,7 +28,7 @@ injectable interfaces.
 | Protocol or data | Status |
 | --- | --- |
 | Edition-neutral contracts, resource limits, and game-data registry | Implemented |
-| Java Edition 1.8, protocol 47 | Uncompressed primitives, frames, and generated game data implemented; built-in protocol descriptor planned |
+| Java Edition 1.8, protocol 47 | Built-in descriptor, generated packet codecs, uncompressed primitives and frames, and generated game data implemented |
 | Java Edition 26.1, protocol 775 | Generated built-in descriptor and dataset planned |
 | Additional PrismarineJS versions and datasets beyond the Java 1.8 bundle | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
@@ -52,8 +53,8 @@ if err != nil {
 codec, err := selectedProtocol.NewCodec(protocol.RoleClient, limits)
 ```
 
-`selectedProtocol` can be a future built-in or any application implementation
-of `protocol.Protocol`. A codec works with `io.Reader` and `io.Writer`, so the
+`selectedProtocol` can be `v1_8.Protocol()` or any application implementation of
+`protocol.Protocol`. A codec works with `io.Reader` and `io.Writer`, so the
 caller retains ownership of connections, buffering, deadlines, and capture.
 
 ## Game-data contracts
@@ -127,6 +128,22 @@ import v1_8 "github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8"
 set, err := v1_8.Data()
 ```
 
+The same package exposes the built-in protocol 47 descriptor:
+
+```go
+codec, err := v1_8.Protocol().NewCodec(protocol.RoleClient, limits)
+```
+
+Each codec starts in `v1_8.StateHandshaking`. Call `SetState` to select the
+status, login, or play packet set. Reads return concrete generated packet
+pointers. Writes validate the packet state, direction, and ID before encoding.
+State transitions, compression, encryption, and login lifecycle remain the
+caller's responsibility.
+
+The legacy server-list ping remains available in the protocol data inventory,
+but it is not part of the normal VarInt-framed codec. A transport that supports
+legacy ping must detect and handle its `FE 01` prefix before frame decoding.
+
 To activate the `java/1.8.9` registry entry, blank-import the generated package
 before calling `data.Load`:
 
@@ -176,8 +193,8 @@ devbox run -- task generate:check
 ```
 
 `task generate:check` compares an explicit inventory of generated files and
-allows only `data_test.go` as a hand-written exception. The generator preserves
-that file without creating it.
+allows only `data_test.go` and `codec_test.go` as hand-written exceptions. The
+generator preserves these files without creating them.
 
 The public API is still changing. Before starting a substantial contribution,
 [open an issue](https://github.com/go-theft-craft/minecraft-protocol/issues) to

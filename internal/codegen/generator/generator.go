@@ -11,11 +11,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/go-theft-craft/minecraft-protocol/internal/codegen/packetgen"
+	"github.com/go-theft-craft/minecraft-protocol/internal/codegen/protodef"
 	"github.com/go-theft-craft/minecraft-protocol/internal/codegen/schema"
 )
 
@@ -69,11 +72,18 @@ var generatedFileNames = []string{
 	"language.go",
 	"materials.go",
 	"packets.go",
+	"codec.go",
+	"descriptor.go",
 	"particles.go",
 	"protocol.go",
 	"recipes.go",
 	"version.go",
 	"windows.go",
+}
+
+var preservedGeneratedTestNames = []string{
+	"codec_test.go",
+	"data_test.go",
 }
 
 // Run validates source data and atomically replaces the selected generated package.
@@ -83,7 +93,7 @@ func Run(config Config) (runErr error) {
 		return err
 	}
 
-	dataTest, hasDataTest, err := readPreservedDataTest(paths.target)
+	preservedTests, err := readPreservedGeneratedTests(paths.target)
 	if err != nil {
 		return err
 	}
@@ -100,7 +110,7 @@ func Run(config Config) (runErr error) {
 		}
 	}()
 
-	if err := writeRenderedPackage(staging, files, dataTest, hasDataTest); err != nil {
+	if err := writeRenderedPackage(staging, files, preservedTests); err != nil {
 		return err
 	}
 	if err := replaceTarget(paths.target, staging); err != nil {
@@ -235,7 +245,6 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 		{"recipes.json", "recipes.go.tmpl", "recipes.go", func(raw []byte) (any, error) { return loadRecipes(raw) }},
 		{"blockCollisionShapes.json", "collision_shapes.go.tmpl", "collision_shapes.go", func(raw []byte) (any, error) { return loadCollisionShapes(raw) }},
 		{"protocol.json", "protocol.go.tmpl", "protocol.go", func(raw []byte) (any, error) { return loadProtocol(raw) }},
-		{"protocol.json", "packets.go.tmpl", "packets.go", func(raw []byte) (any, error) { return loadPacketStructs(raw) }},
 	}
 	for _, entry := range specialGenerators {
 		if err := add(entry.jsonFile, entry.templateName, entry.outputFile, entry.load); err != nil {
@@ -257,6 +266,37 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 		rendered[entry.outputFile] = raw
 	}
 
+	packetSchema, err := protodef.Parse(source.Files["protocol.json"])
+	if err != nil {
+		return nil, fmt.Errorf("parse protocol.json for packet generation: %w", err)
+	}
+	packetModel, err := packetgen.Build(framedPacketSchema(packetSchema), packetgen.Options{PackageName: packageName})
+	if err != nil {
+		return nil, fmt.Errorf("build packet model: %w", err)
+	}
+	packetFiles, err := packetgen.Generate(packetModel, packetgen.Options{PackageName: packageName})
+	if err != nil {
+		return nil, fmt.Errorf("generate packet codecs: %w", err)
+	}
+	packetFiles["descriptor.go"], err = addPacketValueKeys(packetFiles["descriptor.go"], packetModel)
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range []string{"packets.go", "codec.go", "descriptor.go"} {
+		raw, ok := packetFiles[name]
+		if !ok {
+			return nil, fmt.Errorf("packet generation is missing %s", name)
+		}
+		if _, exists := rendered[name]; exists {
+			return nil, fmt.Errorf("generated output %s is duplicated", name)
+		}
+		rendered[name] = raw
+		delete(packetFiles, name)
+	}
+	if len(packetFiles) != 0 {
+		return nil, fmt.Errorf("packet generation contains %d unexpected files", len(packetFiles))
+	}
+
 	files := make([]renderedFile, 0, len(generatedFileNames))
 	for _, name := range generatedFileNames {
 		raw, ok := rendered[name]
@@ -270,6 +310,54 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 		return nil, fmt.Errorf("render plan contains %d unexpected files", len(rendered))
 	}
 	return files, nil
+}
+
+func framedPacketSchema(schema *protodef.Schema) *protodef.Schema {
+	framed := *schema
+	framed.States = slices.Clone(schema.States)
+	for stateIndex := range framed.States {
+		state := &framed.States[stateIndex]
+		state.Directions = slices.Clone(state.Directions)
+		for directionIndex := range state.Directions {
+			direction := &state.Directions[directionIndex]
+			direction.Packets = slices.DeleteFunc(slices.Clone(direction.Packets), func(packet protodef.Packet) bool {
+				return !isFramedPacket(state.Name, direction.Name, packet.Name, packet.ID)
+			})
+		}
+	}
+	return &framed
+}
+
+func isFramedPacket(state, direction, name string, id int) bool {
+	return state != "handshaking" || direction != "toServer" || name != "legacy_server_list_ping" || id != 0xfe
+}
+
+func addPacketValueKeys(descriptor []byte, model *packetgen.Model) ([]byte, error) {
+	if len(descriptor) == 0 {
+		return nil, fmt.Errorf("packet generation returned an empty descriptor.go")
+	}
+
+	var source bytes.Buffer
+	source.Write(descriptor)
+	source.WriteString("\nfunc packetKeyForValue(value packetCodec) (packetKey, bool) {\n")
+	source.WriteString("\tswitch value.(type) {\n")
+	for _, factory := range model.Factories {
+		_, _ = fmt.Fprintf(
+			&source,
+			"\tcase *%s:\n\t\treturn packetKey{State: protocol.State(%s), Direction: %s, ID: %d}, true\n",
+			factory.PacketType,
+			strconv.Quote(factory.State),
+			factory.DirectionValue,
+			factory.ID,
+		)
+	}
+	source.WriteString("\tdefault:\n\t\treturn packetKey{}, false\n\t}\n}\n")
+
+	formatted, err := format.Source(source.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("format generated packet value registry: %w", err)
+	}
+	return formatted, nil
 }
 
 func parseStableVersionKey(value string) (stableVersionKey, error) {
@@ -289,26 +377,34 @@ func newTemplateData(packageName string, versionKey stableVersionKey, value any)
 	}
 }
 
-func readPreservedDataTest(target string) ([]byte, bool, error) {
-	raw, err := os.ReadFile(filepath.Join(target, "data_test.go"))
-	if os.IsNotExist(err) {
-		return nil, false, nil
+func readPreservedGeneratedTests(target string) (map[string][]byte, error) {
+	preserved := make(map[string][]byte, len(preservedGeneratedTestNames))
+	for _, name := range preservedGeneratedTestNames {
+		raw, err := os.ReadFile(filepath.Join(target, name))
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read preserved %s: %w", name, err)
+		}
+		preserved[name] = raw
 	}
-	if err != nil {
-		return nil, false, fmt.Errorf("read preserved data_test.go: %w", err)
-	}
-	return raw, true, nil
+	return preserved, nil
 }
 
-func writeRenderedPackage(staging string, files []renderedFile, dataTest []byte, hasDataTest bool) error {
+func writeRenderedPackage(staging string, files []renderedFile, preservedTests map[string][]byte) error {
 	for _, file := range files {
 		if err := os.WriteFile(filepath.Join(staging, file.name), file.raw, 0o644); err != nil {
 			return fmt.Errorf("write staged %s: %w", file.name, err)
 		}
 	}
-	if hasDataTest {
-		if err := os.WriteFile(filepath.Join(staging, "data_test.go"), dataTest, 0o644); err != nil {
-			return fmt.Errorf("write staged data_test.go: %w", err)
+	for _, name := range preservedGeneratedTestNames {
+		raw, ok := preservedTests[name]
+		if !ok {
+			continue
+		}
+		if err := os.WriteFile(filepath.Join(staging, name), raw, 0o644); err != nil {
+			return fmt.Errorf("write staged %s: %w", name, err)
 		}
 	}
 	return nil
@@ -355,7 +451,7 @@ func compareGeneratedPackage(target string, files []renderedFile) error {
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
-		if name == "data_test.go" {
+		if slices.Contains(preservedGeneratedTestNames, name) {
 			if entry.Type().IsRegular() {
 				continue
 			}
@@ -673,6 +769,7 @@ type packetTmpl struct {
 	Name   string
 	ID     int
 	Fields []packetFieldTmpl
+	Framed bool
 }
 
 type packetFieldTmpl struct {
@@ -917,7 +1014,12 @@ func extractPackets(types map[string]json.RawMessage, phaseName, direction strin
 		if err != nil {
 			return nil, err
 		}
-		packets = append(packets, packetTmpl{Name: name, ID: id, Fields: packetFields})
+		packets = append(packets, packetTmpl{
+			Name:   name,
+			ID:     id,
+			Fields: packetFields,
+			Framed: isFramedPacket(phaseName, direction, name, id),
+		})
 	}
 	for name := range mappings {
 		if _, ok := types["packet_"+name]; !ok {

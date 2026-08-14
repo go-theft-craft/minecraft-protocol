@@ -1,4 +1,4 @@
-// Command mcdata-gen validates source Minecraft data and generates a Go package.
+// Command mcdata-gen validates source Minecraft data and generates game data and packet codecs.
 package main
 
 import (
@@ -15,7 +15,7 @@ func main() {
 	output := flag.String("out", "", "output base directory")
 	packageName := flag.String("package", "", "generated Go package name")
 	version := flag.String("version", "", "stable registration key (for example java/1.8.9)")
-	check := flag.Bool("check", false, "check generated output without changing it")
+	check := flag.Bool("check", false, "check generated data and packet codecs without changing them")
 	flag.Parse()
 
 	missing := false

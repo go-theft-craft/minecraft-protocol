@@ -5,7 +5,7 @@ The roadmap records dependency order, not release dates. Completed work remains 
 ```mermaid
 flowchart LR
     P0["P0: repository foundation<br/>in progress"]
-    P1["P1: extract Java 1.8<br/>wire, data, and generator"]
+    P1["P1: extract Java 1.8<br/>wire, data, and generator<br/>complete"]
     P2["P2: generate Java 26.1<br/>and all PrismarineJS data"]
     P3["P3: stream, router,<br/>capture, and mcproto CLI"]
     P4["P4: migrate server<br/>and proxy consumers"]
@@ -30,9 +30,12 @@ flowchart LR
 
 ## P1: Java 1.8 extraction
 
-- Move reusable wire and game-data code from `server`.
-- Preserve protocol 47 behavior with compatibility fixtures.
-- Move the existing generator and remove reflection from runtime paths.
+Status: complete.
+
+- Extract reusable wire and game-data code from `server`.
+- Preserve protocol 47 behavior with checked-in byte fixtures.
+- Generate the built-in protocol 47 descriptor and direct packet codecs without
+  reflection in generated runtime paths.
 
 ## P2: current Java data
 
@@ -43,7 +46,8 @@ flowchart LR
 ## P3: reusable protocol tools
 
 - Add the bounded managed stream.
-- Add routing, middleware, capture, replay, status, and login helpers.
+- Add compression, encryption, routing, middleware, capture, replay, status,
+  and complete login helpers.
 - Add the non-interactive `mcproto` command.
 
 ## P4: shared consumers

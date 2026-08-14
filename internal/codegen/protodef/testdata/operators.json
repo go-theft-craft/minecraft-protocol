@@ -1,0 +1,141 @@
+{
+  "types": {
+    "varint": "native",
+    "u8": "native",
+    "bool": "native",
+    "void": "native",
+    "pstring": "native",
+    "buffer": "native",
+    "container": "native",
+    "array": "native",
+    "switch": "native",
+    "option": "native",
+    "mapper": "native",
+    "bitfield": "native",
+    "bitflags": "native",
+    "entityMetadataLoop": "native",
+    "name": [
+      "pstring",
+      {
+        "countType": "varint"
+      }
+    ],
+    "alias": "name",
+    "parameterizedAlias": [
+      "alias",
+      {
+        "compareTo": "$compareTo"
+      }
+    ],
+    "record": [
+      "container",
+      [
+        {
+          "name": "count",
+          "type": "varint"
+        },
+        {
+          "name": "values",
+          "type": [
+            "array",
+            {
+              "count": "count",
+              "type": "u8"
+            }
+          ]
+        },
+        {
+          "name": "fixed",
+          "type": [
+            "array",
+            {
+              "count": 2,
+              "type": "u8"
+            }
+          ]
+        },
+        {
+          "name": "maybe",
+          "type": [
+            "option",
+            "bool"
+          ]
+        },
+        {
+          "name": "payload",
+          "type": [
+            "buffer",
+            {
+              "countType": "varint"
+            }
+          ]
+        },
+        {
+          "name": "choice",
+          "type": [
+            "switch",
+            {
+              "compareTo": "count",
+              "fields": {
+                "0": "void",
+                "ready": "alias"
+              },
+              "default": "u8"
+            }
+          ]
+        },
+        {
+          "name": "mapped",
+          "type": [
+            "mapper",
+            {
+              "type": "varint",
+              "mappings": {
+                "0x01": "one",
+                "2": "two"
+              }
+            }
+          ]
+        },
+        {
+          "anon": true,
+          "type": [
+            "bitfield",
+            [
+              {
+                "name": "high",
+                "size": 3,
+                "signed": false
+              },
+              {
+                "name": "low",
+                "size": 5,
+                "signed": true
+              }
+            ]
+          ]
+        },
+        {
+          "name": "flags",
+          "type": [
+            "bitflags",
+            {
+              "type": "u8",
+              "flags": [
+                "first",
+                "second"
+              ]
+            }
+          ]
+        }
+      ]
+    ],
+    "metadata": [
+      "entityMetadataLoop",
+      {
+        "endVal": 127,
+        "type": "record"
+      }
+    ]
+  }
+}

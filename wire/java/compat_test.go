@@ -25,6 +25,40 @@ type protocol47Rest struct {
 
 func (protocol47Rest) PacketID() int32 { return 0xff }
 
+type protocol47StatusRequest struct{}
+
+func (protocol47StatusRequest) PacketID() int32 { return 0x00 }
+
+type protocol47StatusPing struct {
+	Time int64 `mc:"i64"`
+}
+
+func (protocol47StatusPing) PacketID() int32 { return 0x01 }
+
+type protocol47LoginStart struct {
+	Username string `mc:"string"`
+}
+
+func (protocol47LoginStart) PacketID() int32 { return 0x00 }
+
+type protocol47PlayLogin struct {
+	EntityID         int32  `mc:"i32"`
+	GameMode         uint8  `mc:"u8"`
+	Dimension        int8   `mc:"i8"`
+	Difficulty       uint8  `mc:"u8"`
+	MaxPlayers       uint8  `mc:"u8"`
+	LevelType        string `mc:"string"`
+	ReducedDebugInfo bool   `mc:"bool"`
+}
+
+func (protocol47PlayLogin) PacketID() int32 { return 0x01 }
+
+type protocol47PlayChat struct {
+	Message string `mc:"string"`
+}
+
+func (protocol47PlayChat) PacketID() int32 { return 0x01 }
+
 func protocol47Limits(t *testing.T) protocol.Limits {
 	t.Helper()
 
@@ -154,9 +188,32 @@ func TestProtocol47RawPacketParity(t *testing.T) {
 			},
 		},
 		{
-			name: "empty body",
+			name: "status request",
 			read: []byte{0x01, 0x00},
 			want: protocol.Packet{ID: 0x00, Payload: []byte{}},
+		},
+		{
+			name: "status ping",
+			read: []byte{0x09, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			want: protocol.Packet{ID: 0x01, Payload: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}},
+		},
+		{
+			name: "login start",
+			read: []byte{0x06, 0x00, 0x04, 'A', 'l', 'e', 'x'},
+			want: protocol.Packet{ID: 0x00, Payload: []byte{0x04, 'A', 'l', 'e', 'x'}},
+		},
+		{
+			name: "play clientbound login",
+			read: []byte{0x0f, 0x01, 0x00, 0x00, 0x00, 0x2a, 0x01, 0x00, 0x01, 0x14, 0x04, 'f', 'l', 'a', 't', 0x00},
+			want: protocol.Packet{
+				ID:      0x01,
+				Payload: []byte{0x00, 0x00, 0x00, 0x2a, 0x01, 0x00, 0x01, 0x14, 0x04, 'f', 'l', 'a', 't', 0x00},
+			},
+		},
+		{
+			name: "play serverbound chat",
+			read: []byte{0x07, 0x01, 0x05, 'h', 'e', 'l', 'l', 'o'},
+			want: protocol.Packet{ID: 0x01, Payload: []byte{0x05, 'h', 'e', 'l', 'l', 'o'}},
 		},
 	}
 
@@ -215,6 +272,49 @@ func TestProtocol47TaggedPacketParity(t *testing.T) {
 				Data: []byte{0xde, 0xad, 0xbe, 0xef},
 			},
 			new: func() PacketValue { return &protocol47Rest{} },
+		},
+		{
+			name:    "status request",
+			read:    []byte{0x01, 0x00},
+			payload: []byte{},
+			want:    &protocol47StatusRequest{},
+			new:     func() PacketValue { return &protocol47StatusRequest{} },
+		},
+		{
+			name:    "status ping",
+			read:    []byte{0x09, 0x01, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			payload: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
+			want:    &protocol47StatusPing{Time: 0x0102030405060708},
+			new:     func() PacketValue { return &protocol47StatusPing{} },
+		},
+		{
+			name:    "login start",
+			read:    []byte{0x06, 0x00, 0x04, 'A', 'l', 'e', 'x'},
+			payload: []byte{0x04, 'A', 'l', 'e', 'x'},
+			want:    &protocol47LoginStart{Username: "Alex"},
+			new:     func() PacketValue { return &protocol47LoginStart{} },
+		},
+		{
+			name:    "play clientbound login",
+			read:    []byte{0x0f, 0x01, 0x00, 0x00, 0x00, 0x2a, 0x01, 0x00, 0x01, 0x14, 0x04, 'f', 'l', 'a', 't', 0x00},
+			payload: []byte{0x00, 0x00, 0x00, 0x2a, 0x01, 0x00, 0x01, 0x14, 0x04, 'f', 'l', 'a', 't', 0x00},
+			want: &protocol47PlayLogin{
+				EntityID:         42,
+				GameMode:         1,
+				Dimension:        0,
+				Difficulty:       1,
+				MaxPlayers:       20,
+				LevelType:        "flat",
+				ReducedDebugInfo: false,
+			},
+			new: func() PacketValue { return &protocol47PlayLogin{} },
+		},
+		{
+			name:    "play serverbound chat",
+			read:    []byte{0x07, 0x01, 0x05, 'h', 'e', 'l', 'l', 'o'},
+			payload: []byte{0x05, 'h', 'e', 'l', 'l', 'o'},
+			want:    &protocol47PlayChat{Message: "hello"},
+			new:     func() PacketValue { return &protocol47PlayChat{} },
 		},
 	}
 

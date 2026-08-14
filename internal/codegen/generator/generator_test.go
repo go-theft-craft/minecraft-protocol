@@ -1,12 +1,14 @@
 package generator
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -333,6 +335,113 @@ func TestGeneratedFilesMatchCheckpoint(t *testing.T) {
 	}
 }
 
+func TestRunGeneratesStatefulPacketCodecInventory(t *testing.T) {
+	out := t.TempDir()
+	if err := Run(Config{SourceDir: sourceDir, OutDir: out, Package: "v1_8", Version: "java/1.8.9"}); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+
+	generatedDir := filepath.Join(out, "v1_8")
+	wants := map[string][]string{
+		"packets.go": {
+			"type StatusClientboundServerInfo struct",
+			"func (StatusClientboundServerInfo) PacketID() int32",
+		},
+		"codec.go": {
+			"func (packet *StatusClientboundServerInfo) Decode(buffer *java.Buffer) error",
+			"func (packet *StatusClientboundServerInfo) Encode(buffer *java.Buffer) error",
+		},
+		"descriptor.go": {
+			"var packetFactories = map[packetKey]packetFactory{",
+			"func newPacket(state protocol.State, direction protocol.Direction, id int32) (packetCodec, bool)",
+			"func packetKeyForValue(value packetCodec) (packetKey, bool)",
+		},
+		"protocol.go": {
+			"StateHandshaking protocol.State = \"handshaking\"",
+			"func Protocol() protocol.Protocol",
+			"func (codec *protocolCodec) SetState(state protocol.State) error",
+		},
+	}
+	for name, fragments := range wants {
+		raw, err := os.ReadFile(filepath.Join(generatedDir, name))
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		for _, fragment := range fragments {
+			if !strings.Contains(string(raw), fragment) {
+				t.Errorf("%s does not contain %q", name, fragment)
+			}
+		}
+		for _, forbidden := range []string{`"reflect"`, "java.Marshal", "java.Unmarshal"} {
+			if strings.Contains(string(raw), forbidden) {
+				t.Errorf("%s contains forbidden generated runtime reference %q", name, forbidden)
+			}
+		}
+	}
+
+	packets, err := os.ReadFile(filepath.Join(generatedDir, "packets.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(packets), "`mc:") {
+		t.Fatal("packets.go still contains reflection codec tags")
+	}
+
+	for _, name := range []string{"packets.go", "codec.go", "descriptor.go"} {
+		raw, err := os.ReadFile(filepath.Join(generatedDir, name))
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		if strings.Contains(string(raw), "LegacyServerListPing") || strings.Contains(string(raw), "legacy_server_list_ping") {
+			t.Errorf("%s exposes the unframed legacy server-list ping", name)
+		}
+		if name == "descriptor.go" {
+			if count := strings.Count(string(raw), "func() packetCodec { return new("); count != 111 {
+				t.Errorf("descriptor.go contains %d framed packet factories, want 111", count)
+			}
+		}
+	}
+
+	protocolSource, err := os.ReadFile(filepath.Join(generatedDir, "protocol.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeSource, inventorySource, found := strings.Cut(string(protocolSource), "func newProtocol() data.Protocol")
+	if !found {
+		t.Fatal("protocol.go does not contain the data protocol inventory")
+	}
+	if strings.Contains(runtimeSource, "legacy_server_list_ping") {
+		t.Fatal("protocol.go exposes the unframed legacy server-list ping through the framed packet name registry")
+	}
+	if !strings.Contains(inventorySource, `Name: "legacy_server_list_ping", ID: 254`) {
+		t.Fatal("protocol.go omitted the legacy server-list ping from the data protocol inventory")
+	}
+}
+
+func TestRunRejectsDuplicatePacketRegistryKeys(t *testing.T) {
+	source := copySource(t)
+	path := filepath.Join(source, "protocol.json")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const mapping = `"0x00": "ping_start",`
+	if count := bytes.Count(raw, []byte(mapping)); count != 1 {
+		t.Fatalf("protocol fixture contains %d copies of %q, want 1", count, mapping)
+	}
+	raw = bytes.Replace(raw, []byte(mapping), []byte(mapping+"\n                    \"0\": \"ping_start\","), 1)
+	rewriteSourceFile(t, source, "protocol.json", raw)
+
+	out := t.TempDir()
+	err = Run(Config{SourceDir: source, OutDir: out, Package: "v1_8", Version: "java/1.8.9"})
+	if err == nil || !strings.Contains(err.Error(), "duplicate IDs") {
+		t.Fatalf("Run() error = %v, want duplicate registry key", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(out, "v1_8")); !os.IsNotExist(statErr) {
+		t.Fatalf("generated output exists after duplicate registry key: %v", statErr)
+	}
+}
+
 func TestRunAcceptsStableVersionKey(t *testing.T) {
 	out := t.TempDir()
 	if err := Run(Config{SourceDir: sourceDir, OutDir: out, Package: "v1_8", Version: "java/1.8.9"}); err != nil {
@@ -467,7 +576,7 @@ func TestRunPreservesLastGoodOutputOnInvalidVerifiedSource(t *testing.T) {
 	}
 }
 
-func TestRunPreservesOnlyDataTest(t *testing.T) {
+func TestRunPreservesApprovedTestsOnly(t *testing.T) {
 	out := t.TempDir()
 	target := filepath.Join(out, "v1_8")
 	if err := os.Mkdir(target, 0o755); err != nil {
@@ -477,6 +586,10 @@ func TestRunPreservesOnlyDataTest(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(target, "data_test.go"), dataTest, 0o644); err != nil {
 		t.Fatal(err)
 	}
+	codecTest := []byte("package v1_8\n// hand written codec test\n")
+	if err := os.WriteFile(filepath.Join(target, "codec_test.go"), codecTest, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(target, "stale_test.go"), []byte("stale\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -484,11 +597,18 @@ func TestRunPreservesOnlyDataTest(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Run(Config{SourceDir: sourceDir, OutDir: out, Package: "v1_8", Version: "java/1.8.9"}); err != nil {
+	config := Config{SourceDir: sourceDir, OutDir: out, Package: "v1_8", Version: "java/1.8.9"}
+	if err := Run(config); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := os.ReadFile(filepath.Join(target, "data_test.go")); err != nil || !reflect.DeepEqual(got, dataTest) {
 		t.Fatalf("data_test.go = %q, %v", got, err)
+	}
+	if got, err := os.ReadFile(filepath.Join(target, "codec_test.go")); err != nil || !reflect.DeepEqual(got, codecTest) {
+		t.Fatalf("codec_test.go = %q, %v", got, err)
+	}
+	if err := Check(config); err != nil {
+		t.Fatalf("Check() rejected preserved generated tests: %v", err)
 	}
 	for _, stale := range []string{"stale_test.go", "stale.go"} {
 		if _, err := os.Stat(filepath.Join(target, stale)); !os.IsNotExist(err) {
@@ -647,7 +767,7 @@ func directoryFiles(t *testing.T, dir string) map[string][]byte {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || entry.Name() == "data_test.go" {
+		if entry.IsDir() || slices.Contains(preservedGeneratedTestNames, entry.Name()) {
 			return nil
 		}
 		rel, err := filepath.Rel(dir, path)
