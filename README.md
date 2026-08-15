@@ -29,7 +29,7 @@ injectable interfaces.
 | --- | --- |
 | Edition-neutral contracts, resource limits, and game-data registry | Implemented |
 | Java Edition 1.8, protocol 47 | Built-in descriptor, generated packet sessions, managed asynchronous stream, compression, automatic transitions, graceful disconnect, generated game data, and physics constants implemented |
-| Java Edition 26.1, protocol 775 | Generated built-in descriptor and dataset planned |
+| Java Edition 26.1, protocol 775 | Generated built-in descriptor, packet sessions, the modern login sequence through configuration, generated game data, and the raw dataset set implemented; not yet verified against a live server |
 | Additional PrismarineJS versions and datasets beyond the Java 1.8 bundle | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
 | Bedrock Edition | Deferred; it will use a separate transport and authentication implementation |
@@ -144,6 +144,59 @@ func main() {
 
 The example registers a package-level version once. Use `NewRegistry` when an
 application needs an isolated registry, such as a test or a plugin host.
+
+## Supported versions
+
+| Package | Version | Protocol | Notes |
+| --- | --- | --- | --- |
+| `generated/java/v1_8` | Java 1.8.9 | 47 | Physics constants measured from a Mojang jar |
+| `generated/java/v26_1` | Java 26.1 | 775 | Configuration state, raw datasets, checked-in packet coverage report |
+| `generated/java/current` | follows the newest | — | An alias, not a compatibility promise |
+
+`current` follows whichever version is newest here and will move when a newer
+one lands. A program that must keep speaking one protocol imports that
+version's package by name.
+
+One caveat carries over from upstream. Java 26.1 publishes no `windows`
+dataset, and the pinned tree resolves it to Java 1.16.1, so
+`v26_1` window records describe a version ten releases older than the protocol
+beside them. Five other datasets are aliases in the same way — `blockLoot` and
+`entityLoot` at 1.20, `commands` at 1.20.3, `mapIcons` at 1.20.2, and `proto`
+at `latest`. The manifest records each one, and `mcproto data validate` reports
+them.
+
+## Pinned source data
+
+Each version's source tree is fetched once, by commit, and verified by digest
+before anything is generated from it:
+
+```bash
+# Re-fetch a pinned tree. The revision is a full commit, never a branch.
+devbox run -- go run ./cmd/mcproto data fetch   --edition java --version 26.1 --protocol 775   --revision 8a80816cbfb3fe2b609f2cde4e57796c8033af61   --output ./source/java/26.1
+
+# Check every tree against its own manifest, and report aliased datasets.
+devbox run -- task data:validate
+devbox run -- go run ./cmd/mcproto data validate --source ./source/java/26.1 --format json
+```
+
+Fetching twice produces byte-identical output. `data validate` exits 0 on
+success, 1 on a runtime failure, and 2 on a usage error, and prompts for
+nothing.
+
+The Java 26.1 package also carries every dataset it was generated from, as the
+bytes upstream published:
+
+```go
+import v26_1 "github.com/go-theft-craft/minecraft-protocol/generated/java/v26_1"
+
+raw := v26_1.Raw()          // every dataset name, sorted
+blocks, ok := raw.Get("blocks")
+```
+
+The typed registries are an interpretation — they keep what this repository
+decided to model. The raw set is what that interpretation was made from, so a
+consumer needing a detail no accessor exposes can read it, and a generated
+value can be checked against its source.
 
 ## Built-in game-data sources
 
@@ -353,9 +406,9 @@ formatting, runs the Go linters, and scans staged content for secrets and privat
 keys. CI scans the complete committed tree. Run `devbox run -- task --list` to
 see the individual tasks.
 
-### Generate Java 1.8 game data
+### Generate the version packages
 
-To regenerate the checked-in Java 1.8 package, run:
+To regenerate every checked-in generated package, run:
 
 ```bash
 devbox run -- task generate
@@ -367,9 +420,16 @@ To verify that the checked-in generated files match the pinned source, run:
 devbox run -- task generate:check
 ```
 
-`task generate:check` compares an explicit inventory of generated files and
-allows only `data_test.go` and `codec_test.go` as hand-written exceptions. The
-generator preserves these files without creating them.
+`task generate:check` compares an explicit inventory of generated files, the
+Java 26.1 raw dataset directory, and the checked-in packet coverage report. A
+handful of hand-written test files are preserved rather than created: the
+generator keeps them and never writes them.
+
+`task generate:v1_8` and `task generate:v26_1` regenerate one version each. The
+raw dataset set and the coverage report are generated for Java 26.1 only, with
+`-raw` and `-coverage`: the bytes are megabytes, every binary importing the
+package carries them, and Java 1.8's package is consumed by services that read
+only the typed registries.
 
 ### Differential verification against ProtoDef
 

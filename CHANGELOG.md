@@ -6,6 +6,24 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ### Added
 
+- Java Edition 26.1, protocol 775. `generated/java/v26_1` carries 256 framed
+  packets across five states — handshaking, status, login, configuration, and
+  play — the typed game data, every source dataset as the bytes upstream
+  published through `v26_1.Raw()`, and a checked-in `coverage.json` naming
+  every packet a codec exists for. `generated/java/current` aliases the newest
+  supported version and promises nothing across releases.
+- The modern login sequence. `protocol.LoginExchange` is the per-version
+  exchange that builds and reads a login's packets, and `login.Negotiator` now
+  drives both protocol 47, whose login ends at success, and protocol 775, whose
+  login passes through configuration — with no version named in `login/`.
+  `login.WithTerminalState` stops the sequence early, which is how a caller
+  reads what a server sends in configuration.
+- `java.NewNetworkNBTText`, which builds a literal text component as network
+  NBT. Disconnect reasons after login are components rather than JSON strings.
+- `mcdata-gen -raw` and `-coverage`, and the `generate:v1_8`,
+  `generate:v26_1`, `test:protodef`, and `check:live` tasks.
+- A codec-level differential suite against pinned Node ProtoDef, and an opt-in
+  live check against a real Java 26.1 server. The live check has not been run.
 - Java 1.8 physics constants: block slipperiness, the trigonometry table, and
   entity motion constants for the player, dropped item, and arrow families,
   reachable through `data.Set.Physics`.

@@ -43,9 +43,17 @@ Status: complete.
 
 ## P2: current Java data
 
-- Generate protocol 775 for the Java 26.1 data family.
-- Import every dataset exposed by the pinned PrismarineJS manifest.
-- Preserve unknown JSON, YAML, and future source formats as raw datasets.
+Status: complete, except for verification against a live server.
+
+- Generated protocol 775 for the Java 26.1 data family: 256 framed packets
+  across five states, with a checked-in coverage report.
+- Imported every dataset the pinned PrismarineJS manifest exposes, including
+  the seven with no Java 1.8 equivalent.
+- Kept every dataset as the bytes upstream published, reachable through
+  `v26_1.Raw()`.
+- Verified the codecs against pinned Node ProtoDef in both directions.
+- The opt-in live check against a real 26.1 server exists and has not been
+  run, so the resource limits still stand on the specification alone.
 
 ## P3a: managed stream and compression
 
