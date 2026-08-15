@@ -255,7 +255,7 @@ func (s *Stream) coordinate(ctx context.Context) {
 
 		case result := <-s.snapshotRequests:
 			select {
-			case result <- s.session.Snapshot():
+			case result <- s.snapshot():
 			case <-s.stopping:
 				return
 			}
@@ -600,9 +600,32 @@ func (s *Stream) resolveTransition(
 	return transitionDecision{transition: resolved, commit: true}, nil
 }
 
-// processControl validates and applies one runtime control. An unsupported
-// control fails the caller without stopping the stream.
+// snapshot merges the session's view with the conduit's, so one snapshot
+// describes everything a caller can configure at runtime.
+func (s *Stream) snapshot() Snapshot {
+	merged := s.session.Snapshot()
+	pipeline := merged.Pipeline
+	if pipeline == nil {
+		pipeline = map[string]string{}
+	}
+	for key, value := range s.conduit.pipeline() {
+		pipeline[key] = value
+	}
+
+	return NewSnapshot(merged.State, pipeline)
+}
+
+// processControl validates and applies one runtime control. A control that
+// reconfigures the transport goes to the conduit; every other control goes to
+// the session. An unsupported or rejected control fails the caller without
+// stopping the stream.
 func (s *Stream) processControl(request *controlRequest) {
+	if transport, ok := request.control.(TransportControl); ok {
+		request.result <- transport.ApplyTransport(s.conduit)
+
+		return
+	}
+
 	if err := s.session.ValidateControl(request.control); err != nil {
 		request.result <- err
 

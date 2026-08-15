@@ -511,3 +511,67 @@ func TestStreamControlAfterCloseIsRejected(t *testing.T) {
 		t.Fatalf("SetState() error = %v, want ErrStreamClosed", err)
 	}
 }
+
+// recordingTransportControl proves the stream routes by interface, not by
+// concrete type, and never inspects a control's contents.
+type recordingTransportControl struct {
+	applied *int
+	fail    error
+}
+
+func (recordingTransportControl) ControlName() string { return "test.transport" }
+
+func (c recordingTransportControl) ApplyTransport(conduit *Conduit) error {
+	if conduit == nil {
+		return errors.New("nil conduit")
+	}
+	if c.fail != nil {
+		return c.fail
+	}
+	*c.applied++
+
+	return nil
+}
+
+func TestStreamRoutesTransportControlToConduit(t *testing.T) {
+	t.Parallel()
+
+	applied := 0
+	harness := startRuntime(t, 8)
+
+	if err := harness.stream.Control(t.Context(), recordingTransportControl{applied: &applied}); err != nil {
+		t.Fatalf("control: %v", err)
+	}
+	if applied != 1 {
+		t.Fatalf("applied %d times, want 1", applied)
+	}
+}
+
+func TestStreamReportsTransportControlFailureToCaller(t *testing.T) {
+	t.Parallel()
+
+	harness := startRuntime(t, 8)
+	sentinel := errors.New("refused")
+
+	err := harness.stream.Control(t.Context(), recordingTransportControl{applied: new(int), fail: sentinel})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("Control error = %v, want %v", err, sentinel)
+	}
+	if err := harness.stream.Close(); err != nil && !errors.Is(err, ErrStreamClosed) {
+		t.Fatalf("a rejected control must not terminate the stream: %v", err)
+	}
+}
+
+func TestStreamSnapshotIncludesConduitPipeline(t *testing.T) {
+	t.Parallel()
+
+	harness := startRuntime(t, 8)
+
+	snapshot, err := harness.stream.Snapshot(t.Context())
+	if err != nil {
+		t.Fatalf("snapshot: %v", err)
+	}
+	if got := snapshot.Pipeline["encryption.enabled"]; got != "false" {
+		t.Fatalf("encryption.enabled = %q, want %q", got, "false")
+	}
+}
