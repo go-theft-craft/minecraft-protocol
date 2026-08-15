@@ -263,27 +263,6 @@ func (b *Buffer) WriteUUID(path string, value UUID) error {
 	return b.writeValue(path, discardCount([16]byte(value), WriteUUID))
 }
 
-// ReadPosition reads a packed block position.
-func (b *Buffer) ReadPosition(path string) (Position, error) {
-	value, err := b.ReadI64(path)
-	if err != nil {
-		return Position{}, err
-	}
-	x, y, z := DecodePosition(value)
-	return Position{X: x, Y: y, Z: z}, nil
-}
-
-// WritePosition writes a packed block position.
-func (b *Buffer) WritePosition(path string, value Position) error {
-	if b == nil || !b.limits.Valid() {
-		return withPath(path, ErrInvalidLimits)
-	}
-	if value.X < -(1<<25) || value.X >= 1<<25 || value.Y < -(1<<11) || value.Y >= 1<<11 || value.Z < -(1<<25) || value.Z >= 1<<25 {
-		return withPath(path, fmt.Errorf("%w: position (%d, %d, %d)", ErrValueOutOfRange, value.X, value.Y, value.Z))
-	}
-	return b.WriteI64(path, EncodePosition(value.X, value.Y, value.Z))
-}
-
 // ReadString reads a VarInt-prefixed bounded string.
 func (b *Buffer) ReadString(path string) (string, error) {
 	return readWithLimits(b, path, ReadString)

@@ -223,7 +223,10 @@ func TestNBTRejectsInvalidTagsLengthsDuplicatesLimitsDepthAndTrailingBytes(t *te
 	}
 }
 
-func TestOptionalNBTAndSlots(t *testing.T) {
+// TestOptionalNBT covers the presence byte and the value behind it. The slot
+// codec that used to share this test is gone: a slot is a schema-defined type
+// and is compiled from the schema now.
+func TestOptionalNBT(t *testing.T) {
 	t.Parallel()
 
 	limits := bufferLimits(t)
@@ -241,13 +244,6 @@ func TestOptionalNBTAndSlots(t *testing.T) {
 	if err := w.WriteOptionalNBT("packet.some", &nbt); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.WriteSlot("packet.absent", Slot{}); err != nil {
-		t.Fatal(err)
-	}
-	present := Slot{Present: true, BlockID: 5, Count: 2, Damage: 7, NBT: &nbt}
-	if err := w.WriteSlot("packet.present", present); err != nil {
-		t.Fatal(err)
-	}
 
 	r, err := NewReadBuffer(w.Bytes(), limits)
 	if err != nil {
@@ -258,38 +254,6 @@ func TestOptionalNBTAndSlots(t *testing.T) {
 	}
 	if got, err := r.ReadOptionalNBT("packet.some"); err != nil || got == nil || !bytes.Equal(got.Bytes(), nbt.Bytes()) {
 		t.Errorf("ReadOptionalNBT(some) = (%v, %v)", got, err)
-	}
-	if got, err := r.ReadSlot("packet.absent"); err != nil || got.Present || got.BlockID != 0 {
-		t.Errorf("ReadSlot(absent) = (%+v, %v)", got, err)
-	}
-	if got, err := r.ReadSlot("packet.present"); err != nil || !reflectSlotEqual(got, present) {
-		t.Errorf("ReadSlot(present) = (%+v, %v), want %+v", got, err, present)
-	}
-
-	invalid, err := NewWriteBuffer(limits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := invalid.WriteSlot("packet.slot", Slot{Present: true, BlockID: -1}); !errors.Is(err, ErrInvalidSlot) {
-		t.Fatalf("WriteSlot() error = %v, want ErrInvalidSlot", err)
-	}
-
-	slotWriter, err := NewWriteBuffer(limits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := slotWriter.WriteSlot("packet.slot", present); err != nil {
-		t.Fatal(err)
-	}
-	encodedSlot := slotWriter.Bytes()
-	for cut := range len(encodedSlot) {
-		slotReader, err := NewReadBuffer(encodedSlot[:cut], limits)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := slotReader.ReadSlot("packet.slot"); err == nil {
-			t.Fatalf("slot cut %d/%d: error = nil", cut, len(encodedSlot))
-		}
 	}
 }
 
@@ -337,14 +301,4 @@ func duplicateNames(count int) []byte {
 		result = append(result, TagByte, 0, 1, byte('a'+index), 1)
 	}
 	return append(result, TagEnd)
-}
-
-func reflectSlotEqual(left, right Slot) bool {
-	if left.Present != right.Present || left.BlockID != right.BlockID || left.Count != right.Count || left.Damage != right.Damage {
-		return false
-	}
-	if left.NBT == nil || right.NBT == nil {
-		return left.NBT == nil && right.NBT == nil
-	}
-	return bytes.Equal(left.NBT.Bytes(), right.NBT.Bytes())
 }

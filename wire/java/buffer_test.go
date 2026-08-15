@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"math"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -94,7 +93,6 @@ func TestBufferPrimitiveRoundTrip(t *testing.T) {
 		{"root.false", func() error { return w.WriteBool("root.false", false) }},
 		{"root.true", func() error { return w.WriteBool("root.true", true) }},
 		{"root.uuid", func() error { return w.WriteUUID("root.uuid", uuid) }},
-		{"root.position", func() error { return w.WritePosition("root.position", Position{X: -100, Y: 255, Z: 200}) }},
 		{"root.string", func() error { return w.WriteString("root.string", "hello") }},
 		{"root.bytes", func() error { return w.WriteByteArray("root.bytes", []byte{1, 2, 3}) }},
 		{"root.fixed", func() error { return w.WriteBuffer("root.fixed", []byte{4, 5}) }},
@@ -155,9 +153,6 @@ func TestBufferPrimitiveRoundTrip(t *testing.T) {
 	if got, err := r.ReadUUID("root.uuid"); err != nil || got != uuid {
 		t.Errorf("ReadUUID() = (%v, %v)", got, err)
 	}
-	if got, err := r.ReadPosition("root.position"); err != nil || got != (Position{X: -100, Y: 255, Z: 200}) {
-		t.Errorf("ReadPosition() = (%v, %v)", got, err)
-	}
 	if got, err := r.ReadString("root.string"); err != nil || got != "hello" {
 		t.Errorf("ReadString() = (%q, %v)", got, err)
 	}
@@ -201,7 +196,6 @@ func TestBufferReportsEveryPrimitiveTruncationWithPath(t *testing.T) {
 		{"f64", func(b *Buffer) error { return b.WriteF64("write", 1) }, func(b *Buffer) error { _, err := b.ReadF64("packet.value"); return err }},
 		{"bool", func(b *Buffer) error { return b.WriteBool("write", true) }, func(b *Buffer) error { _, err := b.ReadBool("packet.value"); return err }},
 		{"uuid", func(b *Buffer) error { return b.WriteUUID("write", UUID{}) }, func(b *Buffer) error { _, err := b.ReadUUID("packet.value"); return err }},
-		{"position", func(b *Buffer) error { return b.WritePosition("write", Position{}) }, func(b *Buffer) error { _, err := b.ReadPosition("packet.value"); return err }},
 		{"string", func(b *Buffer) error { return b.WriteString("write", "abc") }, func(b *Buffer) error { _, err := b.ReadString("packet.value"); return err }},
 		{"byte array", func(b *Buffer) error { return b.WriteByteArray("write", []byte{1, 2, 3}) }, func(b *Buffer) error { _, err := b.ReadByteArray("packet.value"); return err }},
 		{"fixed buffer", func(b *Buffer) error { return b.WriteBuffer("write", []byte{1, 2, 3}) }, func(b *Buffer) error { _, err := b.ReadBuffer("packet.value", 3); return err }},
@@ -371,126 +365,9 @@ func TestMapperAndBitfieldBoundaryFailuresRemainPathAware(t *testing.T) {
 	if _, err := buffer.ReadVarInt("packet.mapper"); err == nil || !strings.Contains(err.Error(), "packet.mapper") {
 		t.Fatalf("mapper backing read error = %v, want mapper path", err)
 	}
-	if _, err := buffer.ReadPosition("packet.bitfield"); err == nil || !strings.Contains(err.Error(), "packet.bitfield") {
+	// A packed bitfield reads through the 64-bit primitive, so the path a
+	// generated bitfield reports comes from here.
+	if _, err := buffer.ReadU64("packet.bitfield"); err == nil || !strings.Contains(err.Error(), "packet.bitfield") {
 		t.Fatalf("bitfield backing read error = %v, want bitfield path", err)
-	}
-
-	position := Position{X: 1 << 25, Y: 0, Z: 0}
-	write, err := NewWriteBuffer(bufferLimits(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := write.WritePosition("packet.bitfield", position); !errors.Is(err, ErrValueOutOfRange) {
-		t.Fatalf("WritePosition() error = %v, want ErrValueOutOfRange", err)
-	}
-}
-
-func TestMetadataRoundTripAndValidation(t *testing.T) {
-	t.Parallel()
-
-	nbt, err := NewNBT([]byte{TagCompound, 0, 0, TagEnd}, bufferLimits(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := EntityMetadata{
-		{Index: 0, Type: MetadataByte, Value: int8(-1)},
-		{Index: 1, Type: MetadataShort, Value: int16(-2)},
-		{Index: 2, Type: MetadataInt, Value: int32(-3)},
-		{Index: 3, Type: MetadataFloat, Value: float32(1.5)},
-		{Index: 4, Type: MetadataString, Value: "hello"},
-		{Index: 5, Type: MetadataSlot, Value: Slot{Present: true, BlockID: 1, Count: 2, Damage: 3, NBT: &nbt}},
-		{Index: 6, Type: MetadataPosition, Value: MetadataCoordinates{X: 1, Y: 2, Z: 3}},
-		{Index: 7, Type: MetadataRotation, Value: Rotation{Pitch: 1, Yaw: 2, Roll: 3}},
-	}
-
-	w, err := NewWriteBuffer(bufferLimits(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := w.WriteEntityMetadata("packet.metadata", want); err != nil {
-		t.Fatal(err)
-	}
-	if got := w.Bytes(); len(got) == 0 || got[len(got)-1] != metadataTerminator {
-		t.Fatalf("encoded metadata = %x, want 0x7f terminator", got)
-	}
-
-	r, err := NewReadBuffer(w.Bytes(), bufferLimits(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := r.ReadEntityMetadata("packet.metadata")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("ReadEntityMetadata() = %#v, want %#v", got, want)
-	}
-
-	tests := []struct {
-		name  string
-		value EntityMetadata
-	}{
-		{"duplicate index", EntityMetadata{{Index: 1, Type: MetadataByte, Value: int8(1)}, {Index: 1, Type: MetadataByte, Value: int8(2)}}},
-		{"wrong concrete value", EntityMetadata{{Index: 1, Type: MetadataByte, Value: int16(1)}}},
-		{"reserved header", EntityMetadata{{Index: 31, Type: MetadataFloat, Value: float32(1)}}},
-		{"index out of range", EntityMetadata{{Index: 32, Type: MetadataByte, Value: int8(1)}}},
-		{"type out of range", EntityMetadata{{Index: 1, Type: 8, Value: int8(1)}}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			buffer, err := NewWriteBuffer(bufferLimits(t))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := buffer.WriteEntityMetadata("packet.metadata", test.value); err == nil || !strings.Contains(err.Error(), "packet.metadata") {
-				t.Fatalf("WriteEntityMetadata() error = %v, want metadata path", err)
-			}
-		})
-	}
-}
-
-func TestMetadataRejectsMissingTerminatorDuplicatesLimitsAndTruncation(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name   string
-		data   []byte
-		limits protocol.Limits
-		want   error
-	}{
-		{"missing terminator", []byte{0x00, 1}, bufferLimits(t), io.EOF},
-		{"duplicate index", []byte{0x00, 1, 0x20, 0, 2, metadataTerminator}, bufferLimits(t), ErrDuplicateMetadataIndex},
-		{"collection limit", []byte{0x00, 1, 0x01, 2, metadataTerminator}, bufferLimits(t, protocol.MaxCollectionItems(1)), ErrValueTooLarge},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			buffer, err := NewReadBuffer(test.data, test.limits)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, err = buffer.ReadEntityMetadata("packet.metadata")
-			if !errors.Is(err, test.want) || !strings.Contains(err.Error(), "packet.metadata") {
-				t.Fatalf("ReadEntityMetadata() error = %v, want path and %v", err, test.want)
-			}
-		})
-	}
-
-	w, err := NewWriteBuffer(bufferLimits(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	value := EntityMetadata{{Index: 1, Type: MetadataString, Value: "abc"}}
-	if err := w.WriteEntityMetadata("packet.metadata", value); err != nil {
-		t.Fatal(err)
-	}
-	encoded := w.Bytes()
-	for cut := range len(encoded) {
-		buffer, err := NewReadBuffer(encoded[:cut], bufferLimits(t))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := buffer.ReadEntityMetadata("packet.metadata"); err == nil {
-			t.Fatalf("cut %d/%d: error = nil", cut, len(encoded))
-		}
 	}
 }

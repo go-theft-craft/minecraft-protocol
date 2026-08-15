@@ -315,3 +315,97 @@ func TestProtocol47PinsPacketsAnInputStreamCannotReach(t *testing.T) {
 		})
 	}
 }
+
+// TestGeneratedPositionBitLayoutIsPinnedByValue is the assertion that outlives
+// the hand-written position codec.
+//
+// Protocol 47 packs x, y, z into 26, 12, and 26 bits, most significant first;
+// protocol 775 packs x, z, y. Nothing about a round trip can tell the two
+// apart, because both sides would be wrong together, so the expected bytes are
+// computed by hand from the field widths.
+func TestGeneratedPositionBitLayoutIsPinnedByValue(t *testing.T) {
+	t.Parallel()
+
+	limits := roundTripLimits(t)
+
+	cases := []struct {
+		name string
+		x, z int32
+		y    int16
+		wire []byte
+	}{
+		{name: "origin", x: 0, y: 0, z: 0, wire: []byte{0, 0, 0, 0, 0, 0, 0, 0}},
+		{name: "one two three", x: 1, y: 2, z: 3, wire: []byte{0, 0, 0, 64, 8, 0, 0, 3}},
+		{name: "negative x", x: -1, y: 2, z: 3, wire: []byte{255, 255, 255, 192, 8, 0, 0, 3}},
+		{name: "negative y", x: 1, y: -2, z: 3, wire: []byte{0, 0, 0, 127, 248, 0, 0, 3}},
+		{name: "negative z", x: 1, y: 2, z: -3, wire: []byte{0, 0, 0, 64, 11, 255, 255, 253}},
+		{
+			name: "maximum of every field",
+			x:    33554431, y: 2047, z: 33554431,
+			wire: []byte{127, 255, 255, 223, 253, 255, 255, 255},
+		},
+		{
+			name: "minimum of every field",
+			x:    -33554432, y: -2048, z: -33554432,
+			wire: []byte{128, 0, 0, 32, 2, 0, 0, 0},
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			position := Position{X: testCase.x, Y: testCase.y, Z: testCase.z}
+
+			writer, err := java.NewWriteBuffer(limits)
+			if err != nil {
+				t.Fatalf("NewWriteBuffer() error = %v", err)
+			}
+			if err := position.Encode(writer); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+			if got := writer.Bytes(); !bytes.Equal(got, testCase.wire) {
+				t.Fatalf("encoded %x, want %x", got, testCase.wire)
+			}
+
+			reader, err := java.NewReadBuffer(testCase.wire, limits)
+			if err != nil {
+				t.Fatalf("NewReadBuffer() error = %v", err)
+			}
+			var decoded Position
+			if err := decoded.Decode(reader); err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			if decoded != position {
+				t.Fatalf("decoded %+v, want %+v", decoded, position)
+			}
+		})
+	}
+}
+
+// TestGeneratedMetadataTerminatorIsPinnedByValue states the sentinel outright.
+// Protocol 47 ends metadata at 127 and protocol 775 at 255; the wrong one
+// reads past the end of a packet and desynchronises the connection rather than
+// failing to decode.
+func TestGeneratedMetadataTerminatorIsPinnedByValue(t *testing.T) {
+	t.Parallel()
+
+	limits := roundTripLimits(t)
+
+	writer, err := java.NewWriteBuffer(limits)
+	if err != nil {
+		t.Fatalf("NewWriteBuffer() error = %v", err)
+	}
+	metadata := pinnedMetadata()
+	if err := metadata.Encode(writer); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	got := writer.Bytes()
+	if !bytes.Equal(got, pinnedMetadataBytes) {
+		t.Fatalf("encoded %x, want %x", got, pinnedMetadataBytes)
+	}
+	if got[len(got)-1] != 0x7f {
+		t.Fatalf("terminator = %#x, want 0x7f", got[len(got)-1])
+	}
+}

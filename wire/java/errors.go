@@ -29,12 +29,6 @@ var (
 	ErrDuplicateNBTKey = errors.New("duplicate NBT compound key")
 	// ErrRecursionLimit reports a value nested beyond the configured depth.
 	ErrRecursionLimit = errors.New("recursion depth exceeds configured limit")
-	// ErrInvalidSlot reports a slot that cannot be represented on the wire.
-	ErrInvalidSlot = errors.New("invalid slot")
-	// ErrInvalidMetadata reports malformed entity metadata.
-	ErrInvalidMetadata = errors.New("invalid entity metadata")
-	// ErrDuplicateMetadataIndex reports a repeated entity metadata index.
-	ErrDuplicateMetadataIndex = errors.New("duplicate entity metadata index")
 	// ErrInvalidUUID reports a UUID that is not one of the two accepted wire
 	// forms.
 	ErrInvalidUUID = errors.New("invalid UUID")
