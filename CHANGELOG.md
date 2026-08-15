@@ -4,6 +4,17 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.1.0 - 2026-08-15
+
+First tagged release. It publishes the managed stream, transport encryption,
+both halves of the Java Edition login sequence, schema-first code generation,
+and the protocol 47 packet and game-data packages that `server` consumes from
+M3 onward.
+
+Nothing in this repository was published before this tag, so the `Changed` and
+`Removed` entries below record decisions taken during development rather than
+migrations a caller has to perform.
+
 ### Added
 
 - Added `Buffer.EnterNested`, `Buffer.LeaveNested`, and `Buffer.NestingDepth`,
@@ -70,8 +81,6 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   `java.ErrVerifyTokenMismatch`, and the `login` package's own set.
 - Added encrypted interoperability scenarios in both directions against the
   pinned Node `minecraft-protocol` 1.66.2.
-
-
 - Added the asynchronous managed stream. `protocol.Stream` runs a read pump and
   a write pump over `io.Reader` and `io.Writer` while one coordinator orders
   every state change, control, observation, and shutdown step at complete frame
@@ -132,8 +141,6 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 - Bumped the pinned Go toolchain to 1.26.6. Parsing an untrusted server public
   key reaches `encoding/asn1`, whose recursion-depth fix landed in that patch
   release.
-
-
 - Replaced `protocol.Codec` with `protocol.Session`, and `Protocol.NewCodec`
   with `Protocol.NewSession`. There is no compatibility adapter. A session owns
   packet coding and pipeline state and performs no I/O; a stream owns the
