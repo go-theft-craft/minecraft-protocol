@@ -97,6 +97,7 @@ var generatedFileNames = []string{
 	"recipes.go",
 	"version.go",
 	"windows.go",
+	"login_exchange.go",
 	"raw.go",
 	"coverage.json",
 	"sounds.go",
@@ -333,6 +334,7 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 	}{
 		{"helpers.go.tmpl", "helpers.go"},
 		{"gamedata.go.tmpl", "gamedata.go"},
+		{"login_exchange.go.tmpl", "login_exchange.go"},
 	} {
 		raw, err := renderFile(templates, entry.templateName, newTemplateData(packageName, versionKey, present))
 		if err != nil {
@@ -517,26 +519,35 @@ func isFramedPacket(state, direction, name string, id int) bool {
 // packets keep these names inherits the tagging, and one whose packets do not
 // simply reports no role until this function learns its names.
 func loginRoleFor(state, direction, name string) string {
-	if state != "login" {
-		return ""
-	}
-
-	switch direction {
-	case "toClient":
-		switch name {
-		case "encryption_begin":
-			return "RoleEncryptionRequest"
-		case "success":
-			return "RoleLoginSuccess"
-		case "compress":
-			return "RoleSetCompression"
+	switch state {
+	case "login":
+		switch direction {
+		case "toClient":
+			switch name {
+			case "encryption_begin":
+				return "RoleEncryptionRequest"
+			case "success":
+				return "RoleLoginSuccess"
+			case "compress":
+				return "RoleSetCompression"
+			}
+		case "toServer":
+			switch name {
+			case "login_start":
+				return "RoleLoginStart"
+			case "encryption_begin":
+				return "RoleEncryptionResponse"
+			case "login_acknowledged":
+				return "RoleLoginAcknowledged"
+			}
 		}
-	case "toServer":
-		switch name {
-		case "login_start":
-			return "RoleLoginStart"
-		case "encryption_begin":
-			return "RoleEncryptionResponse"
+	case "configuration":
+		// Both halves of the finish handshake carry the role. The server
+		// states it is done and the client answers; direction is what tells
+		// them apart, and a driver needs to recognize the half it receives
+		// and build the half it sends.
+		if name == "finish_configuration" {
+			return "RoleConfigurationFinished"
 		}
 	}
 

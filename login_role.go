@@ -23,6 +23,14 @@ const (
 	RoleSetCompression LoginRole = "set_compression"
 	// RoleLoginSuccess is the clientbound packet that completes a login.
 	RoleLoginSuccess LoginRole = "login_success"
+	// RoleLoginAcknowledged is the serverbound packet a client sends to
+	// accept a login success, which is what moves a modern connection out of
+	// login. Protocol 47 has no such packet: success moves it directly.
+	RoleLoginAcknowledged LoginRole = "login_acknowledged"
+	// RoleConfigurationFinished tags both halves of the handshake that ends
+	// configuration: the server states it is done, the client answers, and
+	// the answer is what moves both sides to play.
+	RoleConfigurationFinished LoginRole = "configuration_finished"
 )
 
 // LoginRoles reports which part of a login a packet plays.

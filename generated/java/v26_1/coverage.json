@@ -1,0 +1,1794 @@
+[
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 0,
+    "name": "cookie_request",
+    "goType": "ConfigurationClientboundCookieRequest"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 1,
+    "name": "custom_payload",
+    "goType": "ConfigurationClientboundCustomPayload"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 2,
+    "name": "disconnect",
+    "goType": "ConfigurationClientboundDisconnect"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 3,
+    "name": "finish_configuration",
+    "goType": "ConfigurationClientboundFinishConfiguration"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 4,
+    "name": "keep_alive",
+    "goType": "ConfigurationClientboundKeepAlive"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 5,
+    "name": "ping",
+    "goType": "ConfigurationClientboundPing"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 6,
+    "name": "reset_chat",
+    "goType": "ConfigurationClientboundResetChat"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 7,
+    "name": "registry_data",
+    "goType": "ConfigurationClientboundRegistryData"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 8,
+    "name": "remove_resource_pack",
+    "goType": "ConfigurationClientboundRemoveResourcePack"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 9,
+    "name": "add_resource_pack",
+    "goType": "ConfigurationClientboundAddResourcePack"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 10,
+    "name": "store_cookie",
+    "goType": "ConfigurationClientboundStoreCookie"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 11,
+    "name": "transfer",
+    "goType": "ConfigurationClientboundTransfer"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 12,
+    "name": "feature_flags",
+    "goType": "ConfigurationClientboundFeatureFlags"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 13,
+    "name": "tags",
+    "goType": "ConfigurationClientboundTags"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 14,
+    "name": "select_known_packs",
+    "goType": "ConfigurationClientboundSelectKnownPacks"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 15,
+    "name": "custom_report_details",
+    "goType": "ConfigurationClientboundCustomReportDetails"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 16,
+    "name": "server_links",
+    "goType": "ConfigurationClientboundServerLinks"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 17,
+    "name": "clear_dialog",
+    "goType": "ConfigurationClientboundClearDialog"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 18,
+    "name": "show_dialog",
+    "goType": "ConfigurationClientboundShowDialog"
+  },
+  {
+    "state": "configuration",
+    "direction": "toClient",
+    "id": 19,
+    "name": "code_of_conduct",
+    "goType": "ConfigurationClientboundCodeOfConduct"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 0,
+    "name": "settings",
+    "goType": "ConfigurationServerboundSettings"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 1,
+    "name": "cookie_response",
+    "goType": "ConfigurationServerboundCookieResponse"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 2,
+    "name": "custom_payload",
+    "goType": "ConfigurationServerboundCustomPayload"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 3,
+    "name": "finish_configuration",
+    "goType": "ConfigurationServerboundFinishConfiguration"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 4,
+    "name": "keep_alive",
+    "goType": "ConfigurationServerboundKeepAlive"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 5,
+    "name": "pong",
+    "goType": "ConfigurationServerboundPong"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 6,
+    "name": "resource_pack_receive",
+    "goType": "ConfigurationServerboundResourcePackReceive"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 7,
+    "name": "select_known_packs",
+    "goType": "ConfigurationServerboundSelectKnownPacks"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 8,
+    "name": "custom_click_action",
+    "goType": "ConfigurationServerboundCustomClickAction"
+  },
+  {
+    "state": "configuration",
+    "direction": "toServer",
+    "id": 9,
+    "name": "accept_code_of_conduct",
+    "goType": "ConfigurationServerboundAcceptCodeOfConduct"
+  },
+  {
+    "state": "handshaking",
+    "direction": "toServer",
+    "id": 0,
+    "name": "set_protocol",
+    "goType": "HandshakingServerboundSetProtocol"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "id": 0,
+    "name": "disconnect",
+    "goType": "LoginClientboundDisconnect"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "id": 1,
+    "name": "encryption_begin",
+    "goType": "LoginClientboundEncryptionBegin"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "id": 2,
+    "name": "success",
+    "goType": "LoginClientboundSuccess"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "id": 3,
+    "name": "compress",
+    "goType": "LoginClientboundCompress"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "id": 4,
+    "name": "login_plugin_request",
+    "goType": "LoginClientboundLoginPluginRequest"
+  },
+  {
+    "state": "login",
+    "direction": "toClient",
+    "id": 5,
+    "name": "cookie_request",
+    "goType": "LoginClientboundCookieRequest"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "id": 0,
+    "name": "login_start",
+    "goType": "LoginServerboundLoginStart"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "id": 1,
+    "name": "encryption_begin",
+    "goType": "LoginServerboundEncryptionBegin"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "id": 2,
+    "name": "login_plugin_response",
+    "goType": "LoginServerboundLoginPluginResponse"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "id": 3,
+    "name": "login_acknowledged",
+    "goType": "LoginServerboundLoginAcknowledged"
+  },
+  {
+    "state": "login",
+    "direction": "toServer",
+    "id": 4,
+    "name": "cookie_response",
+    "goType": "LoginServerboundCookieResponse"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 0,
+    "name": "bundle_delimiter",
+    "goType": "PlayClientboundBundleDelimiter"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 1,
+    "name": "spawn_entity",
+    "goType": "PlayClientboundSpawnEntity"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 2,
+    "name": "animation",
+    "goType": "PlayClientboundAnimation"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 3,
+    "name": "statistics",
+    "goType": "PlayClientboundStatistics"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 4,
+    "name": "acknowledge_player_digging",
+    "goType": "PlayClientboundAcknowledgePlayerDigging"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 5,
+    "name": "block_break_animation",
+    "goType": "PlayClientboundBlockBreakAnimation"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 6,
+    "name": "tile_entity_data",
+    "goType": "PlayClientboundTileEntityData"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 7,
+    "name": "block_action",
+    "goType": "PlayClientboundBlockAction"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 8,
+    "name": "block_change",
+    "goType": "PlayClientboundBlockChange"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 9,
+    "name": "boss_bar",
+    "goType": "PlayClientboundBossBar"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 10,
+    "name": "difficulty",
+    "goType": "PlayClientboundDifficulty"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 11,
+    "name": "chunk_batch_finished",
+    "goType": "PlayClientboundChunkBatchFinished"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 12,
+    "name": "chunk_batch_start",
+    "goType": "PlayClientboundChunkBatchStart"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 13,
+    "name": "chunk_biomes",
+    "goType": "PlayClientboundChunkBiomes"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 14,
+    "name": "clear_titles",
+    "goType": "PlayClientboundClearTitles"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 15,
+    "name": "tab_complete",
+    "goType": "PlayClientboundTabComplete"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 16,
+    "name": "declare_commands",
+    "goType": "PlayClientboundDeclareCommands"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 17,
+    "name": "close_window",
+    "goType": "PlayClientboundCloseWindow"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 18,
+    "name": "window_items",
+    "goType": "PlayClientboundWindowItems"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 19,
+    "name": "craft_progress_bar",
+    "goType": "PlayClientboundCraftProgressBar"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 20,
+    "name": "set_slot",
+    "goType": "PlayClientboundSetSlot"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 21,
+    "name": "cookie_request",
+    "goType": "PlayClientboundCookieRequest"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 22,
+    "name": "set_cooldown",
+    "goType": "PlayClientboundSetCooldown"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 23,
+    "name": "chat_suggestions",
+    "goType": "PlayClientboundChatSuggestions"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 24,
+    "name": "custom_payload",
+    "goType": "PlayClientboundCustomPayload"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 25,
+    "name": "damage_event",
+    "goType": "PlayClientboundDamageEvent"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 26,
+    "name": "debug_block_value",
+    "goType": "PlayClientboundDebugBlockValue"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 27,
+    "name": "debug_chunk_value",
+    "goType": "PlayClientboundDebugChunkValue"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 28,
+    "name": "debug_entity_value",
+    "goType": "PlayClientboundDebugEntityValue"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 29,
+    "name": "debug_event",
+    "goType": "PlayClientboundDebugEvent"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 30,
+    "name": "debug_sample",
+    "goType": "PlayClientboundDebugSample"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 31,
+    "name": "hide_message",
+    "goType": "PlayClientboundHideMessage"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 32,
+    "name": "kick_disconnect",
+    "goType": "PlayClientboundKickDisconnect"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 33,
+    "name": "profileless_chat",
+    "goType": "PlayClientboundProfilelessChat"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 34,
+    "name": "entity_status",
+    "goType": "PlayClientboundEntityStatus"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 35,
+    "name": "sync_entity_position",
+    "goType": "PlayClientboundSyncEntityPosition"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 36,
+    "name": "explosion",
+    "goType": "PlayClientboundExplosion"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 37,
+    "name": "unload_chunk",
+    "goType": "PlayClientboundUnloadChunk"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 38,
+    "name": "game_state_change",
+    "goType": "PlayClientboundGameStateChange"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 39,
+    "name": "game_rule_values",
+    "goType": "PlayClientboundGameRuleValues"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 40,
+    "name": "game_test_highlight_pos",
+    "goType": "PlayClientboundGameTestHighlightPos"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 41,
+    "name": "open_horse_window",
+    "goType": "PlayClientboundOpenHorseWindow"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 42,
+    "name": "hurt_animation",
+    "goType": "PlayClientboundHurtAnimation"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 43,
+    "name": "initialize_world_border",
+    "goType": "PlayClientboundInitializeWorldBorder"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 44,
+    "name": "keep_alive",
+    "goType": "PlayClientboundKeepAlive"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 45,
+    "name": "map_chunk",
+    "goType": "PlayClientboundMapChunk"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 46,
+    "name": "world_event",
+    "goType": "PlayClientboundWorldEvent"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 47,
+    "name": "world_particles",
+    "goType": "PlayClientboundWorldParticles"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 48,
+    "name": "update_light",
+    "goType": "PlayClientboundUpdateLight"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 49,
+    "name": "login",
+    "goType": "PlayClientboundLogin"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 50,
+    "name": "low_disk_space_warning",
+    "goType": "PlayClientboundLowDiskSpaceWarning"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 51,
+    "name": "map",
+    "goType": "PlayClientboundMap"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 52,
+    "name": "trade_list",
+    "goType": "PlayClientboundTradeList"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 53,
+    "name": "rel_entity_move",
+    "goType": "PlayClientboundRelEntityMove"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 54,
+    "name": "entity_move_look",
+    "goType": "PlayClientboundEntityMoveLook"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 55,
+    "name": "move_minecart",
+    "goType": "PlayClientboundMoveMinecart"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 56,
+    "name": "entity_look",
+    "goType": "PlayClientboundEntityLook"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 57,
+    "name": "vehicle_move",
+    "goType": "PlayClientboundVehicleMove"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 58,
+    "name": "open_book",
+    "goType": "PlayClientboundOpenBook"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 59,
+    "name": "open_window",
+    "goType": "PlayClientboundOpenWindow"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 60,
+    "name": "open_sign_entity",
+    "goType": "PlayClientboundOpenSignEntity"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 61,
+    "name": "ping",
+    "goType": "PlayClientboundPing"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 62,
+    "name": "ping_response",
+    "goType": "PlayClientboundPingResponse"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 63,
+    "name": "craft_recipe_response",
+    "goType": "PlayClientboundCraftRecipeResponse"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 64,
+    "name": "abilities",
+    "goType": "PlayClientboundAbilities"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 65,
+    "name": "player_chat",
+    "goType": "PlayClientboundPlayerChat"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 66,
+    "name": "end_combat_event",
+    "goType": "PlayClientboundEndCombatEvent"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 67,
+    "name": "enter_combat_event",
+    "goType": "PlayClientboundEnterCombatEvent"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 68,
+    "name": "death_combat_event",
+    "goType": "PlayClientboundDeathCombatEvent"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 69,
+    "name": "player_remove",
+    "goType": "PlayClientboundPlayerRemove"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 70,
+    "name": "player_info",
+    "goType": "PlayClientboundPlayerInfo"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 71,
+    "name": "face_player",
+    "goType": "PlayClientboundFacePlayer"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 72,
+    "name": "position",
+    "goType": "PlayClientboundPosition"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 73,
+    "name": "player_rotation",
+    "goType": "PlayClientboundPlayerRotation"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 74,
+    "name": "recipe_book_add",
+    "goType": "PlayClientboundRecipeBookAdd"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 75,
+    "name": "recipe_book_remove",
+    "goType": "PlayClientboundRecipeBookRemove"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 76,
+    "name": "recipe_book_settings",
+    "goType": "PlayClientboundRecipeBookSettings"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 77,
+    "name": "entity_destroy",
+    "goType": "PlayClientboundEntityDestroy"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 78,
+    "name": "remove_entity_effect",
+    "goType": "PlayClientboundRemoveEntityEffect"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 79,
+    "name": "reset_score",
+    "goType": "PlayClientboundResetScore"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 80,
+    "name": "remove_resource_pack",
+    "goType": "PlayClientboundRemoveResourcePack"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 81,
+    "name": "add_resource_pack",
+    "goType": "PlayClientboundAddResourcePack"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 82,
+    "name": "respawn",
+    "goType": "PlayClientboundRespawn"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 83,
+    "name": "entity_head_rotation",
+    "goType": "PlayClientboundEntityHeadRotation"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 84,
+    "name": "multi_block_change",
+    "goType": "PlayClientboundMultiBlockChange"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 85,
+    "name": "select_advancement_tab",
+    "goType": "PlayClientboundSelectAdvancementTab"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 86,
+    "name": "server_data",
+    "goType": "PlayClientboundServerData"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 87,
+    "name": "action_bar",
+    "goType": "PlayClientboundActionBar"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 88,
+    "name": "world_border_center",
+    "goType": "PlayClientboundWorldBorderCenter"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 89,
+    "name": "world_border_lerp_size",
+    "goType": "PlayClientboundWorldBorderLerpSize"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 90,
+    "name": "world_border_size",
+    "goType": "PlayClientboundWorldBorderSize"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 91,
+    "name": "world_border_warning_delay",
+    "goType": "PlayClientboundWorldBorderWarningDelay"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 92,
+    "name": "world_border_warning_reach",
+    "goType": "PlayClientboundWorldBorderWarningReach"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 93,
+    "name": "camera",
+    "goType": "PlayClientboundCamera"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 94,
+    "name": "update_view_position",
+    "goType": "PlayClientboundUpdateViewPosition"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 95,
+    "name": "update_view_distance",
+    "goType": "PlayClientboundUpdateViewDistance"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 96,
+    "name": "set_cursor_item",
+    "goType": "PlayClientboundSetCursorItem"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 97,
+    "name": "spawn_position",
+    "goType": "PlayClientboundSpawnPosition"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 98,
+    "name": "scoreboard_display_objective",
+    "goType": "PlayClientboundScoreboardDisplayObjective"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 99,
+    "name": "entity_metadata",
+    "goType": "PlayClientboundEntityMetadata"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 100,
+    "name": "attach_entity",
+    "goType": "PlayClientboundAttachEntity"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 101,
+    "name": "entity_velocity",
+    "goType": "PlayClientboundEntityVelocity"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 102,
+    "name": "entity_equipment",
+    "goType": "PlayClientboundEntityEquipment"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 103,
+    "name": "experience",
+    "goType": "PlayClientboundExperience"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 104,
+    "name": "update_health",
+    "goType": "PlayClientboundUpdateHealth"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 105,
+    "name": "held_item_slot",
+    "goType": "PlayClientboundHeldItemSlot"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 106,
+    "name": "scoreboard_objective",
+    "goType": "PlayClientboundScoreboardObjective"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 107,
+    "name": "set_passengers",
+    "goType": "PlayClientboundSetPassengers"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 108,
+    "name": "set_player_inventory",
+    "goType": "PlayClientboundSetPlayerInventory"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 109,
+    "name": "teams",
+    "goType": "PlayClientboundTeams"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 110,
+    "name": "scoreboard_score",
+    "goType": "PlayClientboundScoreboardScore"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 111,
+    "name": "simulation_distance",
+    "goType": "PlayClientboundSimulationDistance"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 112,
+    "name": "set_title_subtitle",
+    "goType": "PlayClientboundSetTitleSubtitle"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 113,
+    "name": "update_time",
+    "goType": "PlayClientboundUpdateTime"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 114,
+    "name": "set_title_text",
+    "goType": "PlayClientboundSetTitleText"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 115,
+    "name": "set_title_time",
+    "goType": "PlayClientboundSetTitleTime"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 116,
+    "name": "entity_sound_effect",
+    "goType": "PlayClientboundEntitySoundEffect"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 117,
+    "name": "sound_effect",
+    "goType": "PlayClientboundSoundEffect"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 118,
+    "name": "start_configuration",
+    "goType": "PlayClientboundStartConfiguration"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 119,
+    "name": "stop_sound",
+    "goType": "PlayClientboundStopSound"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 120,
+    "name": "store_cookie",
+    "goType": "PlayClientboundStoreCookie"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 121,
+    "name": "system_chat",
+    "goType": "PlayClientboundSystemChat"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 122,
+    "name": "playerlist_header",
+    "goType": "PlayClientboundPlayerlistHeader"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 123,
+    "name": "nbt_query_response",
+    "goType": "PlayClientboundNBTQueryResponse"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 124,
+    "name": "collect",
+    "goType": "PlayClientboundCollect"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 125,
+    "name": "entity_teleport",
+    "goType": "PlayClientboundEntityTeleport"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 126,
+    "name": "test_instance_block_status",
+    "goType": "PlayClientboundTestInstanceBlockStatus"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 127,
+    "name": "set_ticking_state",
+    "goType": "PlayClientboundSetTickingState"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 128,
+    "name": "step_tick",
+    "goType": "PlayClientboundStepTick"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 129,
+    "name": "transfer",
+    "goType": "PlayClientboundTransfer"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 130,
+    "name": "advancements",
+    "goType": "PlayClientboundAdvancements"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 131,
+    "name": "entity_update_attributes",
+    "goType": "PlayClientboundEntityUpdateAttributes"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 132,
+    "name": "entity_effect",
+    "goType": "PlayClientboundEntityEffect"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 133,
+    "name": "declare_recipes",
+    "goType": "PlayClientboundDeclareRecipes"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 134,
+    "name": "tags",
+    "goType": "PlayClientboundTags"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 135,
+    "name": "set_projectile_power",
+    "goType": "PlayClientboundSetProjectilePower"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 136,
+    "name": "custom_report_details",
+    "goType": "PlayClientboundCustomReportDetails"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 137,
+    "name": "server_links",
+    "goType": "PlayClientboundServerLinks"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 138,
+    "name": "tracked_waypoint",
+    "goType": "PlayClientboundTrackedWaypoint"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 139,
+    "name": "clear_dialog",
+    "goType": "PlayClientboundClearDialog"
+  },
+  {
+    "state": "play",
+    "direction": "toClient",
+    "id": 140,
+    "name": "show_dialog",
+    "goType": "PlayClientboundShowDialog"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 0,
+    "name": "teleport_confirm",
+    "goType": "PlayServerboundTeleportConfirm"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 1,
+    "name": "attack",
+    "goType": "PlayServerboundAttack"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 2,
+    "name": "query_block_nbt",
+    "goType": "PlayServerboundQueryBlockNBT"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 3,
+    "name": "select_bundle_item",
+    "goType": "PlayServerboundSelectBundleItem"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 4,
+    "name": "set_difficulty",
+    "goType": "PlayServerboundSetDifficulty"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 5,
+    "name": "change_gamemode",
+    "goType": "PlayServerboundChangeGamemode"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 6,
+    "name": "message_acknowledgement",
+    "goType": "PlayServerboundMessageAcknowledgement"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 7,
+    "name": "chat_command",
+    "goType": "PlayServerboundChatCommand"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 8,
+    "name": "chat_command_signed",
+    "goType": "PlayServerboundChatCommandSigned"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 9,
+    "name": "chat_message",
+    "goType": "PlayServerboundChatMessage"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 10,
+    "name": "chat_session_update",
+    "goType": "PlayServerboundChatSessionUpdate"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 11,
+    "name": "chunk_batch_received",
+    "goType": "PlayServerboundChunkBatchReceived"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 12,
+    "name": "client_command",
+    "goType": "PlayServerboundClientCommand"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 13,
+    "name": "tick_end",
+    "goType": "PlayServerboundTickEnd"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 14,
+    "name": "settings",
+    "goType": "PlayServerboundSettings"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 15,
+    "name": "tab_complete",
+    "goType": "PlayServerboundTabComplete"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 16,
+    "name": "configuration_acknowledged",
+    "goType": "PlayServerboundConfigurationAcknowledged"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 17,
+    "name": "enchant_item",
+    "goType": "PlayServerboundEnchantItem"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 18,
+    "name": "window_click",
+    "goType": "PlayServerboundWindowClick"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 19,
+    "name": "close_window",
+    "goType": "PlayServerboundCloseWindow"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 20,
+    "name": "set_slot_state",
+    "goType": "PlayServerboundSetSlotState"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 21,
+    "name": "cookie_response",
+    "goType": "PlayServerboundCookieResponse"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 22,
+    "name": "custom_payload",
+    "goType": "PlayServerboundCustomPayload"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 23,
+    "name": "debug_subscription_request",
+    "goType": "PlayServerboundDebugSubscriptionRequest"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 24,
+    "name": "edit_book",
+    "goType": "PlayServerboundEditBook"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 25,
+    "name": "query_entity_nbt",
+    "goType": "PlayServerboundQueryEntityNBT"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 26,
+    "name": "use_entity",
+    "goType": "PlayServerboundUseEntity"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 27,
+    "name": "generate_structure",
+    "goType": "PlayServerboundGenerateStructure"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 28,
+    "name": "keep_alive",
+    "goType": "PlayServerboundKeepAlive"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 29,
+    "name": "lock_difficulty",
+    "goType": "PlayServerboundLockDifficulty"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 30,
+    "name": "position",
+    "goType": "PlayServerboundPosition"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 31,
+    "name": "position_look",
+    "goType": "PlayServerboundPositionLook"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 32,
+    "name": "look",
+    "goType": "PlayServerboundLook"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 33,
+    "name": "flying",
+    "goType": "PlayServerboundFlying"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 34,
+    "name": "vehicle_move",
+    "goType": "PlayServerboundVehicleMove"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 35,
+    "name": "steer_boat",
+    "goType": "PlayServerboundSteerBoat"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 36,
+    "name": "pick_item_from_block",
+    "goType": "PlayServerboundPickItemFromBlock"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 37,
+    "name": "pick_item_from_entity",
+    "goType": "PlayServerboundPickItemFromEntity"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 38,
+    "name": "ping_request",
+    "goType": "PlayServerboundPingRequest"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 39,
+    "name": "craft_recipe_request",
+    "goType": "PlayServerboundCraftRecipeRequest"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 40,
+    "name": "abilities",
+    "goType": "PlayServerboundAbilities"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 41,
+    "name": "block_dig",
+    "goType": "PlayServerboundBlockDig"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 42,
+    "name": "entity_action",
+    "goType": "PlayServerboundEntityAction"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 43,
+    "name": "player_input",
+    "goType": "PlayServerboundPlayerInput"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 44,
+    "name": "player_loaded",
+    "goType": "PlayServerboundPlayerLoaded"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 45,
+    "name": "pong",
+    "goType": "PlayServerboundPong"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 46,
+    "name": "recipe_book",
+    "goType": "PlayServerboundRecipeBook"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 47,
+    "name": "displayed_recipe",
+    "goType": "PlayServerboundDisplayedRecipe"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 48,
+    "name": "name_item",
+    "goType": "PlayServerboundNameItem"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 49,
+    "name": "resource_pack_receive",
+    "goType": "PlayServerboundResourcePackReceive"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 50,
+    "name": "advancement_tab",
+    "goType": "PlayServerboundAdvancementTab"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 51,
+    "name": "select_trade",
+    "goType": "PlayServerboundSelectTrade"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 52,
+    "name": "set_beacon_effect",
+    "goType": "PlayServerboundSetBeaconEffect"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 53,
+    "name": "held_item_slot",
+    "goType": "PlayServerboundHeldItemSlot"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 54,
+    "name": "update_command_block",
+    "goType": "PlayServerboundUpdateCommandBlock"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 55,
+    "name": "update_command_block_minecart",
+    "goType": "PlayServerboundUpdateCommandBlockMinecart"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 56,
+    "name": "set_creative_slot",
+    "goType": "PlayServerboundSetCreativeSlot"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 57,
+    "name": "set_game_rule",
+    "goType": "PlayServerboundSetGameRule"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 58,
+    "name": "update_jigsaw_block",
+    "goType": "PlayServerboundUpdateJigsawBlock"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 59,
+    "name": "update_structure_block",
+    "goType": "PlayServerboundUpdateStructureBlock"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 60,
+    "name": "set_test_block",
+    "goType": "PlayServerboundSetTestBlock"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 61,
+    "name": "update_sign",
+    "goType": "PlayServerboundUpdateSign"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 62,
+    "name": "spectate_entity",
+    "goType": "PlayServerboundSpectateEntity"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 63,
+    "name": "arm_animation",
+    "goType": "PlayServerboundArmAnimation"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 64,
+    "name": "spectate",
+    "goType": "PlayServerboundSpectate"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 65,
+    "name": "test_instance_block_action",
+    "goType": "PlayServerboundTestInstanceBlockAction"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 66,
+    "name": "block_place",
+    "goType": "PlayServerboundBlockPlace"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 67,
+    "name": "use_item",
+    "goType": "PlayServerboundUseItem"
+  },
+  {
+    "state": "play",
+    "direction": "toServer",
+    "id": 68,
+    "name": "custom_click_action",
+    "goType": "PlayServerboundCustomClickAction"
+  },
+  {
+    "state": "status",
+    "direction": "toClient",
+    "id": 0,
+    "name": "server_info",
+    "goType": "StatusClientboundServerInfo"
+  },
+  {
+    "state": "status",
+    "direction": "toClient",
+    "id": 1,
+    "name": "ping",
+    "goType": "StatusClientboundPing"
+  },
+  {
+    "state": "status",
+    "direction": "toServer",
+    "id": 0,
+    "name": "ping_start",
+    "goType": "StatusServerboundPingStart"
+  },
+  {
+    "state": "status",
+    "direction": "toServer",
+    "id": 1,
+    "name": "ping",
+    "goType": "StatusServerboundPing"
+  }
+]
