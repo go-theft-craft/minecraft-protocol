@@ -106,7 +106,7 @@ Depends on the protocol 775 datasets from P2.
 Server and `headless-minecraft` migration comes before protocol 775.
 
 - Migrate `server` to the shared Java 1.8 packages.
-- Migrate `proxy` imports while keeping legacy internal.
+- Migrate `proxy` imports while keeping the legacy protocol internal.
 - Connect `headless-minecraft` to the current Java profile.
 
 ## P5: stable contracts
