@@ -35,6 +35,8 @@ var (
 	ErrInvalidMetadata = errors.New("invalid entity metadata")
 	// ErrDuplicateMetadataIndex reports a repeated entity metadata index.
 	ErrDuplicateMetadataIndex = errors.New("duplicate entity metadata index")
+	// ErrInvalidSharedSecret reports a session key of the wrong length.
+	ErrInvalidSharedSecret = errors.New("invalid shared secret")
 	// ErrWrongBufferMode reports a read from a write buffer or a write to a read buffer.
 	ErrWrongBufferMode = errors.New("wrong buffer mode")
 	// ErrInvalidCompression reports a malformed compression envelope or an
