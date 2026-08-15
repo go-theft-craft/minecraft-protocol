@@ -22,6 +22,8 @@ type Buffer struct {
 	offset int
 	limits protocol.Limits
 	mode   bufferMode
+	// depth counts nested decodes in progress. See depth.go.
+	depth int
 }
 
 // NewReadBuffer returns a bounded buffer that owns payload.
