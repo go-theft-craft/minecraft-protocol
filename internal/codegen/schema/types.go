@@ -55,6 +55,34 @@ type DropObject struct {
 	Metadata int `json:"metadata"`
 }
 
+// UnmarshalJSON accepts both forms a block drop takes upstream.
+//
+// Java 1.8 wraps every drop in an object carrying optional counts, so the
+// entry is {"drop": ...}. Java 26.1 dropped the wrapper and lists bare item
+// IDs. Decoding is strict, so a version's own shape has to be understood here
+// rather than tolerated by ignoring what does not fit.
+func (d *RawDrop) UnmarshalJSON(raw []byte) error {
+	var bare json.Number
+	if err := json.Unmarshal(raw, &bare); err == nil {
+		d.Drop = append([]byte(nil), raw...)
+		d.MinCount, d.MaxCount = nil, nil
+
+		return nil
+	}
+
+	// The alias avoids recursing into this method.
+	type wrapped RawDrop
+	var object wrapped
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&object); err != nil {
+		return fmt.Errorf("drop must be an item ID or an object: %w", err)
+	}
+	*d = RawDrop(object)
+
+	return nil
+}
+
 // Parse converts a raw drop to its scalar fields without applying defaults.
 func (d *RawDrop) Parse() (id, metadata int, err error) {
 	var plainID int

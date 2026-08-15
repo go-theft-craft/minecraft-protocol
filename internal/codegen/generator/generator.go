@@ -633,13 +633,8 @@ func loadEntities(raw []byte) (any, error) {
 	result := make([]entityTmpl, len(entities))
 	seen := make(map[string]struct{}, len(entities))
 	for index, entity := range entities {
-		var entityType string
-		switch entity.Type {
-		case "mob":
-			entityType = "data.EntityTypeMob"
-		case "object":
-			entityType = "data.EntityTypeObject"
-		default:
+		entityType, known := entityTypeConstants[entity.Type]
+		if !known {
 			return nil, fmt.Errorf("entity %d has unsupported type %q", entity.ID, entity.Type)
 		}
 		key := fmt.Sprintf("%s/%d", entity.Type, entity.ID)
@@ -1386,4 +1381,25 @@ func fixAbbreviations(value string) string {
 		result.WriteByte(value[index])
 	}
 	return result.String()
+}
+
+// entityTypeConstants maps upstream's entity classification to the Go constant
+// that names it. It is a closed set on purpose: a classification nobody has
+// seen fails generation rather than being carried through as free text.
+//
+// Java 1.8 has two values, which name the ID namespace an entity came from.
+// Java 26.1 replaced that with a classification of the entity itself and has
+// ten. Both are listed here, because one generator serves both.
+var entityTypeConstants = map[string]string{
+	"mob":            "data.EntityTypeMob",
+	"object":         "data.EntityTypeObject",
+	"ambient":        "data.EntityTypeAmbient",
+	"animal":         "data.EntityTypeAnimal",
+	"hostile":        "data.EntityTypeHostile",
+	"living":         "data.EntityTypeLiving",
+	"other":          "data.EntityTypeOther",
+	"passive":        "data.EntityTypePassive",
+	"player":         "data.EntityTypePlayer",
+	"projectile":     "data.EntityTypeProjectile",
+	"water_creature": "data.EntityTypeWaterCreature",
 }

@@ -14,6 +14,30 @@ const (
 	EntityTypeMob EntityType = "mob"
 	// EntityTypeObject identifies entities from the object ID namespace.
 	EntityTypeObject EntityType = "object"
+
+	// EntityTypeAmbient classifies an ambient creature.
+	//
+	// This and the classifications below appear from Java 26.1 onward, where
+	// the two ID namespaces of 1.8 gave way to a classification of the entity
+	// itself. They are listed rather than accepted as free text, so a
+	// classification nobody has seen still fails generation.
+	EntityTypeAmbient EntityType = "ambient"
+	// EntityTypeAnimal classifies a farm or wild animal.
+	EntityTypeAnimal EntityType = "animal"
+	// EntityTypeHostile classifies an entity that attacks unprovoked.
+	EntityTypeHostile EntityType = "hostile"
+	// EntityTypeLiving classifies a living entity with no narrower category.
+	EntityTypeLiving EntityType = "living"
+	// EntityTypeOther classifies an entity that is none of the rest.
+	EntityTypeOther EntityType = "other"
+	// EntityTypePassive classifies an entity that does not attack.
+	EntityTypePassive EntityType = "passive"
+	// EntityTypePlayer classifies a player entity.
+	EntityTypePlayer EntityType = "player"
+	// EntityTypeProjectile classifies a thrown or fired entity.
+	EntityTypeProjectile EntityType = "projectile"
+	// EntityTypeWaterCreature classifies an aquatic creature.
+	EntityTypeWaterCreature EntityType = "water_creature"
 )
 
 // Entity describes a Minecraft entity.

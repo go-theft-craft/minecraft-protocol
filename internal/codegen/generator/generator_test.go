@@ -1025,3 +1025,110 @@ func TestStrictDecodingAcceptsBothVersionsShapes(t *testing.T) {
 		})
 	}
 }
+
+// TestBothPinnedTreesDecode loads every dataset the shared loaders cover from
+// both pinned trees.
+//
+// It is the check that strict decoding is a working rule rather than a claim.
+// Each loader is the real one, and each tree is the real pinned data, so a
+// shape difference between the two versions fails here rather than at the point
+// someone tries to generate the second version.
+func TestBothPinnedTreesDecode(t *testing.T) {
+	loaders := map[string]func([]byte) (any, error){
+		"blocks":       loadBlocks,
+		"items":        loadItems,
+		"entities":     loadEntities,
+		"biomes":       loadBiomes,
+		"effects":      loadEffects,
+		"enchantments": loadEnchantments,
+		"foods":        loadFoods,
+		"particles":    loadParticles,
+		"instruments":  loadInstruments,
+		"attributes":   loadAttributes,
+		"windows":      loadWindows,
+	}
+
+	trees := map[string]string{
+		"java 1.8":  sourceDir,
+		"java 26.1": "../../../source/java/26.1/data",
+	}
+
+	for tree, base := range trees {
+		t.Run(tree, func(t *testing.T) {
+			for name, load := range loaders {
+				raw, err := os.ReadFile(filepath.Join(base, name+".json"))
+				if err != nil {
+					t.Errorf("%s: %v", name, err)
+
+					continue
+				}
+				if _, err := load(raw); err != nil {
+					t.Errorf("%s: %v", name, err)
+				}
+			}
+		})
+	}
+}
+
+// TestBlockDropsAcceptBothUpstreamShapes pins the difference directly. Java 1.8
+// wraps a drop in an object carrying optional counts; Java 26.1 lists bare item
+// IDs.
+func TestBlockDropsAcceptBothUpstreamShapes(t *testing.T) {
+	cases := []struct {
+		name         string
+		raw          string
+		wantID       int
+		wantMetadata int
+	}{
+		{
+			name:   "a 26.1 bare item ID",
+			raw:    `[{"id":1,"name":"stone","displayName":"Stone","drops":[35]}]`,
+			wantID: 35,
+		},
+		{
+			name:   "a 1.8 wrapped ID",
+			raw:    `[{"id":1,"name":"stone","displayName":"Stone","drops":[{"drop":4}]}]`,
+			wantID: 4,
+		},
+		{
+			name:         "a 1.8 wrapped object with metadata",
+			raw:          `[{"id":1,"name":"stone","displayName":"Stone","drops":[{"drop":{"id":3,"metadata":2}}]}]`,
+			wantID:       3,
+			wantMetadata: 2,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			loaded, err := loadBlocks([]byte(test.raw))
+			if err != nil {
+				t.Fatalf("loadBlocks: %v", err)
+			}
+			blocks := loaded.([]blockTmpl)
+			if len(blocks) != 1 || len(blocks[0].Drops) != 1 {
+				t.Fatalf("blocks = %+v", blocks)
+			}
+			drop := blocks[0].Drops[0]
+			if drop.ID != test.wantID || drop.Metadata != test.wantMetadata {
+				t.Errorf("drop = {ID:%d Metadata:%d}, want {ID:%d Metadata:%d}",
+					drop.ID, drop.Metadata, test.wantID, test.wantMetadata)
+			}
+		})
+	}
+}
+
+// TestEntityTypesAreAClosedSet keeps the 26.1 classification from becoming
+// free text. A value nobody has seen still fails.
+func TestEntityTypesAreAClosedSet(t *testing.T) {
+	if _, err := loadEntities([]byte(`[{"id":0,"name":"x","displayName":"X","type":"other"}]`)); err != nil {
+		t.Errorf(`loadEntities rejected "other", which Java 26.1 uses: %v`, err)
+	}
+
+	_, err := loadEntities([]byte(`[{"id":0,"name":"x","displayName":"X","type":"unheard_of"}]`))
+	if err == nil {
+		t.Fatal("loadEntities accepted a classification nothing declares")
+	}
+	if !strings.Contains(err.Error(), "unheard_of") {
+		t.Errorf("error = %q, want it to name the type", err)
+	}
+}
