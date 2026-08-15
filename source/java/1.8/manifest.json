@@ -3,6 +3,7 @@
   "edition": "java",
   "targetMinecraftVersion": "1.8.9",
   "sourceMinecraftVersion": "1.8.8",
+  "sourceVersionDirectory": "1.8",
   "protocol": 47,
   "sourceRepository": "https://github.com/PrismarineJS/minecraft-data",
   "sourceRevision": "3f0dd2ac525607b21be7cd6ddd003fa9057a72d2",

@@ -17,8 +17,37 @@ revision. Its `README.md` declared `MIT` and noted that some data was extracted
 from other sources, whose terms might require a different license. See the
 [pinned upstream license section](https://github.com/PrismarineJS/minecraft-data/blob/3f0dd2ac525607b21be7cd6ddd003fa9057a72d2/README.md#license).
 
-The standard MIT license text follows. The pinned upstream repository did not
-provide a copyright notice or copyright-holder line.
+### Java 26.1
+
+The files in `source/java/26.1` come from the same repository at a later
+revision:
+
+- Revision: `8a80816cbfb3fe2b609f2cde4e57796c8033af61`
+- Upstream path: `data/pc/26.1`, plus the aliased directories below
+- Local path: `source/java/26.1`
+- License identifier declared upstream: `MIT`
+
+All 25 datasets match that revision byte for byte; `manifest.json` records each
+one's upstream path and checksum. Upstream resolves six of them from older
+directories rather than from `26.1`, which is upstream's decision and not a
+fetch error:
+
+| Dataset | Upstream directory |
+| --- | --- |
+| `blockLoot` | `data/pc/1.20` |
+| `entityLoot` | `data/pc/1.20` |
+| `commands` | `data/pc/1.20.3` |
+| `mapIcons` | `data/pc/1.20.2` |
+| `windows` | `data/pc/1.16.1` |
+| `proto` | `data/pc/latest` |
+
+Anything reading `windows` is reading a nine-year-old window layout. Run
+`mcproto data validate --source source/java/26.1 --format json` to see the
+alias flags directly.
+
+The standard MIT license text follows and covers both trees. The pinned
+upstream repository did not provide a copyright notice or copyright-holder
+line.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

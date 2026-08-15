@@ -171,7 +171,8 @@ func TestAcceptCompletesAnOnlineLogin(t *testing.T) {
 	verifier := onlineVerifier(t)
 	results := negotiate(t, client)
 
-	acceptor := newAcceptor(t, acceptorKey(t),
+	acceptor := newAcceptor(
+		t, acceptorKey(t),
 		login.WithVerifier(verifier),
 		login.WithServerID("gtc"),
 	)
@@ -223,7 +224,8 @@ func TestAcceptHashesTheServerID(t *testing.T) {
 		verifier := onlineVerifier(t)
 		results := negotiate(t, client)
 
-		acceptor := newAcceptor(t, acceptorKey(t),
+		acceptor := newAcceptor(
+			t, acceptorKey(t),
 			login.WithVerifier(verifier),
 			login.WithServerID(serverID),
 		)

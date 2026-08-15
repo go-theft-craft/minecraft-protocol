@@ -56,6 +56,7 @@ func valid() (map[string]any, map[string]string) {
 		"edition":                "java",
 		"targetMinecraftVersion": "26.1",
 		"sourceMinecraftVersion": "26.1",
+		"sourceVersionDirectory": "26.1",
 		"protocol":               775,
 		"sourceRepository":       "https://github.com/PrismarineJS/minecraft-data",
 		"sourceRevision":         "8a80816cbfb3fe2b609f2cde4e57796c8033af61",

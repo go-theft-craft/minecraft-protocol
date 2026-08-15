@@ -1,0 +1,188 @@
+{
+  "manifestVersion": 2,
+  "edition": "java",
+  "targetMinecraftVersion": "26.1",
+  "sourceMinecraftVersion": "26.1",
+  "sourceVersionDirectory": "26.1",
+  "protocol": 775,
+  "sourceRepository": "https://github.com/PrismarineJS/minecraft-data",
+  "sourceRevision": "8a80816cbfb3fe2b609f2cde4e57796c8033af61",
+  "license": "MIT",
+  "datasets": [
+    {
+      "name": "attributes",
+      "file": "data/attributes.json",
+      "sourcePath": "data/pc/26.1/attributes.json",
+      "mediaType": "application/json",
+      "sha256": "f049dc5d1890312c7da6c9b9d48b6ba9549f8d10839bbbf931d084d4fa4a9f2d"
+    },
+    {
+      "name": "biomes",
+      "file": "data/biomes.json",
+      "sourcePath": "data/pc/26.1/biomes.json",
+      "mediaType": "application/json",
+      "sha256": "c6595f644cd605f720fce3046c531b3e4a41761c27c2aec362f796e5074f78f3"
+    },
+    {
+      "name": "blockCollisionShapes",
+      "file": "data/blockCollisionShapes.json",
+      "sourcePath": "data/pc/26.1/blockCollisionShapes.json",
+      "mediaType": "application/json",
+      "sha256": "cf43f91636ace49e6a4ead1e96b1b9246291294949fa052fe14fb5ad022393bf"
+    },
+    {
+      "name": "blockLoot",
+      "file": "data/blockLoot.json",
+      "sourcePath": "data/pc/1.20/blockLoot.json",
+      "mediaType": "application/json",
+      "sha256": "db0ae7e8997a3daf9f909afca0f3ae9560dec79222eefc562e08960fc7532a41"
+    },
+    {
+      "name": "blocks",
+      "file": "data/blocks.json",
+      "sourcePath": "data/pc/26.1/blocks.json",
+      "mediaType": "application/json",
+      "sha256": "573e172619f3c1ca64e15d07799ab646e1fd9ad19d759d9ceca65ac4fc7440a9"
+    },
+    {
+      "name": "commands",
+      "file": "data/commands.json",
+      "sourcePath": "data/pc/1.20.3/commands.json",
+      "mediaType": "application/json",
+      "sha256": "25891e2997a2a824488b0cb7efcb8a885acca3a94b96769aa6f628fe87dd1340"
+    },
+    {
+      "name": "effects",
+      "file": "data/effects.json",
+      "sourcePath": "data/pc/26.1/effects.json",
+      "mediaType": "application/json",
+      "sha256": "4b9af382491bd06aedc5c9ad33ee5f3a57d47aa5b021e83292ab584efedc8e8c"
+    },
+    {
+      "name": "enchantments",
+      "file": "data/enchantments.json",
+      "sourcePath": "data/pc/26.1/enchantments.json",
+      "mediaType": "application/json",
+      "sha256": "55b763d6ba10520f35139d4ef5072813539164496ab19985309b611caf86ef17"
+    },
+    {
+      "name": "entities",
+      "file": "data/entities.json",
+      "sourcePath": "data/pc/26.1/entities.json",
+      "mediaType": "application/json",
+      "sha256": "e65d88a15fac5fc090cb2555c8cddaa80d9daf8c554d252680cec60a1d6eefc3"
+    },
+    {
+      "name": "entityLoot",
+      "file": "data/entityLoot.json",
+      "sourcePath": "data/pc/1.20/entityLoot.json",
+      "mediaType": "application/json",
+      "sha256": "d97e64a4a5f51ddfd9d91d3be3d44a321515dd9ca25858cbf2265be0e980704f"
+    },
+    {
+      "name": "foods",
+      "file": "data/foods.json",
+      "sourcePath": "data/pc/26.1/foods.json",
+      "mediaType": "application/json",
+      "sha256": "aa4c6b200bec65563fb3759b4c2830a35fcd40d281bf967d257f661042511a30"
+    },
+    {
+      "name": "instruments",
+      "file": "data/instruments.json",
+      "sourcePath": "data/pc/26.1/instruments.json",
+      "mediaType": "application/json",
+      "sha256": "f745825f467d804ae66592c4db99e51ab1f9b64a2f710b9d33524d3dd74b5824"
+    },
+    {
+      "name": "items",
+      "file": "data/items.json",
+      "sourcePath": "data/pc/26.1/items.json",
+      "mediaType": "application/json",
+      "sha256": "0d085dbf8a6fa129b94f696b77286d65ce7b04476eab398492558ab03cc1c45e"
+    },
+    {
+      "name": "language",
+      "file": "data/language.json",
+      "sourcePath": "data/pc/26.1/language.json",
+      "mediaType": "application/json",
+      "sha256": "5610735ebf198874e636e99d8f9449df94ea62b518412f5c44dde2c6b082512a"
+    },
+    {
+      "name": "loginPacket",
+      "file": "data/loginPacket.json",
+      "sourcePath": "data/pc/26.1/loginPacket.json",
+      "mediaType": "application/json",
+      "sha256": "0c314bd063cfe41c783db0490f082508368e678267f336cf38cc07f42481523f"
+    },
+    {
+      "name": "mapIcons",
+      "file": "data/mapIcons.json",
+      "sourcePath": "data/pc/1.20.2/mapIcons.json",
+      "mediaType": "application/json",
+      "sha256": "2ce8414995cbba827e00a6c391e5fb5e85316899b4a647ee05cf6b7aa465c415"
+    },
+    {
+      "name": "materials",
+      "file": "data/materials.json",
+      "sourcePath": "data/pc/26.1/materials.json",
+      "mediaType": "application/json",
+      "sha256": "06b01c6900eb839afb7f20ccb4dab229af0729b2d00231daa39591b5bc3cc677"
+    },
+    {
+      "name": "particles",
+      "file": "data/particles.json",
+      "sourcePath": "data/pc/26.1/particles.json",
+      "mediaType": "application/json",
+      "sha256": "116d05a0bf57f2c0f7837bdd2600e4974a4f816f4c417aa2617863423ff54f44"
+    },
+    {
+      "name": "proto",
+      "file": "data/proto.yml",
+      "sourcePath": "data/pc/latest/proto.yml",
+      "mediaType": "application/yaml",
+      "sha256": "8eb8dc22b45b7068e9f63f6dc5bdda526d76afb74732e7788ab92fefef9be9f5"
+    },
+    {
+      "name": "protocol",
+      "file": "data/protocol.json",
+      "sourcePath": "data/pc/26.1/protocol.json",
+      "mediaType": "application/json",
+      "sha256": "c9daf09fbedf465516b4c08c70d374a13ec1c369df70bf945b1817bb181b68fc"
+    },
+    {
+      "name": "recipes",
+      "file": "data/recipes.json",
+      "sourcePath": "data/pc/26.1/recipes.json",
+      "mediaType": "application/json",
+      "sha256": "3af5e2bf3f5a6cfe5d9fed34b33332f45bdfadd3af859cc71edfe7b72742dd54"
+    },
+    {
+      "name": "sounds",
+      "file": "data/sounds.json",
+      "sourcePath": "data/pc/26.1/sounds.json",
+      "mediaType": "application/json",
+      "sha256": "38157f48d0068d83e8389e701b8e27a75081d32086499e8c4ecc6d7710ea51d9"
+    },
+    {
+      "name": "tints",
+      "file": "data/tints.json",
+      "sourcePath": "data/pc/26.1/tints.json",
+      "mediaType": "application/json",
+      "sha256": "c95147068a03be32fde9851600e35787598d5916c4570380eac89889923fddac"
+    },
+    {
+      "name": "version",
+      "file": "data/version.json",
+      "sourcePath": "data/pc/26.1/version.json",
+      "mediaType": "application/json",
+      "sha256": "cced5b9e15eaa84c15b229fe7d861894dc29ec21210a03ff3a1ba4da606dee10"
+    },
+    {
+      "name": "windows",
+      "file": "data/windows.json",
+      "sourcePath": "data/pc/1.16.1/windows.json",
+      "mediaType": "application/json",
+      "sha256": "9b5eaad2c51089a2cefd42ac8f5342db9c64e7486fb1bc7ae99e65d29e3d5e14"
+    }
+  ]
+}

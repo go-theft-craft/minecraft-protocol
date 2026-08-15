@@ -79,6 +79,21 @@ tasks:
     cmds:
       - go build ./...
 
+  data:fetch:v26_1:
+    desc: Re-fetch the pinned PrismarineJS Java 26.1 data tree
+    cmds:
+      - >-
+        go run ./cmd/mcproto data fetch
+        --edition java --version 26.1 --protocol 775
+        --revision 8a80816cbfb3fe2b609f2cde4e57796c8033af61
+        --output ./source/java/26.1
+
+  data:validate:
+    desc: Check every pinned source tree against its own manifest
+    cmds:
+      - go run ./cmd/mcproto data validate --source ./source/java/1.8
+      - go run ./cmd/mcproto data validate --source ./source/java/26.1
+
   generate:
     desc: Generate the Java 1.8 game-data package
     cmds:
@@ -92,6 +107,7 @@ tasks:
   verify:
     desc: Run all local and CI checks
     cmds:
+      - task: data:validate
       - task: generate:check
       - task: lint
       - task: secrets

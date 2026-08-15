@@ -47,10 +47,15 @@ type Dataset struct {
 
 // Manifest describes one pinned source tree.
 type Manifest struct {
-	ManifestVersion        int       `json:"manifestVersion"`
-	Edition                string    `json:"edition"`
-	TargetMinecraftVersion string    `json:"targetMinecraftVersion"`
-	SourceMinecraftVersion string    `json:"sourceMinecraftVersion"`
+	ManifestVersion        int    `json:"manifestVersion"`
+	Edition                string `json:"edition"`
+	TargetMinecraftVersion string `json:"targetMinecraftVersion"`
+	SourceMinecraftVersion string `json:"sourceMinecraftVersion"`
+	// SourceVersionDirectory is the upstream data directory the tree was
+	// fetched from. It is not always the release name: Java 1.8.9 data lives
+	// under data/pc/1.8. Alias detection compares against this rather than
+	// against the release, or every 1.8.9 dataset would read as an alias.
+	SourceVersionDirectory string    `json:"sourceVersionDirectory"`
 	Protocol               int32     `json:"protocol"`
 	SourceRepository       string    `json:"sourceRepository"`
 	SourceRevision         string    `json:"sourceRevision"`
@@ -143,6 +148,7 @@ func (m *Manifest) validate() error {
 	}{
 		{"targetMinecraftVersion", m.TargetMinecraftVersion},
 		{"sourceMinecraftVersion", m.SourceMinecraftVersion},
+		{"sourceVersionDirectory", m.SourceVersionDirectory},
 		{"sourceRepository", m.SourceRepository},
 		{"license", m.License},
 	} {
@@ -151,6 +157,9 @@ func (m *Manifest) validate() error {
 		}
 	}
 
+	if strings.ContainsAny(m.SourceVersionDirectory, `/\`) {
+		return fmt.Errorf("sourceVersionDirectory %q must be a single directory name", m.SourceVersionDirectory)
+	}
 	if m.Protocol <= 0 {
 		return fmt.Errorf("protocol %d must be positive", m.Protocol)
 	}
