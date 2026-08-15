@@ -43,6 +43,12 @@ var (
 	ErrInvalidUsername = errors.New("invalid username")
 	// ErrInvalidSharedSecret reports a session key of the wrong length.
 	ErrInvalidSharedSecret = errors.New("invalid shared secret")
+	// ErrInvalidServerKey reports a server public key that is unparseable or
+	// is not RSA.
+	ErrInvalidServerKey = errors.New("invalid server public key")
+	// ErrVerifyTokenMismatch reports a client that did not return the verify
+	// token the server sent.
+	ErrVerifyTokenMismatch = errors.New("verify token mismatch")
 	// ErrWrongBufferMode reports a read from a write buffer or a write to a read buffer.
 	ErrWrongBufferMode = errors.New("wrong buffer mode")
 	// ErrInvalidCompression reports a malformed compression envelope or an
