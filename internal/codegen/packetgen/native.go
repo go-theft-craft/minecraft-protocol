@@ -37,12 +37,22 @@ var ErrUnknownNativeArgument = errors.New("unsupported native argument")
 // check: they are ProtoDef's own built-ins, and a schema may reference one
 // without listing it.
 var nativeCodecs = map[string]scalarRule{
-	"UUID":        {goType: "java.UUID", read: "ReadUUID", write: "WriteUUID"},
-	"pstring":     {goType: "string", read: "ReadString", write: "WriteString"},
-	"restBuffer":  {goType: "[]byte", read: "ReadRestBuffer", write: "WriteRestBuffer"},
-	"nbt":         {goType: "java.NBT", read: "ReadNBT", write: "WriteNBT"},
-	"optionalNbt": {goType: "*java.NBT", read: "ReadOptionalNBT", write: "WriteOptionalNBT"},
-	"void":        {},
+	"UUID":       {goType: "java.UUID", read: "ReadUUID", write: "WriteUUID"},
+	"pstring":    {goType: "string", read: "ReadString", write: "WriteString"},
+	"restBuffer": {goType: "[]byte", read: "ReadRestBuffer", write: "WriteRestBuffer"},
+	"void":       {},
+
+	// Protocol 47's NBT carries a name on its root compound. Protocol 775's
+	// does not. They are separate Go types for the same reason they are
+	// separate entries here: the encodings differ by exactly that name, so a
+	// value of one written where the other is expected parses as something
+	// else instead of failing.
+	"nbt":             {goType: "java.NBT", read: "ReadNBT", write: "WriteNBT"},
+	"optionalNbt":     {goType: "*java.NBT", read: "ReadOptionalNBT", write: "WriteOptionalNBT"},
+	"anonymousNbt":    {goType: "java.NetworkNBT", read: "ReadAnonymousNBT", write: "WriteAnonymousNBT"},
+	"anonOptionalNbt": {goType: "*java.NetworkNBT", read: "ReadAnonOptionalNBT", write: "WriteAnonOptionalNBT"},
+
+	"lpVec3": {goType: "java.LPVec3", read: "ReadLPVec3", write: "WriteLPVec3"},
 }
 
 // structuralNatives are natives the compiler handles by kind rather than with a
