@@ -169,6 +169,13 @@ const (
 	OpShared OperationKind = "shared"
 	// OpTerminatedLoop repeats an element until a sentinel byte appears.
 	OpTerminatedLoop OperationKind = "terminated_loop"
+	// OpTopBitSetArray repeats an element until one arrives without the top
+	// bit of its first byte set.
+	OpTopBitSetArray OperationKind = "top_bit_set_array"
+	// OpHolder reads a registry reference or an inline value.
+	OpHolder OperationKind = "holder"
+	// OpHolderSet reads a registry tag name or an explicit entry list.
+	OpHolderSet OperationKind = "holder_set"
 	// OpVoid performs no wire I/O.
 	OpVoid OperationKind = "void"
 )
@@ -191,10 +198,14 @@ type Operation struct {
 	// 775 ends it at 255.
 	Terminator uint8
 	Compare    FieldReference
-	Operations []Operation
-	Cases      []OperationCase
-	HasDefault bool
-	Default    OperationCase
+	// SourceNames are the names the schema gave a native's branches, kept so
+	// the generated Go type's fixed field names can be mapped back to what
+	// upstream calls them.
+	SourceNames []string
+	Operations  []Operation
+	Cases       []OperationCase
+	HasDefault  bool
+	Default     OperationCase
 }
 
 // OperationCase is one ordered switch branch and its explicit operations.
@@ -460,6 +471,7 @@ func (b *builder) buildSharedTypes(stateName string, source protodef.Direction) 
 			GoName:     goName,
 			Recursive:  plan.recursive[schemaName],
 			GoType:     compiled.goType,
+			Mapper:     compiled.mapper,
 			Decode:     []Operation{compiled.decode},
 			Encode:     []Operation{compiled.encode},
 		}
@@ -485,6 +497,17 @@ func (b *builder) buildPacket(stateName, directionName, directionGoName string, 
 	node := source.Type
 	for node != nil && node.Kind == protodef.KindAlias && len(node.Arguments) == 0 {
 		node = node.Target
+	}
+	// A packet whose body is void carries nothing at all: its ID is the entire
+	// message. Protocol 775's bundle_delimiter is one, and it compiles to a
+	// struct with no fields rather than being rejected or given a payload it
+	// does not have.
+	if node != nil && node.Kind == protodef.KindPrimitive && node.Name == "void" {
+		packet.Fields = []Field{}
+		packet.Decode = []Operation{}
+		packet.Encode = []Operation{}
+
+		return packet, nil
 	}
 	if node == nil || node.Kind != protodef.KindContainer {
 		return Packet{}, modelError(packetPath, "packet body must resolve to a container")
@@ -603,6 +626,9 @@ func (b *builder) compileNode(
 		if goName, shared := b.sharedGoNames[node.Name]; shared {
 			return compiledValue{
 				goType: goName,
+				// A shared mapper keeps its tables visible to references, so a
+				// switch on it can still match symbolic case keys.
+				mapper: b.sharedTypes[node.Name].Mapper,
 				decode: Operation{Kind: OpShared, Value: value, GoType: goName, Path: path, Declaration: goName},
 				encode: Operation{Kind: OpShared, Value: value, GoType: goName, Path: path, Declaration: goName},
 			}, nil
@@ -629,8 +655,15 @@ func (b *builder) compileNode(
 		}
 		return b.compileNode(node.Target, desiredName, path, value, current, fieldName)
 	case protodef.KindPrimitive, protodef.KindNative:
-		if node.Name == "entityMetadataLoop" {
+		switch node.Name {
+		case "entityMetadataLoop":
 			return b.compileTerminatedLoop(node, desiredName, path, value, current)
+		case "topBitSetTerminatedArray":
+			return b.compileTopBitSetArray(node, desiredName, path, value, current)
+		case "registryEntryHolder":
+			return b.compileHolder(node, desiredName, path, value, current)
+		case "registryEntryHolderSet":
+			return b.compileHolderSet(node, desiredName, path, value, current)
 		}
 		return compiledValue{}, modelError(path, "unsupported native type %q", node.Name)
 	case protodef.KindContainer:

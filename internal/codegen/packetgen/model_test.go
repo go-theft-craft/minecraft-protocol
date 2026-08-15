@@ -396,6 +396,13 @@ func assertExplicitOperations(t *testing.T, operations []Operation) {
 			if operation.Terminator == 0 {
 				t.Fatalf("terminated loop has no terminator: %#v", operation)
 			}
+		case OpTopBitSetArray, OpHolder, OpHolderSet:
+			// Protocol 775's framed natives name no buffer method either: the
+			// framing is one call in wire/java and the element decides the
+			// rest.
+			if len(operation.Operations) == 0 {
+				t.Fatalf("%s operation has no element operations: %#v", operation.Kind, operation)
+			}
 		case OpVoid:
 			if operation.Method != "" {
 				t.Fatalf("void operation has method %q", operation.Method)

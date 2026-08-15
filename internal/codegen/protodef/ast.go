@@ -105,6 +105,11 @@ type Argument struct {
 	Bool   *bool
 	Type   *TypeNode
 	Raw    []byte
+	// FieldName is set when the argument is a named field rather than a bare
+	// type: protocol 775's registry holders pass {"name": ..., "type": ...} so
+	// the decoded value has somewhere to go. The name matters because it is
+	// what upstream calls the field, and a differential comparison needs it.
+	FieldName string
 }
 
 // Field is one ordered container member.

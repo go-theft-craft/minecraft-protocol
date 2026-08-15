@@ -391,6 +391,12 @@ func (r *operationRenderer) renderDecodeOperation(output *sourceWriter, operatio
 		return r.renderShared(output, operation, "Decode")
 	case OpTerminatedLoop:
 		return r.renderDecodeTerminatedLoop(output, operation)
+	case OpTopBitSetArray:
+		return r.renderDecodeTopBitSetArray(output, operation)
+	case OpHolder:
+		return r.renderDecodeHolder(output, operation)
+	case OpHolderSet:
+		return r.renderDecodeHolderSet(output, operation)
 	case OpVoid:
 		return nil
 	default:
@@ -420,6 +426,12 @@ func (r *operationRenderer) renderEncodeOperation(output *sourceWriter, operatio
 		return r.renderShared(output, operation, "Encode")
 	case OpTerminatedLoop:
 		return r.renderEncodeTerminatedLoop(output, operation)
+	case OpTopBitSetArray:
+		return r.renderEncodeTopBitSetArray(output, operation)
+	case OpHolder:
+		return r.renderEncodeHolder(output, operation)
+	case OpHolderSet:
+		return r.renderEncodeHolderSet(output, operation)
 	case OpVoid:
 		return nil
 	default:

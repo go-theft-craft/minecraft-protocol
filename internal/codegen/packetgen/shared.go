@@ -27,6 +27,11 @@ type SharedType struct {
 	// equals GoName when the definition produced its own declaration, and is
 	// something like []Item when it did not.
 	GoType string
+	// Mapper names the lookup tables when the definition is a mapper. A shared
+	// mapper still discriminates switches elsewhere, and without this the
+	// reference loses the fact that its wire integer has symbolic names —
+	// which makes every string case key look invalid.
+	Mapper string
 	Decode []Operation
 	Encode []Operation
 }

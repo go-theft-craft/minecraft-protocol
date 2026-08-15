@@ -716,6 +716,20 @@ func parseArguments(
 			arguments = append(arguments, argument)
 			continue
 		}
+		// A named field argument is {"name": ..., "type": ...} and nothing
+		// else. Its type resolves through the normal path rather than being
+		// kept as raw JSON, so an argument naming a type that does not exist
+		// fails here instead of at generation.
+		if fieldName, fieldType, ok, err := parseFieldArgument(object[name], argumentPath, nativeNames, scopes); ok {
+			if err != nil {
+				return nil, err
+			}
+			argument.FieldName = fieldName
+			argument.Type = fieldType
+			arguments = append(arguments, argument)
+
+			continue
+		}
 		var number json.Number
 		decoder := json.NewDecoder(bytes.NewReader(object[name]))
 		decoder.UseNumber()
@@ -978,4 +992,55 @@ func isIdentifier(value string) bool {
 
 func pathError(path, format string, args ...any) error {
 	return fmt.Errorf("%s: %s", path, fmt.Sprintf(format, args...))
+}
+
+// parseFieldArgument recognises the {"name": ..., "type": ...} argument shape
+// and resolves its type.
+//
+// The shape is matched exactly — both keys present, nothing else — so an
+// argument object that merely happens to carry a "type" key is left alone. The
+// bool reports whether the shape matched at all, which is what lets the caller
+// fall through to its other forms.
+func parseFieldArgument(
+	raw json.RawMessage,
+	path string,
+	nativeNames map[string]struct{},
+	scopes []map[string]struct{},
+) (string, *TypeNode, bool, error) {
+	object, isObject := jsonObject(raw)
+	if !isObject {
+		return "", nil, false, nil
+	}
+	if len(object) != 2 {
+		return "", nil, false, nil
+	}
+	nameRaw, hasName := object["name"]
+	typeRaw, hasType := object["type"]
+	if !hasName || !hasType {
+		return "", nil, false, nil
+	}
+
+	var fieldName string
+	if err := json.Unmarshal(nameRaw, &fieldName); err != nil || fieldName == "" {
+		return "", nil, true, pathError(jsonPath(path, "name"), "must be a non-empty string")
+	}
+
+	fieldType, err := parseTypeNode(typeRaw, jsonPath(path, "type"), nativeNames, scopes)
+	if err != nil {
+		return "", nil, true, err
+	}
+
+	return fieldName, fieldType, true, nil
+}
+
+// jsonObject reports whether raw is a JSON object and decodes it if so. It
+// returns no error because a value of another shape is not a failure here:
+// callers use it to recognise a shape, not to require one.
+func jsonObject(raw json.RawMessage) (map[string]json.RawMessage, bool) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil, false
+	}
+
+	return object, true
 }

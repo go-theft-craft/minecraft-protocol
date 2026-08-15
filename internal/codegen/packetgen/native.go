@@ -68,6 +68,14 @@ var structuralNatives = map[string]struct{}{
 	"bitflags":           {},
 	"mapper":             {},
 	"entityMetadataLoop": {},
+
+	// Protocol 775's parameterized natives are structural for the same reason
+	// an array is: each one wraps a type the schema supplies, so there is
+	// nothing for a single hand-written codec to bind to. The framing they add
+	// lives in wire/java; the element inside them is compiled here.
+	"topBitSetTerminatedArray": {},
+	"registryEntryHolder":      {},
+	"registryEntryHolderSet":   {},
 }
 
 // nativeNames returns the set of names the schema declares native.
