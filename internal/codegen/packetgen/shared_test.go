@@ -228,3 +228,68 @@ func TestSharedDecoderCountsNestingDepth(t *testing.T) {
 		t.Fatal("a shared decoder must release its depth on every exit path")
 	}
 }
+
+// TestRecursiveSharedTypeIsHeldThroughAPointer is the difference between a
+// type that parses and a type that exists. A struct that contains itself by
+// value has no size, so the Go compiler rejects it — which is what protocol
+// 775's slot display does through a switch on its own kind.
+func TestRecursiveSharedTypeIsHeldThroughAPointer(t *testing.T) {
+	t.Parallel()
+
+	const branch = `, "branch":["container",[
+      {"name":"kind","type":"varint"},
+      {"name":"data","type":["switch",{"compareTo":"kind","fields":{"1":"branch"},"default":"void"}]}
+    ]]`
+
+	model := buildSharedFixture(
+		t, branch,
+		`{"name":"root","type":"branch"}`,
+		`{"name":"value","type":"i32"}`,
+	)
+
+	files, err := Generate(model, Options{PackageName: "fixture"})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	packets := string(files["packets.go"])
+	if !strings.Contains(packets, "*Branch") {
+		t.Errorf("packets.go holds the recursive type by value:\n%s", packets)
+	}
+
+	codec := string(files["codec.go"])
+	if !strings.Contains(codec, "= new(Branch)") {
+		t.Errorf("codec.go never allocates the recursive type:\n%s", codec)
+	}
+}
+
+// TestSharedMapperConvertsToItsOwnType covers the other half: a shared mapper
+// compiles to a named string type, and the lookup tables hold plain strings.
+// Without a conversion the generated code parses and does not type-check.
+func TestSharedMapperConvertsToItsOwnType(t *testing.T) {
+	t.Parallel()
+
+	const kind = `, "kind":["mapper",{"type":"varint","mappings":{"0":"stone","1":"dirt"}}]`
+
+	model := buildSharedFixture(
+		t, kind,
+		`{"name":"first","type":"kind"}`,
+		`{"name":"second","type":"kind"}`,
+	)
+
+	shared := findShared(t, model, "kind")
+	if shared.Mapper == "" {
+		t.Fatal("the shared type lost its mapper")
+	}
+
+	files, err := Generate(model, Options{PackageName: "fixture"})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	codec := string(files["codec.go"])
+	if !strings.Contains(codec, "= "+shared.GoName+"(mapped") {
+		t.Errorf("codec.go assigns a plain string to %s:\n%s", shared.GoName, codec)
+	}
+	if !strings.Contains(codec, "[string((*shared))]") {
+		t.Errorf("codec.go indexes the mapper table with a named type:\n%s", codec)
+	}
+}

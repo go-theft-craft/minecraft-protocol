@@ -157,3 +157,82 @@ func TestAnonOptionalNBTRoundTripsAPresentValue(t *testing.T) {
 		t.Errorf("re-encoded % x, want % x", got, anonymousCompound)
 	}
 }
+
+// TestNetworkNBTTextRoundTrips covers the encoder the generated disconnect
+// depends on: the component it builds must read back as network NBT, and the
+// modified UTF-8 it writes must be the encoding NBT strings actually use.
+func TestNetworkNBTTextRoundTrips(t *testing.T) {
+	limits := bufferLimits(t)
+
+	tests := []struct {
+		name string
+		text string
+		want []byte
+	}{
+		{
+			name: "ascii",
+			text: "bye",
+			want: []byte{
+				0x0a,
+				0x08, 0x00, 0x04, 't', 'e', 'x', 't',
+				0x00, 0x03, 'b', 'y', 'e',
+				0x00,
+			},
+		},
+		{
+			// NUL is two bytes in modified UTF-8, which is the whole point of
+			// the encoding: a string can carry one without ending early.
+			name: "a NUL byte",
+			text: "a\x00b",
+			want: []byte{
+				0x0a,
+				0x08, 0x00, 0x04, 't', 'e', 'x', 't',
+				0x00, 0x04, 'a', 0xc0, 0x80, 'b',
+				0x00,
+			},
+		},
+		{
+			// A supplementary code point is a surrogate pair of three-byte
+			// sequences, not one four-byte sequence.
+			name: "a supplementary code point",
+			text: "\U0001F600",
+			want: []byte{
+				0x0a,
+				0x08, 0x00, 0x04, 't', 'e', 'x', 't',
+				0x00, 0x06, 0xed, 0xa0, 0xbd, 0xed, 0xb8, 0x80,
+				0x00,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			value, err := NewNetworkNBTText(test.text, limits)
+			if err != nil {
+				t.Fatalf("NewNetworkNBTText: %v", err)
+			}
+			if got := value.Bytes(); !bytes.Equal(got, test.want) {
+				t.Fatalf("encoded % x, want % x", got, test.want)
+			}
+
+			writer, err := NewWriteBuffer(limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.WriteAnonymousNBT("reason", value); err != nil {
+				t.Fatalf("WriteAnonymousNBT: %v", err)
+			}
+			reader, err := NewReadBuffer(writer.Bytes(), limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			read, err := reader.ReadAnonymousNBT("reason")
+			if err != nil {
+				t.Fatalf("ReadAnonymousNBT: %v", err)
+			}
+			if !bytes.Equal(read.Bytes(), test.want) {
+				t.Errorf("read back % x, want % x", read.Bytes(), test.want)
+			}
+		})
+	}
+}

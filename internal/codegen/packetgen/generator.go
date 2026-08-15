@@ -328,6 +328,29 @@ func (r *operationRenderer) renderShared(output *sourceWriter, operation Operati
 	return nil
 }
 
+// renderSharedPointer delegates to a shared type held through a pointer.
+// Decoding allocates, because the schema always has a value here; encoding
+// refuses a nil rather than inventing an empty one, which would be a different
+// message on the wire.
+func (r *operationRenderer) renderSharedPointer(output *sourceWriter, operation Operation, method string) error {
+	if method == "Decode" {
+		output.line("%s = new(%s)", operation.Value, operation.Declaration)
+	} else {
+		output.line("if %s == nil {", operation.Value)
+		output.indent++
+		output.line("return fmt.Errorf(%s)", strconv.Quote("field "+operation.Path+": nil "+operation.Declaration))
+		output.indent--
+		output.line("}")
+	}
+	output.line("if err := %s.%s(buffer); err != nil {", operation.Value, method)
+	output.indent++
+	output.line("return err")
+	output.indent--
+	output.line("}")
+
+	return nil
+}
+
 func (r *operationRenderer) renderPacketCodec(output *sourceWriter, packet Packet) error {
 	r.temporary = 0
 	output.line("func (packet *%s) Decode(buffer *java.Buffer) error {", packet.GoName)
@@ -390,6 +413,8 @@ func (r *operationRenderer) renderDecodeOperation(output *sourceWriter, operatio
 		return r.renderDecodeBitFlags(output, operation)
 	case OpShared:
 		return r.renderShared(output, operation, "Decode")
+	case OpSharedPointer:
+		return r.renderSharedPointer(output, operation, "Decode")
 	case OpTerminatedLoop:
 		return r.renderDecodeTerminatedLoop(output, operation)
 	case OpTopBitSetArray:
@@ -425,6 +450,8 @@ func (r *operationRenderer) renderEncodeOperation(output *sourceWriter, operatio
 		return r.renderEncodeBitFlags(output, operation)
 	case OpShared:
 		return r.renderShared(output, operation, "Encode")
+	case OpSharedPointer:
+		return r.renderSharedPointer(output, operation, "Encode")
 	case OpTerminatedLoop:
 		return r.renderEncodeTerminatedLoop(output, operation)
 	case OpTopBitSetArray:
@@ -530,7 +557,11 @@ func (r *operationRenderer) renderDecodeMapper(output *sourceWriter, operation O
 	)
 	output.indent--
 	output.line("}")
-	output.line("%s = %s", operation.Value, mapped)
+	if operation.GoType != "" && operation.GoType != "string" {
+		output.line("%s = %s(%s)", operation.Value, operation.GoType, mapped)
+	} else {
+		output.line("%s = %s", operation.Value, mapped)
+	}
 	return nil
 }
 
@@ -540,7 +571,13 @@ func (r *operationRenderer) renderEncodeMapper(output *sourceWriter, operation O
 		return fmt.Errorf("mapper %q is not declared", operation.Mapper)
 	}
 	wire := r.next("value")
-	output.line("%s, ok := %s[%s]", wire, mapper.WriteTable, operation.Value)
+	symbol := operation.Value
+	if operation.GoType != "" && operation.GoType != "string" {
+		// The value is the mapper's own named type; the tables are keyed by
+		// the plain symbol.
+		symbol = "string(" + operation.Value + ")"
+	}
+	output.line("%s, ok := %s[%s]", wire, mapper.WriteTable, symbol)
 	output.line("if !ok {")
 	output.indent++
 	output.line(

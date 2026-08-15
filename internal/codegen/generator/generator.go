@@ -10,6 +10,7 @@ import (
 	"go/token"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -35,6 +36,18 @@ type Config struct {
 	OutDir    string
 	Package   string
 	Version   string
+	// IncludeCoverage also emits coverage.json: every packet the compiler
+	// produced a codec for. Like IncludeRaw it is a choice per version,
+	// because a checked-in report is only useful where something diffs it.
+	IncludeCoverage bool
+	// IncludeRaw also emits every source dataset as the bytes upstream
+	// published, reachable through the package's Raw accessor.
+	//
+	// It is a choice per version rather than a rule, because the bytes are
+	// megabytes and every binary that imports the package carries them. Java
+	// 1.8's package is consumed by services that read only the typed
+	// registries, and M6 owns whether that changes.
+	IncludeRaw bool
 }
 
 type templateData struct {
@@ -84,6 +97,8 @@ var generatedFileNames = []string{
 	"recipes.go",
 	"version.go",
 	"windows.go",
+	"raw.go",
+	"coverage.json",
 	"sounds.go",
 	"map_icons.go",
 	"block_loot.go",
@@ -99,6 +114,7 @@ var preservedGeneratedTestNames = []string{
 	"roundtrip_test.go",
 	"login_role_test.go",
 	"transition_test.go",
+	"protocol_test.go",
 }
 
 // Run validates source data and atomically replaces the selected generated package.
@@ -163,7 +179,7 @@ func prepare(config Config) (targetPaths, []renderedFile, error) {
 	if err != nil {
 		return targetPaths{}, nil, err
 	}
-	files, err := buildRenderPlan(templates, source, config.Package, versionKey)
+	files, err := buildRenderPlan(templates, source, config, versionKey)
 	if err != nil {
 		return targetPaths{}, nil, err
 	}
@@ -206,7 +222,9 @@ func validateConfig(config Config) (targetPaths, stableVersionKey, error) {
 	return targetPaths{outDir: outDir, target: target}, versionKey, nil
 }
 
-func buildRenderPlan(templates templateSet, source *verifiedSource, packageName string, versionKey stableVersionKey) ([]renderedFile, error) {
+func buildRenderPlan(templates templateSet, source *verifiedSource, config Config, versionKey stableVersionKey) ([]renderedFile, error) {
+	packageName := config.Package
+	var rawFiles []renderedFile
 	rendered := make(map[string][]byte, len(generatedFileNames))
 	add := func(datasetName, templateName, outputFile string, load func([]byte) (any, error)) error {
 		body, err := source.dataset(datasetName)
@@ -358,7 +376,24 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, packageName 
 		return nil, fmt.Errorf("packet generation contains %d unexpected files", len(packetFiles))
 	}
 
-	files := make([]renderedFile, 0, len(generatedFileNames))
+	if config.IncludeCoverage {
+		coverage, err := packetgen.CoverageJSON(packetModel)
+		if err != nil {
+			return nil, err
+		}
+		rendered["coverage.json"] = coverage
+	}
+
+	if config.IncludeRaw {
+		rawSource, err := buildRawSet(templates, source, packageName, versionKey)
+		if err != nil {
+			return nil, err
+		}
+		rendered["raw.go"] = rawSource.source
+		rawFiles = rawSource.files
+	}
+
+	files := make([]renderedFile, 0, len(generatedFileNames)+len(rawFiles))
 	for _, name := range generatedFileNames {
 		raw, ok := rendered[name]
 		if !ok {
@@ -374,7 +409,82 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, packageName 
 	if len(rendered) != 0 {
 		return nil, fmt.Errorf("render plan contains %d unexpected files", len(rendered))
 	}
+	files = append(files, rawFiles...)
+
 	return files, nil
+}
+
+// rawDirectoryName is the generated package subdirectory holding the source
+// datasets. They are files rather than Go string literals: the bytes are the
+// upstream record, a compiler has no reason to parse megabytes of them, and a
+// diff of the generated package stays readable.
+const rawDirectoryName = "raw"
+
+type rawSetPlan struct {
+	source []byte
+	files  []renderedFile
+}
+
+type rawDatasetTmpl struct {
+	Name      string
+	Path      string
+	MediaType string
+	File      string
+}
+
+// buildRawSet renders the raw accessor and stages a copy of every dataset the
+// version was generated from, measured constants included.
+func buildRawSet(templates templateSet, source *verifiedSource, packageName string, versionKey stableVersionKey) (rawSetPlan, error) {
+	datasets := make([]rawDatasetTmpl, 0, len(source.Files))
+	for _, dataset := range source.Manifest.Datasets {
+		datasets = append(datasets, rawDatasetTmpl{
+			Name:      dataset.Name,
+			Path:      dataset.SourcePath,
+			MediaType: dataset.MediaType,
+		})
+	}
+	if source.Manifest.Extracted != nil {
+		for _, dataset := range source.Manifest.Extracted.Datasets {
+			datasets = append(datasets, rawDatasetTmpl{
+				Name:      dataset.Name,
+				Path:      dataset.File,
+				MediaType: dataset.MediaType,
+			})
+		}
+	}
+	sort.Slice(datasets, func(i, j int) bool { return datasets[i].Name < datasets[j].Name })
+
+	files := make([]renderedFile, 0, len(datasets))
+	for index, dataset := range datasets {
+		body, err := source.dataset(dataset.Name)
+		if err != nil {
+			return rawSetPlan{}, err
+		}
+		// The staged name is the dataset name, not upstream's file name, so
+		// two datasets aliased to the same file cannot collide and so the
+		// directory reads as the inventory the manifest describes.
+		name := path.Join(rawDirectoryName, dataset.Name+rawFileExtension(dataset.MediaType))
+		datasets[index].File = name
+		files = append(files, renderedFile{name: name, raw: body})
+	}
+
+	rendered, err := renderFile(templates, "raw.go.tmpl", newTemplateData(packageName, versionKey, datasets))
+	if err != nil {
+		return rawSetPlan{}, fmt.Errorf("generate raw.go: %w", err)
+	}
+
+	return rawSetPlan{source: rendered, files: files}, nil
+}
+
+// rawFileExtension keeps a staged dataset readable as what it is. Everything
+// upstream publishes is JSON except the protocol schema's YAML source.
+func rawFileExtension(mediaType string) string {
+	switch mediaType {
+	case "application/yaml", "text/yaml":
+		return ".yml"
+	default:
+		return ".json"
+	}
 }
 
 func framedPacketSchema(schema *protodef.Schema) *protodef.Schema {
@@ -474,6 +584,8 @@ func parseStableVersionKey(value string) (stableVersionKey, error) {
 // only the versions someone has run mcreference against have them.
 var optionalGeneratedFileNames = map[string]bool{
 	"physics.go":      true,
+	"raw.go":          true,
+	"coverage.json":   true,
 	"sounds.go":       true,
 	"map_icons.go":    true,
 	"block_loot.go":   true,
@@ -509,7 +621,13 @@ func readPreservedGeneratedTests(target string) (map[string][]byte, error) {
 
 func writeRenderedPackage(staging string, files []renderedFile, preservedTests map[string][]byte) error {
 	for _, file := range files {
-		if err := os.WriteFile(filepath.Join(staging, file.name), file.raw, 0o644); err != nil {
+		target := filepath.Join(staging, filepath.FromSlash(file.name))
+		if directory := filepath.Dir(target); directory != staging {
+			if err := os.MkdirAll(directory, 0o755); err != nil {
+				return fmt.Errorf("create staged directory for %s: %w", file.name, err)
+			}
+		}
+		if err := os.WriteFile(target, file.raw, 0o644); err != nil {
 			return fmt.Errorf("write staged %s: %w", file.name, err)
 		}
 	}
@@ -566,6 +684,16 @@ func compareGeneratedPackage(target string, files []renderedFile) error {
 	seen := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
+		if entry.IsDir() {
+			if name != rawDirectoryName {
+				return fmt.Errorf("generated output has extra file %s", name)
+			}
+			if err := compareGeneratedDirectory(target, name, expected, seen); err != nil {
+				return err
+			}
+
+			continue
+		}
 		if slices.Contains(preservedGeneratedTestNames, name) {
 			if entry.Type().IsRegular() {
 				continue
@@ -590,6 +718,39 @@ func compareGeneratedPackage(target string, files []renderedFile) error {
 			return fmt.Errorf("generated output is missing %s", name)
 		}
 	}
+	for name := range expected {
+		if !seen[name] {
+			return fmt.Errorf("generated output is missing %s", name)
+		}
+	}
+	return nil
+}
+
+// compareGeneratedDirectory checks the staged datasets. It is separate from
+// the flat comparison because a directory the render plan does not describe is
+// an extra file, and a dataset the plan describes and the directory lacks is a
+// missing one; both have to be named to be fixable.
+func compareGeneratedDirectory(target, directory string, expected map[string][]byte, seen map[string]bool) error {
+	entries, err := os.ReadDir(filepath.Join(target, directory))
+	if err != nil {
+		return fmt.Errorf("read generated output %s: %w", directory, err)
+	}
+	for _, entry := range entries {
+		name := path.Join(directory, entry.Name())
+		want, ok := expected[name]
+		if !ok || !entry.Type().IsRegular() {
+			return fmt.Errorf("generated output has extra file %s", name)
+		}
+		seen[name] = true
+		got, err := os.ReadFile(filepath.Join(target, filepath.FromSlash(name)))
+		if err != nil {
+			return fmt.Errorf("read generated output %s: %w", name, err)
+		}
+		if !bytes.Equal(got, want) {
+			return fmt.Errorf("generated output changed %s", name)
+		}
+	}
+
 	return nil
 }
 

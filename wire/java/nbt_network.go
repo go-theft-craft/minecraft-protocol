@@ -130,3 +130,65 @@ func validateNetworkNBT(data []byte, limits protocol.Limits) (int, error) {
 
 	return cursor.pos, nil
 }
+
+// NewNetworkNBTText encodes one literal text component as network NBT.
+//
+// A modern text component is NBT rather than JSON. This writes the compound
+// form, {"text": ...}, rather than the bare string tag that also denotes
+// literal text: the compound is what every version of the component codec
+// accepts, and it is what this package's own reader accepts, which requires a
+// compound root.
+//
+// It exists because a generated disconnect has a reason and needs a component
+// to put it in, and building one by hand at every call site is how encodings
+// drift apart. The result is validated by the same reader that validates
+// anything arriving on the wire, so a mistake here fails now rather than at a
+// peer.
+func NewNetworkNBTText(text string, limits protocol.Limits) (NetworkNBT, error) {
+	payload := encodeModifiedUTF8(text)
+	if len(payload) > maxNBTStringBytes {
+		return NetworkNBT{}, &SizeError{Value: "network NBT text", Size: len(payload), Limit: maxNBTStringBytes}
+	}
+
+	const key = "text"
+	encoded := make([]byte, 0, len(payload)+len(key)+8)
+	encoded = append(encoded, TagCompound)
+	encoded = append(encoded, TagString)
+	encoded = append(encoded, byte(len(key)>>8), byte(len(key)))
+	encoded = append(encoded, key...)
+	encoded = append(encoded, byte(len(payload)>>8), byte(len(payload)))
+	encoded = append(encoded, payload...)
+	encoded = append(encoded, TagEnd)
+
+	return NewNetworkNBT(encoded, limits)
+}
+
+// maxNBTStringBytes is the length an NBT string's two-byte prefix can state.
+const maxNBTStringBytes = 0xFFFF
+
+// encodeModifiedUTF8 writes Java's modified UTF-8: NUL is two bytes so a
+// string can carry it without terminating, and a supplementary code point is
+// two three-byte surrogates rather than one four-byte sequence.
+func encodeModifiedUTF8(value string) []byte {
+	encoded := make([]byte, 0, len(value))
+	for _, point := range value {
+		switch {
+		case point > 0 && point <= 0x7F:
+			encoded = append(encoded, byte(point))
+		case point <= 0x7FF:
+			encoded = append(encoded, 0xC0|byte(point>>6), 0x80|byte(point&0x3F))
+		case point <= 0xFFFF:
+			encoded = appendModifiedUTF8Triple(encoded, uint32(point))
+		default:
+			offset := uint32(point) - 0x10000
+			encoded = appendModifiedUTF8Triple(encoded, 0xD800+(offset>>10))
+			encoded = appendModifiedUTF8Triple(encoded, 0xDC00+(offset&0x3FF))
+		}
+	}
+
+	return encoded
+}
+
+func appendModifiedUTF8Triple(encoded []byte, point uint32) []byte {
+	return append(encoded, 0xE0|byte(point>>12), 0x80|byte((point>>6)&0x3F), 0x80|byte(point&0x3F))
+}

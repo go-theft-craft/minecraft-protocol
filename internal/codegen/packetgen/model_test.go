@@ -384,9 +384,11 @@ func assertExplicitOperations(t *testing.T, operations []Operation) {
 				t.Fatalf("%s operation has no java.Buffer method: %#v", operation.Kind, operation)
 			}
 		case OpContainer, OpSwitch:
-		case OpShared:
+		case OpShared, OpSharedPointer:
 			// A shared operation delegates to the named type's own codec, so
-			// it names a declaration rather than a buffer method.
+			// it names a declaration rather than a buffer method. The pointer
+			// form is the same delegation through an allocation, which is how
+			// a recursive type is carried.
 			if operation.Declaration == "" {
 				t.Fatalf("shared operation names no declaration: %#v", operation)
 			}

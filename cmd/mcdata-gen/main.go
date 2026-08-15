@@ -16,6 +16,8 @@ func main() {
 	packageName := flag.String("package", "", "generated Go package name")
 	version := flag.String("version", "", "stable registration key (for example java/1.8.9)")
 	check := flag.Bool("check", false, "check generated data and packet codecs without changing them")
+	coverage := flag.Bool("coverage", false, "also generate coverage.json: every packet the compiler produced a codec for")
+	raw := flag.Bool("raw", false, "also generate the raw dataset set: every source dataset as the bytes upstream published")
 	flag.Parse()
 
 	missing := false
@@ -38,7 +40,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	config := generator.Config{SourceDir: *source, OutDir: *output, Package: *packageName, Version: *version}
+	config := generator.Config{SourceDir: *source, OutDir: *output, Package: *packageName, Version: *version, IncludeCoverage: *coverage, IncludeRaw: *raw}
 	operation := generator.Run
 	if *check {
 		operation = generator.Check

@@ -187,6 +187,9 @@ const (
 	OpBitFlags OperationKind = "bitflags"
 	// OpShared delegates to a shared named type's own Decode or Encode.
 	OpShared OperationKind = "shared"
+	// OpSharedPointer delegates to a shared named type held through a
+	// pointer, which is how a recursive type is carried.
+	OpSharedPointer OperationKind = "shared_pointer"
 	// OpTerminatedLoop repeats an element until a sentinel byte appears.
 	OpTerminatedLoop OperationKind = "terminated_loop"
 	// OpTopBitSetArray repeats an element until one arrives without the top
@@ -326,6 +329,10 @@ type builder struct {
 	// Names are allocated before any shared type is compiled, so a recursive
 	// type can refer to itself while it is still being built.
 	sharedGoNames map[string]string
+	// sharedRecursive marks the shared types that reach themselves. A field
+	// holding one holds a pointer: a Go struct that contains itself by value
+	// has no size, so the indirection is what makes the type exist at all.
+	sharedRecursive map[string]bool
 	// reservedName lets a shared type's own declaration take the name already
 	// allocated for it, instead of allocating a near-duplicate beside it.
 	reservedName   string
@@ -391,14 +398,15 @@ func Build(schema *protodef.Schema, options Options) (*Model, error) {
 		return nil, fmt.Errorf("packetgen: %w", err)
 	}
 	b := &builder{
-		model:          &Model{PackageName: options.PackageName},
-		typeNames:      newNameAllocator(),
-		mapperNames:    newNameAllocator(),
-		natives:        natives,
-		schema:         schema,
-		sharedGoNames:  map[string]string{},
-		sharedCompiled: map[string]bool{},
-		sharedTypes:    map[string]SharedType{},
+		model:           &Model{PackageName: options.PackageName},
+		typeNames:       newNameAllocator(),
+		mapperNames:     newNameAllocator(),
+		natives:         natives,
+		schema:          schema,
+		sharedGoNames:   map[string]string{},
+		sharedCompiled:  map[string]bool{},
+		sharedTypes:     map[string]SharedType{},
+		sharedRecursive: map[string]bool{},
 	}
 	for _, sourceState := range schema.States {
 		state := State{SourceName: sourceState.Name, GoName: exportedName(sourceState.Name)}
@@ -464,6 +472,11 @@ func (b *builder) buildSharedTypes(stateName string, source protodef.Direction) 
 		}
 		b.sharedGoNames[schemaName] = b.typeNames.allocate(exportedName(schemaName))
 	}
+	for schemaName, recursive := range plan.recursive {
+		if recursive {
+			b.sharedRecursive[schemaName] = true
+		}
+	}
 
 	for _, schemaName := range plan.order {
 		if b.sharedCompiled[schemaName] {
@@ -491,14 +504,21 @@ func (b *builder) buildSharedTypes(stateName string, source protodef.Direction) 
 		}
 
 		b.model.Declarations = append(b.model.Declarations, holder.Declarations...)
+		decode, encode := compiled.decode, compiled.encode
+		if compiled.mapper != "" && compiled.goType != goName {
+			// The shared type is a mapper, so the value being read and
+			// written is the named type rather than the plain string the
+			// lookup tables hold. The renderer converts when it knows this.
+			decode.GoType, encode.GoType = goName, goName
+		}
 		shared := SharedType{
 			SchemaName: schemaName,
 			GoName:     goName,
 			Recursive:  plan.recursive[schemaName],
 			GoType:     compiled.goType,
 			Mapper:     compiled.mapper,
-			Decode:     []Operation{compiled.decode},
-			Encode:     []Operation{compiled.encode},
+			Decode:     []Operation{decode},
+			Encode:     []Operation{encode},
 		}
 		b.model.SharedTypes = append(b.model.SharedTypes, shared)
 		b.sharedTypes[schemaName] = shared
@@ -649,6 +669,18 @@ func (b *builder) compileNode(
 		// A shared type is compiled from its definition node, never from an
 		// alias to itself, so this cannot short-circuit its own body.
 		if goName, shared := b.sharedGoNames[node.Name]; shared {
+			if b.sharedRecursive[node.Name] && b.reservedName != goName {
+				// A recursive type is held through a pointer, so the value it
+				// is a field of has a size. The codec allocates on decode and
+				// refuses a nil on encode, which is the only honest answer:
+				// the schema has no representation for an absent branch here.
+				return compiledValue{
+					goType: "*" + goName,
+					decode: Operation{Kind: OpSharedPointer, Value: value, GoType: "*" + goName, Path: path, Declaration: goName},
+					encode: Operation{Kind: OpSharedPointer, Value: value, GoType: "*" + goName, Path: path, Declaration: goName},
+				}, nil
+			}
+
 			return compiledValue{
 				goType: goName,
 				// A shared mapper keeps its tables visible to references, so a

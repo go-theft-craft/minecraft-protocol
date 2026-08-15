@@ -94,15 +94,31 @@ tasks:
       - go run ./cmd/mcproto data validate --source ./source/java/1.8
       - go run ./cmd/mcproto data validate --source ./source/java/26.1
 
-  generate:
+  generate:v1_8:
     desc: Generate the Java 1.8 game-data package
     cmds:
       - go run ./cmd/mcdata-gen -source ./source/java/1.8 -out ./generated/java -package v1_8 -version java/1.8.9
 
+  generate:v26_1:
+    desc: Generate the Java 26.1 game-data package, its raw datasets, and its coverage report
+    cmds:
+      - >-
+        go run ./cmd/mcdata-gen -raw -coverage
+        -source ./source/java/26.1 -out ./generated/java -package v26_1 -version java/26.1
+
+  generate:
+    desc: Generate every supported version's package
+    cmds:
+      - task: generate:v1_8
+      - task: generate:v26_1
+
   generate:check:
-    desc: Verify that the checked-in Java 1.8 generated output is current
+    desc: Verify that every checked-in generated package is current
     cmds:
       - go run ./cmd/mcdata-gen -check -source ./source/java/1.8 -out ./generated/java -package v1_8 -version java/1.8.9
+      - >-
+        go run ./cmd/mcdata-gen -check -raw -coverage
+        -source ./source/java/26.1 -out ./generated/java -package v26_1 -version java/26.1
 
   verify:
     desc: Run all local and CI checks
