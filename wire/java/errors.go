@@ -35,6 +35,12 @@ var (
 	ErrInvalidMetadata = errors.New("invalid entity metadata")
 	// ErrDuplicateMetadataIndex reports a repeated entity metadata index.
 	ErrDuplicateMetadataIndex = errors.New("duplicate entity metadata index")
+	// ErrInvalidUUID reports a UUID that is not one of the two accepted wire
+	// forms.
+	ErrInvalidUUID = errors.New("invalid UUID")
+	// ErrInvalidUsername reports an account name that breaks the protocol's
+	// rules.
+	ErrInvalidUsername = errors.New("invalid username")
 	// ErrInvalidSharedSecret reports a session key of the wrong length.
 	ErrInvalidSharedSecret = errors.New("invalid shared secret")
 	// ErrWrongBufferMode reports a read from a write buffer or a write to a read buffer.
