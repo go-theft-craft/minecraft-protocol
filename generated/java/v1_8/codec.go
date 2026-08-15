@@ -24,6 +24,297 @@ var playClientboundPlayerInfoActionMapperByName = map[string]int32{
 	"remove_player":       4,
 }
 
+func (shared *EntityMetadata) Decode(buffer *java.Buffer) error {
+	if shared == nil {
+		return fmt.Errorf("decode EntityMetadata: nil value")
+	}
+	if err := buffer.EnterNested("entityMetadata"); err != nil {
+		return err
+	}
+	defer buffer.LeaveNested()
+	(*shared) = make([]EntityMetadataItem, 0)
+	for {
+		done1, err := buffer.ReadTerminator("play.toClient.entityMetadata", 127)
+		if err != nil {
+			return err
+		}
+		if done1 {
+			break
+		}
+		if err := buffer.ValidateCollection("play.toClient.entityMetadata", len((*shared))+1); err != nil {
+			return err
+		}
+		var element2 EntityMetadataItem
+		(*shared) = append((*shared), element2)
+		index0 := len((*shared)) - 1
+		packed3, err := buffer.ReadU8("play.toClient.entityMetadata[].anonymousBitField1")
+		if err != nil {
+			return err
+		}
+		segment4 := (packed3 >> 5) & uint8(0x7)
+		(*shared)[index0].AnonymousBitField1.Type = uint8(segment4)
+		segment5 := (packed3 >> 0) & uint8(0x1f)
+		(*shared)[index0].AnonymousBitField1.Key = uint8(segment5)
+		switch (*shared)[index0].AnonymousBitField1.Type {
+		case 0:
+			value6, err := buffer.ReadI8("play.toClient.entityMetadata[].value")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case0 = value6
+		case 1:
+			value7, err := buffer.ReadI16("play.toClient.entityMetadata[].value")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case1 = value7
+		case 2:
+			value8, err := buffer.ReadI32("play.toClient.entityMetadata[].value")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case2 = value8
+		case 3:
+			value9, err := buffer.ReadF32("play.toClient.entityMetadata[].value")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case3 = value9
+		case 4:
+			value10, err := buffer.ReadString("play.toClient.entityMetadata[].value")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case4 = value10
+		case 5:
+			if err := (&(*shared)[index0].Value.Case5).Decode(buffer); err != nil {
+				return err
+			}
+		case 6:
+			value11, err := buffer.ReadI32("play.toClient.entityMetadata[].value.x")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case6.X = value11
+			value12, err := buffer.ReadI32("play.toClient.entityMetadata[].value.y")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case6.Y = value12
+			value13, err := buffer.ReadI32("play.toClient.entityMetadata[].value.z")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case6.Z = value13
+		case 7:
+			value14, err := buffer.ReadF32("play.toClient.entityMetadata[].value.pitch")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case7.Pitch = value14
+			value15, err := buffer.ReadF32("play.toClient.entityMetadata[].value.yaw")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case7.Yaw = value15
+			value16, err := buffer.ReadF32("play.toClient.entityMetadata[].value.roll")
+			if err != nil {
+				return err
+			}
+			(*shared)[index0].Value.Case7.Roll = value16
+		default:
+			return fmt.Errorf("field play.toClient.entityMetadata[].value: unsupported switch value %v", (*shared)[index0].AnonymousBitField1.Type)
+		}
+	}
+	return nil
+}
+
+func (shared *EntityMetadata) Encode(buffer *java.Buffer) error {
+	if shared == nil {
+		return fmt.Errorf("encode EntityMetadata: nil value")
+	}
+	if err := buffer.ValidateCollection("play.toClient.entityMetadata", len((*shared))); err != nil {
+		return err
+	}
+	for index0 := range *shared {
+		if uint64((*shared)[index0].AnonymousBitField1.Type) > uint64(0x7) {
+			return fmt.Errorf("field play.toClient.entityMetadata[].anonymousBitField1.type: bitfield value %v does not fit 3 bits", (*shared)[index0].AnonymousBitField1.Type)
+		}
+		if uint64((*shared)[index0].AnonymousBitField1.Key) > uint64(0x1f) {
+			return fmt.Errorf("field play.toClient.entityMetadata[].anonymousBitField1.key: bitfield value %v does not fit 5 bits", (*shared)[index0].AnonymousBitField1.Key)
+		}
+		var packed1 uint8
+		packed1 |= (uint8((*shared)[index0].AnonymousBitField1.Type) & uint8(0x7)) << 5
+		packed1 |= (uint8((*shared)[index0].AnonymousBitField1.Key) & uint8(0x1f)) << 0
+		if err := buffer.WriteU8("play.toClient.entityMetadata[].anonymousBitField1", packed1); err != nil {
+			return err
+		}
+		switch (*shared)[index0].AnonymousBitField1.Type {
+		case 0:
+			if err := buffer.WriteI8("play.toClient.entityMetadata[].value", (*shared)[index0].Value.Case0); err != nil {
+				return err
+			}
+		case 1:
+			if err := buffer.WriteI16("play.toClient.entityMetadata[].value", (*shared)[index0].Value.Case1); err != nil {
+				return err
+			}
+		case 2:
+			if err := buffer.WriteI32("play.toClient.entityMetadata[].value", (*shared)[index0].Value.Case2); err != nil {
+				return err
+			}
+		case 3:
+			if err := buffer.WriteF32("play.toClient.entityMetadata[].value", (*shared)[index0].Value.Case3); err != nil {
+				return err
+			}
+		case 4:
+			if err := buffer.WriteString("play.toClient.entityMetadata[].value", (*shared)[index0].Value.Case4); err != nil {
+				return err
+			}
+		case 5:
+			if err := (&(*shared)[index0].Value.Case5).Encode(buffer); err != nil {
+				return err
+			}
+		case 6:
+			if err := buffer.WriteI32("play.toClient.entityMetadata[].value.x", (*shared)[index0].Value.Case6.X); err != nil {
+				return err
+			}
+			if err := buffer.WriteI32("play.toClient.entityMetadata[].value.y", (*shared)[index0].Value.Case6.Y); err != nil {
+				return err
+			}
+			if err := buffer.WriteI32("play.toClient.entityMetadata[].value.z", (*shared)[index0].Value.Case6.Z); err != nil {
+				return err
+			}
+		case 7:
+			if err := buffer.WriteF32("play.toClient.entityMetadata[].value.pitch", (*shared)[index0].Value.Case7.Pitch); err != nil {
+				return err
+			}
+			if err := buffer.WriteF32("play.toClient.entityMetadata[].value.yaw", (*shared)[index0].Value.Case7.Yaw); err != nil {
+				return err
+			}
+			if err := buffer.WriteF32("play.toClient.entityMetadata[].value.roll", (*shared)[index0].Value.Case7.Roll); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("field play.toClient.entityMetadata[].value: unsupported switch value %v", (*shared)[index0].AnonymousBitField1.Type)
+		}
+	}
+	if err := buffer.WriteTerminator("play.toClient.entityMetadata", 127); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (shared *Position) Decode(buffer *java.Buffer) error {
+	if shared == nil {
+		return fmt.Errorf("decode Position: nil value")
+	}
+	if err := buffer.EnterNested("position"); err != nil {
+		return err
+	}
+	defer buffer.LeaveNested()
+	packed1, err := buffer.ReadU64("play.toClient.position")
+	if err != nil {
+		return err
+	}
+	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
+	(*shared).X = int32(segment2)
+	if segment2&(uint64(1)<<25) != 0 {
+		(*shared).X |= ^int32(0x3ffffff)
+	}
+	segment3 := (packed1 >> 26) & uint64(0xfff)
+	(*shared).Y = int16(segment3)
+	if segment3&(uint64(1)<<11) != 0 {
+		(*shared).Y |= ^int16(0xfff)
+	}
+	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
+	(*shared).Z = int32(segment4)
+	if segment4&(uint64(1)<<25) != 0 {
+		(*shared).Z |= ^int32(0x3ffffff)
+	}
+	return nil
+}
+
+func (shared *Position) Encode(buffer *java.Buffer) error {
+	if shared == nil {
+		return fmt.Errorf("encode Position: nil value")
+	}
+	if int64((*shared).X) < -33554432 || int64((*shared).X) > 33554431 {
+		return fmt.Errorf("field play.toClient.position.x: bitfield value %v does not fit 26 bits", (*shared).X)
+	}
+	if int64((*shared).Y) < -2048 || int64((*shared).Y) > 2047 {
+		return fmt.Errorf("field play.toClient.position.y: bitfield value %v does not fit 12 bits", (*shared).Y)
+	}
+	if int64((*shared).Z) < -33554432 || int64((*shared).Z) > 33554431 {
+		return fmt.Errorf("field play.toClient.position.z: bitfield value %v does not fit 26 bits", (*shared).Z)
+	}
+	var packed1 uint64
+	packed1 |= (uint64((*shared).X) & uint64(0x3ffffff)) << 38
+	packed1 |= (uint64((*shared).Y) & uint64(0xfff)) << 26
+	packed1 |= (uint64((*shared).Z) & uint64(0x3ffffff)) << 0
+	if err := buffer.WriteU64("play.toClient.position", packed1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (shared *Slot) Decode(buffer *java.Buffer) error {
+	if shared == nil {
+		return fmt.Errorf("decode Slot: nil value")
+	}
+	if err := buffer.EnterNested("slot"); err != nil {
+		return err
+	}
+	defer buffer.LeaveNested()
+	value1, err := buffer.ReadI16("play.toClient.slot.blockId")
+	if err != nil {
+		return err
+	}
+	(*shared).BlockID = value1
+	switch (*shared).BlockID {
+	case -1:
+	default:
+		value2, err := buffer.ReadI8("play.toClient.slot.anonymousSwitch1.itemCount")
+		if err != nil {
+			return err
+		}
+		(*shared).AnonymousSwitch1.Default.ItemCount = value2
+		value3, err := buffer.ReadI16("play.toClient.slot.anonymousSwitch1.itemDamage")
+		if err != nil {
+			return err
+		}
+		(*shared).AnonymousSwitch1.Default.ItemDamage = value3
+		value4, err := buffer.ReadOptionalNBT("play.toClient.slot.anonymousSwitch1.nbtData")
+		if err != nil {
+			return err
+		}
+		(*shared).AnonymousSwitch1.Default.NBTData = value4
+	}
+	return nil
+}
+
+func (shared *Slot) Encode(buffer *java.Buffer) error {
+	if shared == nil {
+		return fmt.Errorf("encode Slot: nil value")
+	}
+	if err := buffer.WriteI16("play.toClient.slot.blockId", (*shared).BlockID); err != nil {
+		return err
+	}
+	switch (*shared).BlockID {
+	case -1:
+	default:
+		if err := buffer.WriteI8("play.toClient.slot.anonymousSwitch1.itemCount", (*shared).AnonymousSwitch1.Default.ItemCount); err != nil {
+			return err
+		}
+		if err := buffer.WriteI16("play.toClient.slot.anonymousSwitch1.itemDamage", (*shared).AnonymousSwitch1.Default.ItemDamage); err != nil {
+			return err
+		}
+		if err := buffer.WriteOptionalNBT("play.toClient.slot.anonymousSwitch1.nbtData", (*shared).AnonymousSwitch1.Default.NBTData); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (packet *HandshakingServerboundSetProtocol) Decode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("decode HandshakingServerboundSetProtocol: nil packet")
@@ -527,29 +818,8 @@ func (packet *PlayClientboundEntityEquipment) Decode(buffer *java.Buffer) error 
 		return err
 	}
 	packet.Slot = value2
-	value3, err := buffer.ReadI16("play.toClient.entity_equipment.item.blockId")
-	if err != nil {
+	if err := (&packet.Item).Decode(buffer); err != nil {
 		return err
-	}
-	packet.Item.BlockID = value3
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		value4, err := buffer.ReadI8("play.toClient.entity_equipment.item.anonymousSwitch1.itemCount")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemCount = value4
-		value5, err := buffer.ReadI16("play.toClient.entity_equipment.item.anonymousSwitch1.itemDamage")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemDamage = value5
-		value6, err := buffer.ReadOptionalNBT("play.toClient.entity_equipment.item.anonymousSwitch1.nbtData")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.NBTData = value6
 	}
 	*target = *packet
 	return nil
@@ -565,21 +835,8 @@ func (packet *PlayClientboundEntityEquipment) Encode(buffer *java.Buffer) error 
 	if err := buffer.WriteI16("play.toClient.entity_equipment.slot", packet.Slot); err != nil {
 		return err
 	}
-	if err := buffer.WriteI16("play.toClient.entity_equipment.item.blockId", packet.Item.BlockID); err != nil {
+	if err := (&packet.Item).Encode(buffer); err != nil {
 		return err
-	}
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		if err := buffer.WriteI8("play.toClient.entity_equipment.item.anonymousSwitch1.itemCount", packet.Item.AnonymousSwitch1.Default.ItemCount); err != nil {
-			return err
-		}
-		if err := buffer.WriteI16("play.toClient.entity_equipment.item.anonymousSwitch1.itemDamage", packet.Item.AnonymousSwitch1.Default.ItemDamage); err != nil {
-			return err
-		}
-		if err := buffer.WriteOptionalNBT("play.toClient.entity_equipment.item.anonymousSwitch1.nbtData", packet.Item.AnonymousSwitch1.Default.NBTData); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -590,24 +847,8 @@ func (packet *PlayClientboundSpawnPosition) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayClientboundSpawnPosition)
-	packed1, err := buffer.ReadU64("play.toClient.spawn_position.location")
-	if err != nil {
+	if err := (&packet.Location).Decode(buffer); err != nil {
 		return err
-	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
 	}
 	*target = *packet
 	return nil
@@ -617,20 +858,7 @@ func (packet *PlayClientboundSpawnPosition) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayClientboundSpawnPosition: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.spawn_position.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.spawn_position.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.spawn_position.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.spawn_position.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	return nil
@@ -827,24 +1055,8 @@ func (packet *PlayClientboundBed) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	packet.EntityID = value1
-	packed2, err := buffer.ReadU64("play.toClient.bed.location")
-	if err != nil {
+	if err := (&packet.Location).Decode(buffer); err != nil {
 		return err
-	}
-	segment3 := (packed2 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment3)
-	if segment3&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment4 := (packed2 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment4)
-	if segment4&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment5 := (packed2 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment5)
-	if segment5&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
 	}
 	*target = *packet
 	return nil
@@ -857,20 +1069,7 @@ func (packet *PlayClientboundBed) Encode(buffer *java.Buffer) error {
 	if err := buffer.WriteVarInt("play.toClient.bed.entityId", packet.EntityID); err != nil {
 		return err
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.bed.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.bed.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.bed.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.bed.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	return nil
@@ -955,120 +1154,8 @@ func (packet *PlayClientboundNamedEntitySpawn) Decode(buffer *java.Buffer) error
 		return err
 	}
 	packet.CurrentItem = value8
-	packet.Metadata = make([]PlayClientboundNamedEntitySpawnMetadataItem, 0)
-	for {
-		done9, err := buffer.ReadTerminator("play.toClient.named_entity_spawn.metadata", 127)
-		if err != nil {
-			return err
-		}
-		if done9 {
-			break
-		}
-		if err := buffer.ValidateCollection("play.toClient.named_entity_spawn.metadata", len(packet.Metadata)+1); err != nil {
-			return err
-		}
-		var element10 PlayClientboundNamedEntitySpawnMetadataItem
-		packet.Metadata = append(packet.Metadata, element10)
-		index0 := len(packet.Metadata) - 1
-		packed11, err := buffer.ReadU8("play.toClient.named_entity_spawn.metadata[].anonymousBitField1")
-		if err != nil {
-			return err
-		}
-		segment12 := (packed11 >> 5) & uint8(0x7)
-		(packet.Metadata)[index0].AnonymousBitField1.Type = uint8(segment12)
-		segment13 := (packed11 >> 0) & uint8(0x1f)
-		(packet.Metadata)[index0].AnonymousBitField1.Key = uint8(segment13)
-		switch (packet.Metadata)[index0].AnonymousBitField1.Type {
-		case 0:
-			value14, err := buffer.ReadI8("play.toClient.named_entity_spawn.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case0 = value14
-		case 1:
-			value15, err := buffer.ReadI16("play.toClient.named_entity_spawn.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case1 = value15
-		case 2:
-			value16, err := buffer.ReadI32("play.toClient.named_entity_spawn.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case2 = value16
-		case 3:
-			value17, err := buffer.ReadF32("play.toClient.named_entity_spawn.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case3 = value17
-		case 4:
-			value18, err := buffer.ReadString("play.toClient.named_entity_spawn.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case4 = value18
-		case 5:
-			value19, err := buffer.ReadI16("play.toClient.named_entity_spawn.metadata[].value.blockId")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case5.BlockID = value19
-			switch (packet.Metadata)[index0].Value.Case5.BlockID {
-			case -1:
-			default:
-				value20, err := buffer.ReadI8("play.toClient.named_entity_spawn.metadata[].value.anonymousSwitch1.itemCount")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemCount = value20
-				value21, err := buffer.ReadI16("play.toClient.named_entity_spawn.metadata[].value.anonymousSwitch1.itemDamage")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemDamage = value21
-				value22, err := buffer.ReadOptionalNBT("play.toClient.named_entity_spawn.metadata[].value.anonymousSwitch1.nbtData")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.NBTData = value22
-			}
-		case 6:
-			value23, err := buffer.ReadI32("play.toClient.named_entity_spawn.metadata[].value.x")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.X = value23
-			value24, err := buffer.ReadI32("play.toClient.named_entity_spawn.metadata[].value.y")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.Y = value24
-			value25, err := buffer.ReadI32("play.toClient.named_entity_spawn.metadata[].value.z")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.Z = value25
-		case 7:
-			value26, err := buffer.ReadF32("play.toClient.named_entity_spawn.metadata[].value.pitch")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Pitch = value26
-			value27, err := buffer.ReadF32("play.toClient.named_entity_spawn.metadata[].value.yaw")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Yaw = value27
-			value28, err := buffer.ReadF32("play.toClient.named_entity_spawn.metadata[].value.roll")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Roll = value28
-		default:
-			return fmt.Errorf("field play.toClient.named_entity_spawn.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
+	if err := (&packet.Metadata).Decode(buffer); err != nil {
+		return err
 	}
 	*target = *packet
 	return nil
@@ -1102,85 +1189,7 @@ func (packet *PlayClientboundNamedEntitySpawn) Encode(buffer *java.Buffer) error
 	if err := buffer.WriteI16("play.toClient.named_entity_spawn.currentItem", packet.CurrentItem); err != nil {
 		return err
 	}
-	if err := buffer.ValidateCollection("play.toClient.named_entity_spawn.metadata", len(packet.Metadata)); err != nil {
-		return err
-	}
-	for index0 := range packet.Metadata {
-		if uint64((packet.Metadata)[index0].AnonymousBitField1.Type) > uint64(0x7) {
-			return fmt.Errorf("field play.toClient.named_entity_spawn.metadata[].anonymousBitField1.type: bitfield value %v does not fit 3 bits", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
-		if uint64((packet.Metadata)[index0].AnonymousBitField1.Key) > uint64(0x1f) {
-			return fmt.Errorf("field play.toClient.named_entity_spawn.metadata[].anonymousBitField1.key: bitfield value %v does not fit 5 bits", (packet.Metadata)[index0].AnonymousBitField1.Key)
-		}
-		var packed1 uint8
-		packed1 |= (uint8((packet.Metadata)[index0].AnonymousBitField1.Type) & uint8(0x7)) << 5
-		packed1 |= (uint8((packet.Metadata)[index0].AnonymousBitField1.Key) & uint8(0x1f)) << 0
-		if err := buffer.WriteU8("play.toClient.named_entity_spawn.metadata[].anonymousBitField1", packed1); err != nil {
-			return err
-		}
-		switch (packet.Metadata)[index0].AnonymousBitField1.Type {
-		case 0:
-			if err := buffer.WriteI8("play.toClient.named_entity_spawn.metadata[].value", (packet.Metadata)[index0].Value.Case0); err != nil {
-				return err
-			}
-		case 1:
-			if err := buffer.WriteI16("play.toClient.named_entity_spawn.metadata[].value", (packet.Metadata)[index0].Value.Case1); err != nil {
-				return err
-			}
-		case 2:
-			if err := buffer.WriteI32("play.toClient.named_entity_spawn.metadata[].value", (packet.Metadata)[index0].Value.Case2); err != nil {
-				return err
-			}
-		case 3:
-			if err := buffer.WriteF32("play.toClient.named_entity_spawn.metadata[].value", (packet.Metadata)[index0].Value.Case3); err != nil {
-				return err
-			}
-		case 4:
-			if err := buffer.WriteString("play.toClient.named_entity_spawn.metadata[].value", (packet.Metadata)[index0].Value.Case4); err != nil {
-				return err
-			}
-		case 5:
-			if err := buffer.WriteI16("play.toClient.named_entity_spawn.metadata[].value.blockId", (packet.Metadata)[index0].Value.Case5.BlockID); err != nil {
-				return err
-			}
-			switch (packet.Metadata)[index0].Value.Case5.BlockID {
-			case -1:
-			default:
-				if err := buffer.WriteI8("play.toClient.named_entity_spawn.metadata[].value.anonymousSwitch1.itemCount", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemCount); err != nil {
-					return err
-				}
-				if err := buffer.WriteI16("play.toClient.named_entity_spawn.metadata[].value.anonymousSwitch1.itemDamage", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemDamage); err != nil {
-					return err
-				}
-				if err := buffer.WriteOptionalNBT("play.toClient.named_entity_spawn.metadata[].value.anonymousSwitch1.nbtData", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.NBTData); err != nil {
-					return err
-				}
-			}
-		case 6:
-			if err := buffer.WriteI32("play.toClient.named_entity_spawn.metadata[].value.x", (packet.Metadata)[index0].Value.Case6.X); err != nil {
-				return err
-			}
-			if err := buffer.WriteI32("play.toClient.named_entity_spawn.metadata[].value.y", (packet.Metadata)[index0].Value.Case6.Y); err != nil {
-				return err
-			}
-			if err := buffer.WriteI32("play.toClient.named_entity_spawn.metadata[].value.z", (packet.Metadata)[index0].Value.Case6.Z); err != nil {
-				return err
-			}
-		case 7:
-			if err := buffer.WriteF32("play.toClient.named_entity_spawn.metadata[].value.pitch", (packet.Metadata)[index0].Value.Case7.Pitch); err != nil {
-				return err
-			}
-			if err := buffer.WriteF32("play.toClient.named_entity_spawn.metadata[].value.yaw", (packet.Metadata)[index0].Value.Case7.Yaw); err != nil {
-				return err
-			}
-			if err := buffer.WriteF32("play.toClient.named_entity_spawn.metadata[].value.roll", (packet.Metadata)[index0].Value.Case7.Roll); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("field play.toClient.named_entity_spawn.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
-	}
-	if err := buffer.WriteTerminator("play.toClient.named_entity_spawn.metadata", 127); err != nil {
+	if err := (&packet.Metadata).Encode(buffer); err != nil {
 		return err
 	}
 	return nil
@@ -1393,120 +1402,8 @@ func (packet *PlayClientboundSpawnEntityLiving) Decode(buffer *java.Buffer) erro
 		return err
 	}
 	packet.VelocityZ = value11
-	packet.Metadata = make([]PlayClientboundSpawnEntityLivingMetadataItem, 0)
-	for {
-		done12, err := buffer.ReadTerminator("play.toClient.spawn_entity_living.metadata", 127)
-		if err != nil {
-			return err
-		}
-		if done12 {
-			break
-		}
-		if err := buffer.ValidateCollection("play.toClient.spawn_entity_living.metadata", len(packet.Metadata)+1); err != nil {
-			return err
-		}
-		var element13 PlayClientboundSpawnEntityLivingMetadataItem
-		packet.Metadata = append(packet.Metadata, element13)
-		index0 := len(packet.Metadata) - 1
-		packed14, err := buffer.ReadU8("play.toClient.spawn_entity_living.metadata[].anonymousBitField1")
-		if err != nil {
-			return err
-		}
-		segment15 := (packed14 >> 5) & uint8(0x7)
-		(packet.Metadata)[index0].AnonymousBitField1.Type = uint8(segment15)
-		segment16 := (packed14 >> 0) & uint8(0x1f)
-		(packet.Metadata)[index0].AnonymousBitField1.Key = uint8(segment16)
-		switch (packet.Metadata)[index0].AnonymousBitField1.Type {
-		case 0:
-			value17, err := buffer.ReadI8("play.toClient.spawn_entity_living.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case0 = value17
-		case 1:
-			value18, err := buffer.ReadI16("play.toClient.spawn_entity_living.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case1 = value18
-		case 2:
-			value19, err := buffer.ReadI32("play.toClient.spawn_entity_living.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case2 = value19
-		case 3:
-			value20, err := buffer.ReadF32("play.toClient.spawn_entity_living.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case3 = value20
-		case 4:
-			value21, err := buffer.ReadString("play.toClient.spawn_entity_living.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case4 = value21
-		case 5:
-			value22, err := buffer.ReadI16("play.toClient.spawn_entity_living.metadata[].value.blockId")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case5.BlockID = value22
-			switch (packet.Metadata)[index0].Value.Case5.BlockID {
-			case -1:
-			default:
-				value23, err := buffer.ReadI8("play.toClient.spawn_entity_living.metadata[].value.anonymousSwitch1.itemCount")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemCount = value23
-				value24, err := buffer.ReadI16("play.toClient.spawn_entity_living.metadata[].value.anonymousSwitch1.itemDamage")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemDamage = value24
-				value25, err := buffer.ReadOptionalNBT("play.toClient.spawn_entity_living.metadata[].value.anonymousSwitch1.nbtData")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.NBTData = value25
-			}
-		case 6:
-			value26, err := buffer.ReadI32("play.toClient.spawn_entity_living.metadata[].value.x")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.X = value26
-			value27, err := buffer.ReadI32("play.toClient.spawn_entity_living.metadata[].value.y")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.Y = value27
-			value28, err := buffer.ReadI32("play.toClient.spawn_entity_living.metadata[].value.z")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.Z = value28
-		case 7:
-			value29, err := buffer.ReadF32("play.toClient.spawn_entity_living.metadata[].value.pitch")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Pitch = value29
-			value30, err := buffer.ReadF32("play.toClient.spawn_entity_living.metadata[].value.yaw")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Yaw = value30
-			value31, err := buffer.ReadF32("play.toClient.spawn_entity_living.metadata[].value.roll")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Roll = value31
-		default:
-			return fmt.Errorf("field play.toClient.spawn_entity_living.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
+	if err := (&packet.Metadata).Decode(buffer); err != nil {
+		return err
 	}
 	*target = *packet
 	return nil
@@ -1549,85 +1446,7 @@ func (packet *PlayClientboundSpawnEntityLiving) Encode(buffer *java.Buffer) erro
 	if err := buffer.WriteI16("play.toClient.spawn_entity_living.velocityZ", packet.VelocityZ); err != nil {
 		return err
 	}
-	if err := buffer.ValidateCollection("play.toClient.spawn_entity_living.metadata", len(packet.Metadata)); err != nil {
-		return err
-	}
-	for index0 := range packet.Metadata {
-		if uint64((packet.Metadata)[index0].AnonymousBitField1.Type) > uint64(0x7) {
-			return fmt.Errorf("field play.toClient.spawn_entity_living.metadata[].anonymousBitField1.type: bitfield value %v does not fit 3 bits", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
-		if uint64((packet.Metadata)[index0].AnonymousBitField1.Key) > uint64(0x1f) {
-			return fmt.Errorf("field play.toClient.spawn_entity_living.metadata[].anonymousBitField1.key: bitfield value %v does not fit 5 bits", (packet.Metadata)[index0].AnonymousBitField1.Key)
-		}
-		var packed1 uint8
-		packed1 |= (uint8((packet.Metadata)[index0].AnonymousBitField1.Type) & uint8(0x7)) << 5
-		packed1 |= (uint8((packet.Metadata)[index0].AnonymousBitField1.Key) & uint8(0x1f)) << 0
-		if err := buffer.WriteU8("play.toClient.spawn_entity_living.metadata[].anonymousBitField1", packed1); err != nil {
-			return err
-		}
-		switch (packet.Metadata)[index0].AnonymousBitField1.Type {
-		case 0:
-			if err := buffer.WriteI8("play.toClient.spawn_entity_living.metadata[].value", (packet.Metadata)[index0].Value.Case0); err != nil {
-				return err
-			}
-		case 1:
-			if err := buffer.WriteI16("play.toClient.spawn_entity_living.metadata[].value", (packet.Metadata)[index0].Value.Case1); err != nil {
-				return err
-			}
-		case 2:
-			if err := buffer.WriteI32("play.toClient.spawn_entity_living.metadata[].value", (packet.Metadata)[index0].Value.Case2); err != nil {
-				return err
-			}
-		case 3:
-			if err := buffer.WriteF32("play.toClient.spawn_entity_living.metadata[].value", (packet.Metadata)[index0].Value.Case3); err != nil {
-				return err
-			}
-		case 4:
-			if err := buffer.WriteString("play.toClient.spawn_entity_living.metadata[].value", (packet.Metadata)[index0].Value.Case4); err != nil {
-				return err
-			}
-		case 5:
-			if err := buffer.WriteI16("play.toClient.spawn_entity_living.metadata[].value.blockId", (packet.Metadata)[index0].Value.Case5.BlockID); err != nil {
-				return err
-			}
-			switch (packet.Metadata)[index0].Value.Case5.BlockID {
-			case -1:
-			default:
-				if err := buffer.WriteI8("play.toClient.spawn_entity_living.metadata[].value.anonymousSwitch1.itemCount", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemCount); err != nil {
-					return err
-				}
-				if err := buffer.WriteI16("play.toClient.spawn_entity_living.metadata[].value.anonymousSwitch1.itemDamage", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemDamage); err != nil {
-					return err
-				}
-				if err := buffer.WriteOptionalNBT("play.toClient.spawn_entity_living.metadata[].value.anonymousSwitch1.nbtData", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.NBTData); err != nil {
-					return err
-				}
-			}
-		case 6:
-			if err := buffer.WriteI32("play.toClient.spawn_entity_living.metadata[].value.x", (packet.Metadata)[index0].Value.Case6.X); err != nil {
-				return err
-			}
-			if err := buffer.WriteI32("play.toClient.spawn_entity_living.metadata[].value.y", (packet.Metadata)[index0].Value.Case6.Y); err != nil {
-				return err
-			}
-			if err := buffer.WriteI32("play.toClient.spawn_entity_living.metadata[].value.z", (packet.Metadata)[index0].Value.Case6.Z); err != nil {
-				return err
-			}
-		case 7:
-			if err := buffer.WriteF32("play.toClient.spawn_entity_living.metadata[].value.pitch", (packet.Metadata)[index0].Value.Case7.Pitch); err != nil {
-				return err
-			}
-			if err := buffer.WriteF32("play.toClient.spawn_entity_living.metadata[].value.yaw", (packet.Metadata)[index0].Value.Case7.Yaw); err != nil {
-				return err
-			}
-			if err := buffer.WriteF32("play.toClient.spawn_entity_living.metadata[].value.roll", (packet.Metadata)[index0].Value.Case7.Roll); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("field play.toClient.spawn_entity_living.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
-	}
-	if err := buffer.WriteTerminator("play.toClient.spawn_entity_living.metadata", 127); err != nil {
+	if err := (&packet.Metadata).Encode(buffer); err != nil {
 		return err
 	}
 	return nil
@@ -1649,30 +1468,14 @@ func (packet *PlayClientboundSpawnEntityPainting) Decode(buffer *java.Buffer) er
 		return err
 	}
 	packet.Title = value2
-	packed3, err := buffer.ReadU64("play.toClient.spawn_entity_painting.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value3, err := buffer.ReadU8("play.toClient.spawn_entity_painting.direction")
 	if err != nil {
 		return err
 	}
-	segment4 := (packed3 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment5 := (packed3 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment5)
-	if segment5&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment6 := (packed3 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment6)
-	if segment6&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value7, err := buffer.ReadU8("play.toClient.spawn_entity_painting.direction")
-	if err != nil {
-		return err
-	}
-	packet.Direction = value7
+	packet.Direction = value3
 	*target = *packet
 	return nil
 }
@@ -1687,20 +1490,7 @@ func (packet *PlayClientboundSpawnEntityPainting) Encode(buffer *java.Buffer) er
 	if err := buffer.WriteString("play.toClient.spawn_entity_painting.title", packet.Title); err != nil {
 		return err
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.spawn_entity_painting.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.spawn_entity_painting.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.spawn_entity_painting.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.spawn_entity_painting.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteU8("play.toClient.spawn_entity_painting.direction", packet.Direction); err != nil {
@@ -2248,120 +2038,8 @@ func (packet *PlayClientboundEntityMetadata) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	packet.EntityID = value1
-	packet.Metadata = make([]PlayClientboundEntityMetadataMetadataItem, 0)
-	for {
-		done2, err := buffer.ReadTerminator("play.toClient.entity_metadata.metadata", 127)
-		if err != nil {
-			return err
-		}
-		if done2 {
-			break
-		}
-		if err := buffer.ValidateCollection("play.toClient.entity_metadata.metadata", len(packet.Metadata)+1); err != nil {
-			return err
-		}
-		var element3 PlayClientboundEntityMetadataMetadataItem
-		packet.Metadata = append(packet.Metadata, element3)
-		index0 := len(packet.Metadata) - 1
-		packed4, err := buffer.ReadU8("play.toClient.entity_metadata.metadata[].anonymousBitField1")
-		if err != nil {
-			return err
-		}
-		segment5 := (packed4 >> 5) & uint8(0x7)
-		(packet.Metadata)[index0].AnonymousBitField1.Type = uint8(segment5)
-		segment6 := (packed4 >> 0) & uint8(0x1f)
-		(packet.Metadata)[index0].AnonymousBitField1.Key = uint8(segment6)
-		switch (packet.Metadata)[index0].AnonymousBitField1.Type {
-		case 0:
-			value7, err := buffer.ReadI8("play.toClient.entity_metadata.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case0 = value7
-		case 1:
-			value8, err := buffer.ReadI16("play.toClient.entity_metadata.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case1 = value8
-		case 2:
-			value9, err := buffer.ReadI32("play.toClient.entity_metadata.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case2 = value9
-		case 3:
-			value10, err := buffer.ReadF32("play.toClient.entity_metadata.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case3 = value10
-		case 4:
-			value11, err := buffer.ReadString("play.toClient.entity_metadata.metadata[].value")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case4 = value11
-		case 5:
-			value12, err := buffer.ReadI16("play.toClient.entity_metadata.metadata[].value.blockId")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case5.BlockID = value12
-			switch (packet.Metadata)[index0].Value.Case5.BlockID {
-			case -1:
-			default:
-				value13, err := buffer.ReadI8("play.toClient.entity_metadata.metadata[].value.anonymousSwitch1.itemCount")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemCount = value13
-				value14, err := buffer.ReadI16("play.toClient.entity_metadata.metadata[].value.anonymousSwitch1.itemDamage")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemDamage = value14
-				value15, err := buffer.ReadOptionalNBT("play.toClient.entity_metadata.metadata[].value.anonymousSwitch1.nbtData")
-				if err != nil {
-					return err
-				}
-				(packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.NBTData = value15
-			}
-		case 6:
-			value16, err := buffer.ReadI32("play.toClient.entity_metadata.metadata[].value.x")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.X = value16
-			value17, err := buffer.ReadI32("play.toClient.entity_metadata.metadata[].value.y")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.Y = value17
-			value18, err := buffer.ReadI32("play.toClient.entity_metadata.metadata[].value.z")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case6.Z = value18
-		case 7:
-			value19, err := buffer.ReadF32("play.toClient.entity_metadata.metadata[].value.pitch")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Pitch = value19
-			value20, err := buffer.ReadF32("play.toClient.entity_metadata.metadata[].value.yaw")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Yaw = value20
-			value21, err := buffer.ReadF32("play.toClient.entity_metadata.metadata[].value.roll")
-			if err != nil {
-				return err
-			}
-			(packet.Metadata)[index0].Value.Case7.Roll = value21
-		default:
-			return fmt.Errorf("field play.toClient.entity_metadata.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
+	if err := (&packet.Metadata).Decode(buffer); err != nil {
+		return err
 	}
 	*target = *packet
 	return nil
@@ -2374,85 +2052,7 @@ func (packet *PlayClientboundEntityMetadata) Encode(buffer *java.Buffer) error {
 	if err := buffer.WriteVarInt("play.toClient.entity_metadata.entityId", packet.EntityID); err != nil {
 		return err
 	}
-	if err := buffer.ValidateCollection("play.toClient.entity_metadata.metadata", len(packet.Metadata)); err != nil {
-		return err
-	}
-	for index0 := range packet.Metadata {
-		if uint64((packet.Metadata)[index0].AnonymousBitField1.Type) > uint64(0x7) {
-			return fmt.Errorf("field play.toClient.entity_metadata.metadata[].anonymousBitField1.type: bitfield value %v does not fit 3 bits", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
-		if uint64((packet.Metadata)[index0].AnonymousBitField1.Key) > uint64(0x1f) {
-			return fmt.Errorf("field play.toClient.entity_metadata.metadata[].anonymousBitField1.key: bitfield value %v does not fit 5 bits", (packet.Metadata)[index0].AnonymousBitField1.Key)
-		}
-		var packed1 uint8
-		packed1 |= (uint8((packet.Metadata)[index0].AnonymousBitField1.Type) & uint8(0x7)) << 5
-		packed1 |= (uint8((packet.Metadata)[index0].AnonymousBitField1.Key) & uint8(0x1f)) << 0
-		if err := buffer.WriteU8("play.toClient.entity_metadata.metadata[].anonymousBitField1", packed1); err != nil {
-			return err
-		}
-		switch (packet.Metadata)[index0].AnonymousBitField1.Type {
-		case 0:
-			if err := buffer.WriteI8("play.toClient.entity_metadata.metadata[].value", (packet.Metadata)[index0].Value.Case0); err != nil {
-				return err
-			}
-		case 1:
-			if err := buffer.WriteI16("play.toClient.entity_metadata.metadata[].value", (packet.Metadata)[index0].Value.Case1); err != nil {
-				return err
-			}
-		case 2:
-			if err := buffer.WriteI32("play.toClient.entity_metadata.metadata[].value", (packet.Metadata)[index0].Value.Case2); err != nil {
-				return err
-			}
-		case 3:
-			if err := buffer.WriteF32("play.toClient.entity_metadata.metadata[].value", (packet.Metadata)[index0].Value.Case3); err != nil {
-				return err
-			}
-		case 4:
-			if err := buffer.WriteString("play.toClient.entity_metadata.metadata[].value", (packet.Metadata)[index0].Value.Case4); err != nil {
-				return err
-			}
-		case 5:
-			if err := buffer.WriteI16("play.toClient.entity_metadata.metadata[].value.blockId", (packet.Metadata)[index0].Value.Case5.BlockID); err != nil {
-				return err
-			}
-			switch (packet.Metadata)[index0].Value.Case5.BlockID {
-			case -1:
-			default:
-				if err := buffer.WriteI8("play.toClient.entity_metadata.metadata[].value.anonymousSwitch1.itemCount", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemCount); err != nil {
-					return err
-				}
-				if err := buffer.WriteI16("play.toClient.entity_metadata.metadata[].value.anonymousSwitch1.itemDamage", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.ItemDamage); err != nil {
-					return err
-				}
-				if err := buffer.WriteOptionalNBT("play.toClient.entity_metadata.metadata[].value.anonymousSwitch1.nbtData", (packet.Metadata)[index0].Value.Case5.AnonymousSwitch1.Default.NBTData); err != nil {
-					return err
-				}
-			}
-		case 6:
-			if err := buffer.WriteI32("play.toClient.entity_metadata.metadata[].value.x", (packet.Metadata)[index0].Value.Case6.X); err != nil {
-				return err
-			}
-			if err := buffer.WriteI32("play.toClient.entity_metadata.metadata[].value.y", (packet.Metadata)[index0].Value.Case6.Y); err != nil {
-				return err
-			}
-			if err := buffer.WriteI32("play.toClient.entity_metadata.metadata[].value.z", (packet.Metadata)[index0].Value.Case6.Z); err != nil {
-				return err
-			}
-		case 7:
-			if err := buffer.WriteF32("play.toClient.entity_metadata.metadata[].value.pitch", (packet.Metadata)[index0].Value.Case7.Pitch); err != nil {
-				return err
-			}
-			if err := buffer.WriteF32("play.toClient.entity_metadata.metadata[].value.yaw", (packet.Metadata)[index0].Value.Case7.Yaw); err != nil {
-				return err
-			}
-			if err := buffer.WriteF32("play.toClient.entity_metadata.metadata[].value.roll", (packet.Metadata)[index0].Value.Case7.Roll); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("field play.toClient.entity_metadata.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].AnonymousBitField1.Type)
-		}
-	}
-	if err := buffer.WriteTerminator("play.toClient.entity_metadata.metadata", 127); err != nil {
+	if err := (&packet.Metadata).Encode(buffer); err != nil {
 		return err
 	}
 	return nil
@@ -2826,30 +2426,14 @@ func (packet *PlayClientboundBlockChange) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayClientboundBlockChange)
-	packed1, err := buffer.ReadU64("play.toClient.block_change.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value1, err := buffer.ReadVarInt("play.toClient.block_change.type")
 	if err != nil {
 		return err
 	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value5, err := buffer.ReadVarInt("play.toClient.block_change.type")
-	if err != nil {
-		return err
-	}
-	packet.Type = value5
+	packet.Type = value1
 	*target = *packet
 	return nil
 }
@@ -2858,20 +2442,7 @@ func (packet *PlayClientboundBlockChange) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayClientboundBlockChange: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.block_change.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.block_change.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.block_change.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.block_change.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteVarInt("play.toClient.block_change.type", packet.Type); err != nil {
@@ -2886,40 +2457,24 @@ func (packet *PlayClientboundBlockAction) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayClientboundBlockAction)
-	packed1, err := buffer.ReadU64("play.toClient.block_action.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value1, err := buffer.ReadU8("play.toClient.block_action.byte1")
 	if err != nil {
 		return err
 	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value5, err := buffer.ReadU8("play.toClient.block_action.byte1")
+	packet.Byte1 = value1
+	value2, err := buffer.ReadU8("play.toClient.block_action.byte2")
 	if err != nil {
 		return err
 	}
-	packet.Byte1 = value5
-	value6, err := buffer.ReadU8("play.toClient.block_action.byte2")
+	packet.Byte2 = value2
+	value3, err := buffer.ReadVarInt("play.toClient.block_action.blockId")
 	if err != nil {
 		return err
 	}
-	packet.Byte2 = value6
-	value7, err := buffer.ReadVarInt("play.toClient.block_action.blockId")
-	if err != nil {
-		return err
-	}
-	packet.BlockID = value7
+	packet.BlockID = value3
 	*target = *packet
 	return nil
 }
@@ -2928,20 +2483,7 @@ func (packet *PlayClientboundBlockAction) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayClientboundBlockAction: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.block_action.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.block_action.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.block_action.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.block_action.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteU8("play.toClient.block_action.byte1", packet.Byte1); err != nil {
@@ -2967,30 +2509,14 @@ func (packet *PlayClientboundBlockBreakAnimation) Decode(buffer *java.Buffer) er
 		return err
 	}
 	packet.EntityID = value1
-	packed2, err := buffer.ReadU64("play.toClient.block_break_animation.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value2, err := buffer.ReadI8("play.toClient.block_break_animation.destroyStage")
 	if err != nil {
 		return err
 	}
-	segment3 := (packed2 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment3)
-	if segment3&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment4 := (packed2 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment4)
-	if segment4&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment5 := (packed2 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment5)
-	if segment5&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value6, err := buffer.ReadI8("play.toClient.block_break_animation.destroyStage")
-	if err != nil {
-		return err
-	}
-	packet.DestroyStage = value6
+	packet.DestroyStage = value2
 	*target = *packet
 	return nil
 }
@@ -3002,20 +2528,7 @@ func (packet *PlayClientboundBlockBreakAnimation) Encode(buffer *java.Buffer) er
 	if err := buffer.WriteVarInt("play.toClient.block_break_animation.entityId", packet.EntityID); err != nil {
 		return err
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.block_break_animation.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.block_break_animation.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.block_break_animation.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.block_break_animation.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteI8("play.toClient.block_break_animation.destroyStage", packet.DestroyStage); err != nil {
@@ -3228,35 +2741,19 @@ func (packet *PlayClientboundWorldEvent) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	packet.EffectID = value1
-	packed2, err := buffer.ReadU64("play.toClient.world_event.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value2, err := buffer.ReadI32("play.toClient.world_event.data")
 	if err != nil {
 		return err
 	}
-	segment3 := (packed2 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment3)
-	if segment3&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment4 := (packed2 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment4)
-	if segment4&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment5 := (packed2 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment5)
-	if segment5&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value6, err := buffer.ReadI32("play.toClient.world_event.data")
+	packet.Data = value2
+	value3, err := buffer.ReadBool("play.toClient.world_event.global")
 	if err != nil {
 		return err
 	}
-	packet.Data = value6
-	value7, err := buffer.ReadBool("play.toClient.world_event.global")
-	if err != nil {
-		return err
-	}
-	packet.Global = value7
+	packet.Global = value3
 	*target = *packet
 	return nil
 }
@@ -3268,20 +2765,7 @@ func (packet *PlayClientboundWorldEvent) Encode(buffer *java.Buffer) error {
 	if err := buffer.WriteI32("play.toClient.world_event.effectId", packet.EffectID); err != nil {
 		return err
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.world_event.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.world_event.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.world_event.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.world_event.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteI32("play.toClient.world_event.data", packet.Data); err != nil {
@@ -3732,29 +3216,8 @@ func (packet *PlayClientboundSetSlot) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	packet.Slot = value2
-	value3, err := buffer.ReadI16("play.toClient.set_slot.item.blockId")
-	if err != nil {
+	if err := (&packet.Item).Decode(buffer); err != nil {
 		return err
-	}
-	packet.Item.BlockID = value3
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		value4, err := buffer.ReadI8("play.toClient.set_slot.item.anonymousSwitch1.itemCount")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemCount = value4
-		value5, err := buffer.ReadI16("play.toClient.set_slot.item.anonymousSwitch1.itemDamage")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemDamage = value5
-		value6, err := buffer.ReadOptionalNBT("play.toClient.set_slot.item.anonymousSwitch1.nbtData")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.NBTData = value6
 	}
 	*target = *packet
 	return nil
@@ -3770,21 +3233,8 @@ func (packet *PlayClientboundSetSlot) Encode(buffer *java.Buffer) error {
 	if err := buffer.WriteI16("play.toClient.set_slot.slot", packet.Slot); err != nil {
 		return err
 	}
-	if err := buffer.WriteI16("play.toClient.set_slot.item.blockId", packet.Item.BlockID); err != nil {
+	if err := (&packet.Item).Encode(buffer); err != nil {
 		return err
-	}
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		if err := buffer.WriteI8("play.toClient.set_slot.item.anonymousSwitch1.itemCount", packet.Item.AnonymousSwitch1.Default.ItemCount); err != nil {
-			return err
-		}
-		if err := buffer.WriteI16("play.toClient.set_slot.item.anonymousSwitch1.itemDamage", packet.Item.AnonymousSwitch1.Default.ItemDamage); err != nil {
-			return err
-		}
-		if err := buffer.WriteOptionalNBT("play.toClient.set_slot.item.anonymousSwitch1.nbtData", packet.Item.AnonymousSwitch1.Default.NBTData); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -3811,31 +3261,10 @@ func (packet *PlayClientboundWindowItems) Decode(buffer *java.Buffer) error {
 	if err := buffer.ValidateCollection("play.toClient.window_items.items", count3); err != nil {
 		return err
 	}
-	packet.Items = make([]PlayClientboundWindowItemsItemsItem, count3)
+	packet.Items = make([]Slot, count3)
 	for index0 := 0; index0 < count3; index0++ {
-		value4, err := buffer.ReadI16("play.toClient.window_items.items[].blockId")
-		if err != nil {
+		if err := (&(packet.Items)[index0]).Decode(buffer); err != nil {
 			return err
-		}
-		(packet.Items)[index0].BlockID = value4
-		switch (packet.Items)[index0].BlockID {
-		case -1:
-		default:
-			value5, err := buffer.ReadI8("play.toClient.window_items.items[].anonymousSwitch1.itemCount")
-			if err != nil {
-				return err
-			}
-			(packet.Items)[index0].AnonymousSwitch1.Default.ItemCount = value5
-			value6, err := buffer.ReadI16("play.toClient.window_items.items[].anonymousSwitch1.itemDamage")
-			if err != nil {
-				return err
-			}
-			(packet.Items)[index0].AnonymousSwitch1.Default.ItemDamage = value6
-			value7, err := buffer.ReadOptionalNBT("play.toClient.window_items.items[].anonymousSwitch1.nbtData")
-			if err != nil {
-				return err
-			}
-			(packet.Items)[index0].AnonymousSwitch1.Default.NBTData = value7
 		}
 	}
 	*target = *packet
@@ -3860,21 +3289,8 @@ func (packet *PlayClientboundWindowItems) Encode(buffer *java.Buffer) error {
 		return err
 	}
 	for index0 := range packet.Items {
-		if err := buffer.WriteI16("play.toClient.window_items.items[].blockId", (packet.Items)[index0].BlockID); err != nil {
+		if err := (&(packet.Items)[index0]).Encode(buffer); err != nil {
 			return err
-		}
-		switch (packet.Items)[index0].BlockID {
-		case -1:
-		default:
-			if err := buffer.WriteI8("play.toClient.window_items.items[].anonymousSwitch1.itemCount", (packet.Items)[index0].AnonymousSwitch1.Default.ItemCount); err != nil {
-				return err
-			}
-			if err := buffer.WriteI16("play.toClient.window_items.items[].anonymousSwitch1.itemDamage", (packet.Items)[index0].AnonymousSwitch1.Default.ItemDamage); err != nil {
-				return err
-			}
-			if err := buffer.WriteOptionalNBT("play.toClient.window_items.items[].anonymousSwitch1.nbtData", (packet.Items)[index0].AnonymousSwitch1.Default.NBTData); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -3968,45 +3384,29 @@ func (packet *PlayClientboundUpdateSign) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayClientboundUpdateSign)
-	packed1, err := buffer.ReadU64("play.toClient.update_sign.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value1, err := buffer.ReadString("play.toClient.update_sign.text1")
 	if err != nil {
 		return err
 	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value5, err := buffer.ReadString("play.toClient.update_sign.text1")
+	packet.Text1 = value1
+	value2, err := buffer.ReadString("play.toClient.update_sign.text2")
 	if err != nil {
 		return err
 	}
-	packet.Text1 = value5
-	value6, err := buffer.ReadString("play.toClient.update_sign.text2")
+	packet.Text2 = value2
+	value3, err := buffer.ReadString("play.toClient.update_sign.text3")
 	if err != nil {
 		return err
 	}
-	packet.Text2 = value6
-	value7, err := buffer.ReadString("play.toClient.update_sign.text3")
+	packet.Text3 = value3
+	value4, err := buffer.ReadString("play.toClient.update_sign.text4")
 	if err != nil {
 		return err
 	}
-	packet.Text3 = value7
-	value8, err := buffer.ReadString("play.toClient.update_sign.text4")
-	if err != nil {
-		return err
-	}
-	packet.Text4 = value8
+	packet.Text4 = value4
 	*target = *packet
 	return nil
 }
@@ -4015,20 +3415,7 @@ func (packet *PlayClientboundUpdateSign) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayClientboundUpdateSign: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.update_sign.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.update_sign.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.update_sign.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.update_sign.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteString("play.toClient.update_sign.text1", packet.Text1); err != nil {
@@ -4194,35 +3581,19 @@ func (packet *PlayClientboundTileEntityData) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayClientboundTileEntityData)
-	packed1, err := buffer.ReadU64("play.toClient.tile_entity_data.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value1, err := buffer.ReadU8("play.toClient.tile_entity_data.action")
 	if err != nil {
 		return err
 	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value5, err := buffer.ReadU8("play.toClient.tile_entity_data.action")
+	packet.Action = value1
+	value2, err := buffer.ReadOptionalNBT("play.toClient.tile_entity_data.nbtData")
 	if err != nil {
 		return err
 	}
-	packet.Action = value5
-	value6, err := buffer.ReadOptionalNBT("play.toClient.tile_entity_data.nbtData")
-	if err != nil {
-		return err
-	}
-	packet.NBTData = value6
+	packet.NBTData = value2
 	*target = *packet
 	return nil
 }
@@ -4231,20 +3602,7 @@ func (packet *PlayClientboundTileEntityData) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayClientboundTileEntityData: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.tile_entity_data.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.tile_entity_data.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.tile_entity_data.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.tile_entity_data.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteU8("play.toClient.tile_entity_data.action", packet.Action); err != nil {
@@ -4262,24 +3620,8 @@ func (packet *PlayClientboundOpenSignEntity) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayClientboundOpenSignEntity)
-	packed1, err := buffer.ReadU64("play.toClient.open_sign_entity.location")
-	if err != nil {
+	if err := (&packet.Location).Decode(buffer); err != nil {
 		return err
-	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
 	}
 	*target = *packet
 	return nil
@@ -4289,20 +3631,7 @@ func (packet *PlayClientboundOpenSignEntity) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayClientboundOpenSignEntity: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toClient.open_sign_entity.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toClient.open_sign_entity.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toClient.open_sign_entity.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toClient.open_sign_entity.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	return nil
@@ -6073,30 +5402,14 @@ func (packet *PlayServerboundBlockDig) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	packet.Status = value1
-	packed2, err := buffer.ReadU64("play.toServer.block_dig.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value2, err := buffer.ReadI8("play.toServer.block_dig.face")
 	if err != nil {
 		return err
 	}
-	segment3 := (packed2 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment3)
-	if segment3&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment4 := (packed2 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment4)
-	if segment4&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment5 := (packed2 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment5)
-	if segment5&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value6, err := buffer.ReadI8("play.toServer.block_dig.face")
-	if err != nil {
-		return err
-	}
-	packet.Face = value6
+	packet.Face = value2
 	*target = *packet
 	return nil
 }
@@ -6108,20 +5421,7 @@ func (packet *PlayServerboundBlockDig) Encode(buffer *java.Buffer) error {
 	if err := buffer.WriteVarInt("play.toServer.block_dig.status", packet.Status); err != nil {
 		return err
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toServer.block_dig.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toServer.block_dig.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toServer.block_dig.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toServer.block_dig.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteI8("play.toServer.block_dig.face", packet.Face); err != nil {
@@ -6136,69 +5436,32 @@ func (packet *PlayServerboundBlockPlace) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayServerboundBlockPlace)
-	packed1, err := buffer.ReadU64("play.toServer.block_place.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value1, err := buffer.ReadI8("play.toServer.block_place.direction")
 	if err != nil {
 		return err
 	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
+	packet.Direction = value1
+	if err := (&packet.HeldItem).Decode(buffer); err != nil {
+		return err
 	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value5, err := buffer.ReadI8("play.toServer.block_place.direction")
+	value2, err := buffer.ReadI8("play.toServer.block_place.cursorX")
 	if err != nil {
 		return err
 	}
-	packet.Direction = value5
-	value6, err := buffer.ReadI16("play.toServer.block_place.heldItem.blockId")
+	packet.CursorX = value2
+	value3, err := buffer.ReadI8("play.toServer.block_place.cursorY")
 	if err != nil {
 		return err
 	}
-	packet.HeldItem.BlockID = value6
-	switch packet.HeldItem.BlockID {
-	case -1:
-	default:
-		value7, err := buffer.ReadI8("play.toServer.block_place.heldItem.anonymousSwitch1.itemCount")
-		if err != nil {
-			return err
-		}
-		packet.HeldItem.AnonymousSwitch1.Default.ItemCount = value7
-		value8, err := buffer.ReadI16("play.toServer.block_place.heldItem.anonymousSwitch1.itemDamage")
-		if err != nil {
-			return err
-		}
-		packet.HeldItem.AnonymousSwitch1.Default.ItemDamage = value8
-		value9, err := buffer.ReadOptionalNBT("play.toServer.block_place.heldItem.anonymousSwitch1.nbtData")
-		if err != nil {
-			return err
-		}
-		packet.HeldItem.AnonymousSwitch1.Default.NBTData = value9
-	}
-	value10, err := buffer.ReadI8("play.toServer.block_place.cursorX")
+	packet.CursorY = value3
+	value4, err := buffer.ReadI8("play.toServer.block_place.cursorZ")
 	if err != nil {
 		return err
 	}
-	packet.CursorX = value10
-	value11, err := buffer.ReadI8("play.toServer.block_place.cursorY")
-	if err != nil {
-		return err
-	}
-	packet.CursorY = value11
-	value12, err := buffer.ReadI8("play.toServer.block_place.cursorZ")
-	if err != nil {
-		return err
-	}
-	packet.CursorZ = value12
+	packet.CursorZ = value4
 	*target = *packet
 	return nil
 }
@@ -6207,40 +5470,14 @@ func (packet *PlayServerboundBlockPlace) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayServerboundBlockPlace: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toServer.block_place.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toServer.block_place.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toServer.block_place.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toServer.block_place.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteI8("play.toServer.block_place.direction", packet.Direction); err != nil {
 		return err
 	}
-	if err := buffer.WriteI16("play.toServer.block_place.heldItem.blockId", packet.HeldItem.BlockID); err != nil {
+	if err := (&packet.HeldItem).Encode(buffer); err != nil {
 		return err
-	}
-	switch packet.HeldItem.BlockID {
-	case -1:
-	default:
-		if err := buffer.WriteI8("play.toServer.block_place.heldItem.anonymousSwitch1.itemCount", packet.HeldItem.AnonymousSwitch1.Default.ItemCount); err != nil {
-			return err
-		}
-		if err := buffer.WriteI16("play.toServer.block_place.heldItem.anonymousSwitch1.itemDamage", packet.HeldItem.AnonymousSwitch1.Default.ItemDamage); err != nil {
-			return err
-		}
-		if err := buffer.WriteOptionalNBT("play.toServer.block_place.heldItem.anonymousSwitch1.nbtData", packet.HeldItem.AnonymousSwitch1.Default.NBTData); err != nil {
-			return err
-		}
 	}
 	if err := buffer.WriteI8("play.toServer.block_place.cursorX", packet.CursorX); err != nil {
 		return err
@@ -6434,29 +5671,8 @@ func (packet *PlayServerboundWindowClick) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	packet.Mode = value5
-	value6, err := buffer.ReadI16("play.toServer.window_click.item.blockId")
-	if err != nil {
+	if err := (&packet.Item).Decode(buffer); err != nil {
 		return err
-	}
-	packet.Item.BlockID = value6
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		value7, err := buffer.ReadI8("play.toServer.window_click.item.anonymousSwitch1.itemCount")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemCount = value7
-		value8, err := buffer.ReadI16("play.toServer.window_click.item.anonymousSwitch1.itemDamage")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemDamage = value8
-		value9, err := buffer.ReadOptionalNBT("play.toServer.window_click.item.anonymousSwitch1.nbtData")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.NBTData = value9
 	}
 	*target = *packet
 	return nil
@@ -6481,21 +5697,8 @@ func (packet *PlayServerboundWindowClick) Encode(buffer *java.Buffer) error {
 	if err := buffer.WriteI8("play.toServer.window_click.mode", packet.Mode); err != nil {
 		return err
 	}
-	if err := buffer.WriteI16("play.toServer.window_click.item.blockId", packet.Item.BlockID); err != nil {
+	if err := (&packet.Item).Encode(buffer); err != nil {
 		return err
-	}
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		if err := buffer.WriteI8("play.toServer.window_click.item.anonymousSwitch1.itemCount", packet.Item.AnonymousSwitch1.Default.ItemCount); err != nil {
-			return err
-		}
-		if err := buffer.WriteI16("play.toServer.window_click.item.anonymousSwitch1.itemDamage", packet.Item.AnonymousSwitch1.Default.ItemDamage); err != nil {
-			return err
-		}
-		if err := buffer.WriteOptionalNBT("play.toServer.window_click.item.anonymousSwitch1.nbtData", packet.Item.AnonymousSwitch1.Default.NBTData); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -6552,29 +5755,8 @@ func (packet *PlayServerboundSetCreativeSlot) Decode(buffer *java.Buffer) error 
 		return err
 	}
 	packet.Slot = value1
-	value2, err := buffer.ReadI16("play.toServer.set_creative_slot.item.blockId")
-	if err != nil {
+	if err := (&packet.Item).Decode(buffer); err != nil {
 		return err
-	}
-	packet.Item.BlockID = value2
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		value3, err := buffer.ReadI8("play.toServer.set_creative_slot.item.anonymousSwitch1.itemCount")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemCount = value3
-		value4, err := buffer.ReadI16("play.toServer.set_creative_slot.item.anonymousSwitch1.itemDamage")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.ItemDamage = value4
-		value5, err := buffer.ReadOptionalNBT("play.toServer.set_creative_slot.item.anonymousSwitch1.nbtData")
-		if err != nil {
-			return err
-		}
-		packet.Item.AnonymousSwitch1.Default.NBTData = value5
 	}
 	*target = *packet
 	return nil
@@ -6587,21 +5769,8 @@ func (packet *PlayServerboundSetCreativeSlot) Encode(buffer *java.Buffer) error 
 	if err := buffer.WriteI16("play.toServer.set_creative_slot.slot", packet.Slot); err != nil {
 		return err
 	}
-	if err := buffer.WriteI16("play.toServer.set_creative_slot.item.blockId", packet.Item.BlockID); err != nil {
+	if err := (&packet.Item).Encode(buffer); err != nil {
 		return err
-	}
-	switch packet.Item.BlockID {
-	case -1:
-	default:
-		if err := buffer.WriteI8("play.toServer.set_creative_slot.item.anonymousSwitch1.itemCount", packet.Item.AnonymousSwitch1.Default.ItemCount); err != nil {
-			return err
-		}
-		if err := buffer.WriteI16("play.toServer.set_creative_slot.item.anonymousSwitch1.itemDamage", packet.Item.AnonymousSwitch1.Default.ItemDamage); err != nil {
-			return err
-		}
-		if err := buffer.WriteOptionalNBT("play.toServer.set_creative_slot.item.anonymousSwitch1.nbtData", packet.Item.AnonymousSwitch1.Default.NBTData); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -6645,45 +5814,29 @@ func (packet *PlayServerboundUpdateSign) Decode(buffer *java.Buffer) error {
 	}
 	target := packet
 	packet = new(PlayServerboundUpdateSign)
-	packed1, err := buffer.ReadU64("play.toServer.update_sign.location")
+	if err := (&packet.Location).Decode(buffer); err != nil {
+		return err
+	}
+	value1, err := buffer.ReadString("play.toServer.update_sign.text1")
 	if err != nil {
 		return err
 	}
-	segment2 := (packed1 >> 38) & uint64(0x3ffffff)
-	packet.Location.X = int32(segment2)
-	if segment2&(uint64(1)<<25) != 0 {
-		packet.Location.X |= ^int32(0x3ffffff)
-	}
-	segment3 := (packed1 >> 26) & uint64(0xfff)
-	packet.Location.Y = int16(segment3)
-	if segment3&(uint64(1)<<11) != 0 {
-		packet.Location.Y |= ^int16(0xfff)
-	}
-	segment4 := (packed1 >> 0) & uint64(0x3ffffff)
-	packet.Location.Z = int32(segment4)
-	if segment4&(uint64(1)<<25) != 0 {
-		packet.Location.Z |= ^int32(0x3ffffff)
-	}
-	value5, err := buffer.ReadString("play.toServer.update_sign.text1")
+	packet.Text1 = value1
+	value2, err := buffer.ReadString("play.toServer.update_sign.text2")
 	if err != nil {
 		return err
 	}
-	packet.Text1 = value5
-	value6, err := buffer.ReadString("play.toServer.update_sign.text2")
+	packet.Text2 = value2
+	value3, err := buffer.ReadString("play.toServer.update_sign.text3")
 	if err != nil {
 		return err
 	}
-	packet.Text2 = value6
-	value7, err := buffer.ReadString("play.toServer.update_sign.text3")
+	packet.Text3 = value3
+	value4, err := buffer.ReadString("play.toServer.update_sign.text4")
 	if err != nil {
 		return err
 	}
-	packet.Text3 = value7
-	value8, err := buffer.ReadString("play.toServer.update_sign.text4")
-	if err != nil {
-		return err
-	}
-	packet.Text4 = value8
+	packet.Text4 = value4
 	*target = *packet
 	return nil
 }
@@ -6692,20 +5845,7 @@ func (packet *PlayServerboundUpdateSign) Encode(buffer *java.Buffer) error {
 	if packet == nil {
 		return fmt.Errorf("encode PlayServerboundUpdateSign: nil packet")
 	}
-	if int64(packet.Location.X) < -33554432 || int64(packet.Location.X) > 33554431 {
-		return fmt.Errorf("field play.toServer.update_sign.location.x: bitfield value %v does not fit 26 bits", packet.Location.X)
-	}
-	if int64(packet.Location.Y) < -2048 || int64(packet.Location.Y) > 2047 {
-		return fmt.Errorf("field play.toServer.update_sign.location.y: bitfield value %v does not fit 12 bits", packet.Location.Y)
-	}
-	if int64(packet.Location.Z) < -33554432 || int64(packet.Location.Z) > 33554431 {
-		return fmt.Errorf("field play.toServer.update_sign.location.z: bitfield value %v does not fit 26 bits", packet.Location.Z)
-	}
-	var packed1 uint64
-	packed1 |= (uint64(packet.Location.X) & uint64(0x3ffffff)) << 38
-	packed1 |= (uint64(packet.Location.Y) & uint64(0xfff)) << 26
-	packed1 |= (uint64(packet.Location.Z) & uint64(0x3ffffff)) << 0
-	if err := buffer.WriteU64("play.toServer.update_sign.location", packed1); err != nil {
+	if err := (&packet.Location).Encode(buffer); err != nil {
 		return err
 	}
 	if err := buffer.WriteString("play.toServer.update_sign.text1", packet.Text1); err != nil {
@@ -6780,25 +5920,9 @@ func (packet *PlayServerboundTabComplete) Decode(buffer *java.Buffer) error {
 		return err
 	}
 	if present2 {
-		packet.Block = new(PlayServerboundTabCompleteBlockValueBits)
-		packed3, err := buffer.ReadU64("play.toServer.tab_complete.block")
-		if err != nil {
+		packet.Block = new(Position)
+		if err := (&(*(packet.Block))).Decode(buffer); err != nil {
 			return err
-		}
-		segment4 := (packed3 >> 38) & uint64(0x3ffffff)
-		(*(packet.Block)).X = int32(segment4)
-		if segment4&(uint64(1)<<25) != 0 {
-			(*(packet.Block)).X |= ^int32(0x3ffffff)
-		}
-		segment5 := (packed3 >> 26) & uint64(0xfff)
-		(*(packet.Block)).Y = int16(segment5)
-		if segment5&(uint64(1)<<11) != 0 {
-			(*(packet.Block)).Y |= ^int16(0xfff)
-		}
-		segment6 := (packed3 >> 0) & uint64(0x3ffffff)
-		(*(packet.Block)).Z = int32(segment6)
-		if segment6&(uint64(1)<<25) != 0 {
-			(*(packet.Block)).Z |= ^int32(0x3ffffff)
 		}
 	} else {
 		packet.Block = nil
@@ -6819,20 +5943,7 @@ func (packet *PlayServerboundTabComplete) Encode(buffer *java.Buffer) error {
 		return err
 	}
 	if present1 {
-		if int64((*(packet.Block)).X) < -33554432 || int64((*(packet.Block)).X) > 33554431 {
-			return fmt.Errorf("field play.toServer.tab_complete.block.x: bitfield value %v does not fit 26 bits", (*(packet.Block)).X)
-		}
-		if int64((*(packet.Block)).Y) < -2048 || int64((*(packet.Block)).Y) > 2047 {
-			return fmt.Errorf("field play.toServer.tab_complete.block.y: bitfield value %v does not fit 12 bits", (*(packet.Block)).Y)
-		}
-		if int64((*(packet.Block)).Z) < -33554432 || int64((*(packet.Block)).Z) > 33554431 {
-			return fmt.Errorf("field play.toServer.tab_complete.block.z: bitfield value %v does not fit 26 bits", (*(packet.Block)).Z)
-		}
-		var packed2 uint64
-		packed2 |= (uint64((*(packet.Block)).X) & uint64(0x3ffffff)) << 38
-		packed2 |= (uint64((*(packet.Block)).Y) & uint64(0xfff)) << 26
-		packed2 |= (uint64((*(packet.Block)).Z) & uint64(0x3ffffff)) << 0
-		if err := buffer.WriteU64("play.toServer.tab_complete.block", packed2); err != nil {
+		if err := (&(*(packet.Block))).Encode(buffer); err != nil {
 			return err
 		}
 	}

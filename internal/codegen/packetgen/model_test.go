@@ -384,6 +384,12 @@ func assertExplicitOperations(t *testing.T, operations []Operation) {
 				t.Fatalf("%s operation has no java.Buffer method: %#v", operation.Kind, operation)
 			}
 		case OpContainer, OpSwitch:
+		case OpShared:
+			// A shared operation delegates to the named type's own codec, so
+			// it names a declaration rather than a buffer method.
+			if operation.Declaration == "" {
+				t.Fatalf("shared operation names no declaration: %#v", operation)
+			}
 		case OpTerminatedLoop:
 			// A terminated loop names its sentinel rather than a buffer
 			// method: the element decides what it reads.

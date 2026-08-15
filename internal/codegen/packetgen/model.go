@@ -17,8 +17,11 @@ type Options struct {
 
 // Model is the complete ordered input for packet source rendering.
 type Model struct {
-	PackageName  string
-	States       []State
+	PackageName string
+	States      []State
+	// SharedTypes are the named schema types compiled once for the whole
+	// protocol. They are emitted before the packets that reference them.
+	SharedTypes  []SharedType
 	Declarations []Declaration
 	Factories    []Factory
 	Mappers      []Mapper
@@ -162,6 +165,8 @@ const (
 	OpBitField OperationKind = "bitfield"
 	// OpBitFlags reads or writes an explicitly described flag integer.
 	OpBitFlags OperationKind = "bitflags"
+	// OpShared delegates to a shared named type's own Decode or Encode.
+	OpShared OperationKind = "shared"
 	// OpTerminatedLoop repeats an element until a sentinel byte appears.
 	OpTerminatedLoop OperationKind = "terminated_loop"
 	// OpVoid performs no wire I/O.
@@ -276,6 +281,16 @@ type builder struct {
 	// natives is the set of names this schema declares native. A hand-written
 	// codec backs a name only when it appears here; see native.go.
 	natives map[string]struct{}
+	// sharedGoNames maps a schema name to the Go type compiled once for it.
+	// Names are allocated before any shared type is compiled, so a recursive
+	// type can refer to itself while it is still being built.
+	sharedGoNames map[string]string
+	// reservedName lets a shared type's own declaration take the name already
+	// allocated for it, instead of allocating a near-duplicate beside it.
+	reservedName   string
+	sharedCompiled map[string]bool
+	sharedTypes    map[string]SharedType
+	schema         *protodef.Schema
 }
 
 type nameAllocator struct {
@@ -335,10 +350,14 @@ func Build(schema *protodef.Schema, options Options) (*Model, error) {
 		return nil, fmt.Errorf("packetgen: %w", err)
 	}
 	b := &builder{
-		model:       &Model{PackageName: options.PackageName},
-		typeNames:   newNameAllocator(),
-		mapperNames: newNameAllocator(),
-		natives:     natives,
+		model:          &Model{PackageName: options.PackageName},
+		typeNames:      newNameAllocator(),
+		mapperNames:    newNameAllocator(),
+		natives:        natives,
+		schema:         schema,
+		sharedGoNames:  map[string]string{},
+		sharedCompiled: map[string]bool{},
+		sharedTypes:    map[string]SharedType{},
 	}
 	for _, sourceState := range schema.States {
 		state := State{SourceName: sourceState.Name, GoName: exportedName(sourceState.Name)}
@@ -364,6 +383,10 @@ func (b *builder) buildDirection(stateName string, source protodef.Direction) (D
 		GoName:        directionName,
 		ProtocolValue: protocolValue,
 	}
+	if err := b.buildSharedTypes(stateName, source); err != nil {
+		return Direction{}, err
+	}
+
 	for _, sourcePacket := range source.Packets {
 		packet, buildErr := b.buildPacket(stateName, source.Name, directionName, sourcePacket)
 		if buildErr != nil {
@@ -383,6 +406,63 @@ func (b *builder) buildDirection(stateName string, source protodef.Direction) (D
 		})
 	}
 	return direction, nil
+}
+
+// buildSharedTypes compiles the named types this direction shares, in sorted
+// schema-name order so the output is identical across runs and unaffected by
+// packet order.
+func (b *builder) buildSharedTypes(stateName string, source protodef.Direction) error {
+	plan := planSharedTypes(b.schema, source, b.natives)
+	definitions := namedDefinitions(b.schema, source)
+
+	// Every Go name is allocated before anything is compiled, because a
+	// recursive type refers to itself while it is still being built.
+	for _, schemaName := range plan.order {
+		if _, allocated := b.sharedGoNames[schemaName]; allocated {
+			continue
+		}
+		b.sharedGoNames[schemaName] = b.typeNames.allocate(exportedName(schemaName))
+	}
+
+	for _, schemaName := range plan.order {
+		if b.sharedCompiled[schemaName] {
+			continue
+		}
+		b.sharedCompiled[schemaName] = true
+
+		goName := b.sharedGoNames[schemaName]
+		path := stateName + "." + source.Name + "." + schemaName
+
+		holder := &Packet{GoName: goName, Path: path}
+		previousPacket, previousName, previousPath, previousIndex := b.packet, b.packetName, b.packetPath, b.arrayIndex
+		b.packet = holder
+		b.packetName = schemaName
+		b.packetPath = path
+		b.arrayIndex = 0
+		b.reservedName = goName
+
+		compiled, err := b.compileNode(definitions[schemaName], goName, path, "(*shared)", nil, "")
+
+		b.reservedName = ""
+		b.packet, b.packetName, b.packetPath, b.arrayIndex = previousPacket, previousName, previousPath, previousIndex
+		if err != nil {
+			return err
+		}
+
+		b.model.Declarations = append(b.model.Declarations, holder.Declarations...)
+		shared := SharedType{
+			SchemaName: schemaName,
+			GoName:     goName,
+			Recursive:  plan.recursive[schemaName],
+			GoType:     compiled.goType,
+			Decode:     []Operation{compiled.decode},
+			Encode:     []Operation{compiled.encode},
+		}
+		b.model.SharedTypes = append(b.model.SharedTypes, shared)
+		b.sharedTypes[schemaName] = shared
+	}
+
+	return nil
 }
 
 func (b *builder) buildPacket(stateName, directionName, directionGoName string, source protodef.Packet) (Packet, error) {
@@ -508,6 +588,17 @@ func (b *builder) compileNode(
 
 	switch node.Kind {
 	case protodef.KindAlias:
+		// Delegation is what terminates a recursive type: the reference
+		// becomes a call to the shared codec rather than another expansion.
+		// A shared type is compiled from its definition node, never from an
+		// alias to itself, so this cannot short-circuit its own body.
+		if goName, shared := b.sharedGoNames[node.Name]; shared {
+			return compiledValue{
+				goType: goName,
+				decode: Operation{Kind: OpShared, Value: value, GoType: goName, Path: path, Declaration: goName},
+				encode: Operation{Kind: OpShared, Value: value, GoType: goName, Path: path, Declaration: goName},
+			}, nil
+		}
 		if len(node.Arguments) != 0 {
 			// A parameterized alias binds its arguments into a scope that
 			// still sees the invoking container's fields, because the target
@@ -555,6 +646,21 @@ func (b *builder) compileNode(
 	}
 }
 
+// allocateTypeName names a generated declaration.
+//
+// When this is the top-level declaration of a shared type, it takes the name
+// already reserved for that type and drops the kind suffix, so `position`
+// becomes Position rather than a Position alias beside a PositionBits struct.
+func (b *builder) allocateTypeName(base, suffix string) string {
+	if b.reservedName != "" && b.reservedName == base {
+		b.reservedName = ""
+
+		return base
+	}
+
+	return b.typeNames.allocate(base + suffix)
+}
+
 func (b *builder) compileContainer(
 	node *protodef.TypeNode,
 	desiredName string,
@@ -562,7 +668,7 @@ func (b *builder) compileContainer(
 	value string,
 	current *scope,
 ) (compiledValue, error) {
-	name := b.typeNames.allocate(desiredName)
+	name := b.allocateTypeName(desiredName, "")
 	fields, decode, encode, visible, err := b.compileContainerFields(node, name, path, value, current)
 	if err != nil {
 		return compiledValue{}, err
@@ -778,7 +884,7 @@ func (b *builder) compileSwitch(
 	if err != nil {
 		return compiledValue{}, modelError(path, "switch compareTo %q: %v", node.CompareTo, err)
 	}
-	name := b.typeNames.allocate(desiredName + "Switch")
+	name := b.allocateTypeName(desiredName, "Switch")
 	fieldNames := newNameAllocator()
 	declaration := Declaration{
 		Name:   name,
@@ -866,7 +972,7 @@ func (b *builder) compileBitField(node *protodef.TypeNode, desiredName, path, va
 	if !ok {
 		return compiledValue{}, modelError(path, "bitfield width %d has no java.Buffer method", total)
 	}
-	name := b.typeNames.allocate(desiredName + "Bits")
+	name := b.allocateTypeName(desiredName, "Bits")
 	fieldNames := newNameAllocator()
 	declaration := Declaration{
 		Name:     name,
@@ -910,7 +1016,7 @@ func (b *builder) compileBitFlags(node *protodef.TypeNode, desiredName, path, va
 	if len(node.Flags) > rule.bits {
 		return compiledValue{}, modelError(path, "%d flags exceed %d-bit wire type", len(node.Flags), rule.bits)
 	}
-	name := b.typeNames.allocate(desiredName + "Flags")
+	name := b.allocateTypeName(desiredName, "Flags")
 	fieldNames := newNameAllocator()
 	declaration := Declaration{
 		Name:     name,

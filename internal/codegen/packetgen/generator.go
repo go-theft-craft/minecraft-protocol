@@ -155,6 +155,16 @@ func executeGeneratorTemplate(name string, data generatorTemplateData) ([]byte, 
 func renderPackets(model *Model) (string, bool) {
 	var output sourceWriter
 	importJava := false
+	// A shared type whose definition did not produce its own declaration
+	// still needs a named Go type to hang Decode and Encode on.
+	for _, shared := range model.SharedTypes {
+		if shared.GoType == shared.GoName {
+			continue
+		}
+		output.line("type %s %s", shared.GoName, shared.GoType)
+		output.line("")
+		importJava = importJava || strings.Contains(shared.GoType, "java.")
+	}
 	for _, declaration := range model.Declarations {
 		renderStruct(&output, declaration.Name, declaration.Fields)
 		importJava = importJava || fieldsUseJava(declaration.Fields)
@@ -215,6 +225,11 @@ func renderCodecs(model *Model) (string, error) {
 		renderMapper(&output, mapper)
 	}
 	renderer := operationRenderer{declarations: declarations, mappers: mappers}
+	for _, shared := range model.SharedTypes {
+		if err := renderer.renderSharedCodec(&output, shared); err != nil {
+			return "", err
+		}
+	}
 	for _, state := range model.States {
 		for _, direction := range state.Directions {
 			for _, packet := range direction.Packets {
@@ -247,6 +262,69 @@ func renderMapper(output *sourceWriter, mapper Mapper) {
 	output.indent--
 	output.line("}")
 	output.line("")
+}
+
+// renderSharedCodec emits Decode and Encode for one shared named type.
+//
+// Decode counts nesting depth. A shared type is the only place a schema can be
+// recursive, so it is the only place an unbounded peer input can drive
+// unbounded recursion, and the counter is what turns that into a decode error
+// instead of a stack overflow.
+func (r *operationRenderer) renderSharedCodec(output *sourceWriter, shared SharedType) error {
+	r.temporary = 0
+	output.line("func (shared *%s) Decode(buffer *java.Buffer) error {", shared.GoName)
+	output.indent++
+	output.line("if shared == nil {")
+	output.indent++
+	output.line("return fmt.Errorf(%s)", strconv.Quote("decode "+shared.GoName+": nil value"))
+	output.indent--
+	output.line("}")
+	output.line("if err := buffer.EnterNested(%s); err != nil {", strconv.Quote(shared.SchemaName))
+	output.indent++
+	output.line("return err")
+	output.indent--
+	output.line("}")
+	output.line("defer buffer.LeaveNested()")
+	for _, operation := range shared.Decode {
+		if err := r.renderDecodeOperation(output, operation); err != nil {
+			return generationPathError(operation.Path, err)
+		}
+	}
+	output.line("return nil")
+	output.indent--
+	output.line("}")
+	output.line("")
+
+	r.temporary = 0
+	output.line("func (shared *%s) Encode(buffer *java.Buffer) error {", shared.GoName)
+	output.indent++
+	output.line("if shared == nil {")
+	output.indent++
+	output.line("return fmt.Errorf(%s)", strconv.Quote("encode "+shared.GoName+": nil value"))
+	output.indent--
+	output.line("}")
+	for _, operation := range shared.Encode {
+		if err := r.renderEncodeOperation(output, operation); err != nil {
+			return generationPathError(operation.Path, err)
+		}
+	}
+	output.line("return nil")
+	output.indent--
+	output.line("}")
+	output.line("")
+
+	return nil
+}
+
+// renderShared delegates to a shared type's own codec.
+func (r *operationRenderer) renderShared(output *sourceWriter, operation Operation, method string) error {
+	output.line("if err := (&%s).%s(buffer); err != nil {", operation.Value, method)
+	output.indent++
+	output.line("return err")
+	output.indent--
+	output.line("}")
+
+	return nil
 }
 
 func (r *operationRenderer) renderPacketCodec(output *sourceWriter, packet Packet) error {
@@ -309,6 +387,8 @@ func (r *operationRenderer) renderDecodeOperation(output *sourceWriter, operatio
 		return r.renderDecodeBitField(output, operation)
 	case OpBitFlags:
 		return r.renderDecodeBitFlags(output, operation)
+	case OpShared:
+		return r.renderShared(output, operation, "Decode")
 	case OpTerminatedLoop:
 		return r.renderDecodeTerminatedLoop(output, operation)
 	case OpVoid:
@@ -336,6 +416,8 @@ func (r *operationRenderer) renderEncodeOperation(output *sourceWriter, operatio
 		return r.renderEncodeBitField(output, operation)
 	case OpBitFlags:
 		return r.renderEncodeBitFlags(output, operation)
+	case OpShared:
+		return r.renderShared(output, operation, "Encode")
 	case OpTerminatedLoop:
 		return r.renderEncodeTerminatedLoop(output, operation)
 	case OpVoid:
