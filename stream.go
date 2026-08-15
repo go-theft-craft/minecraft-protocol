@@ -15,11 +15,16 @@ import (
 type Stream struct {
 	session   Session
 	transport Transport
-	limits    Limits
-	framer    Framer
-	policy    TransitionPolicy
-	preFrame  PreFrameHook
-	sink      ObservationSink
+
+	// conduit is the byte-level stage both pumps use. It owns the read
+	// buffer and the ciphers, so encryption is invisible to framing.
+	conduit *Conduit
+
+	limits   Limits
+	framer   Framer
+	policy   TransitionPolicy
+	preFrame PreFrameHook
+	sink     ObservationSink
 
 	// inboundFrames hands one complete frame from the read pump to the
 	// coordinator. Receiving from it also transfers the processing slot.
@@ -133,6 +138,7 @@ func NewStream(session Session, transport Transport, options ...StreamOption) (*
 		policy:     AcceptTransitions(),
 		queued:     newBudget(limits.QueueItems(), queuedByteCapacity(limits)),
 		processing: make(chan struct{}, 1),
+		conduit:    newConduit(transport),
 		stopping:   make(chan struct{}),
 		done:       make(chan struct{}),
 

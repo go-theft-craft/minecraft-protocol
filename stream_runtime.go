@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -124,9 +123,9 @@ func (s *Stream) run(ctx context.Context) {
 // readPump turns transport bytes into complete frames. It owns the processing
 // slot from before framing until the coordinator takes the frame.
 func (s *Stream) readPump(ctx context.Context) {
-	reader := bufio.NewReader(s.transport.Reader)
+	reader := s.conduit
 
-	claimed, err := runPreFrame(ctx, s.preFrame, reader, s.transport.Writer)
+	claimed, err := runPreFrame(ctx, s.preFrame, s.conduit.PreFrameReader(), s.conduit)
 	if err != nil {
 		s.fail(fmt.Errorf("pre-frame hook: %w", err))
 		s.stop()
@@ -188,7 +187,7 @@ func (s *Stream) writePump() {
 	for {
 		select {
 		case job := <-s.writeJobs:
-			err := s.framer.WriteFrame(s.transport.Writer, job.frame)
+			err := s.framer.WriteFrame(s.conduit, job.frame)
 			select {
 			case job.result <- err:
 			case <-s.stopping:
