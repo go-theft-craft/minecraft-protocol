@@ -24,6 +24,7 @@ type SetOptions struct {
 	Recipes         RecipeRegistry
 	Language        LanguageRegistry
 	CollisionShapes CollisionShapes
+	Physics         Physics
 	Protocol        Protocol
 	Version         Version
 	Raw             []RawDataset
@@ -46,6 +47,7 @@ type Set struct {
 	recipes         RecipeRegistry
 	language        LanguageRegistry
 	collisionShapes CollisionShapes
+	physics         Physics
 	protocol        Protocol
 	version         Version
 	raw             map[string]RawDataset
@@ -81,6 +83,7 @@ func NewSet(options SetOptions) (*Set, error) {
 		recipes:         options.Recipes,
 		language:        options.Language,
 		collisionShapes: options.CollisionShapes.Clone(),
+		physics:         options.Physics.Clone(),
 		protocol:        options.Protocol.Clone(),
 		version:         options.Version,
 		raw:             raw,
@@ -131,6 +134,9 @@ func (s *Set) Language() LanguageRegistry { return s.language }
 
 // CollisionShapes returns a clone owned by the caller.
 func (s *Set) CollisionShapes() CollisionShapes { return s.collisionShapes.Clone() }
+
+// Physics returns a clone owned by the caller.
+func (s *Set) Physics() Physics { return s.physics.Clone() }
 
 // Protocol returns a clone owned by the caller.
 func (s *Set) Protocol() Protocol { return s.protocol.Clone() }
