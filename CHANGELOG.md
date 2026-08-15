@@ -6,6 +6,51 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ### Added
 
+- Added AES-128/CFB8 transport encryption. `protocol.Conduit` sits between the
+  transport and both pumps, buffering raw bytes and transforming them as it
+  hands them out, which is what makes a mid-stream cipher switch safe. It
+  refuses a switch while the read buffer still holds bytes the peer sent early,
+  reporting `protocol.ErrEncryptionOverrun` rather than corrupting the next
+  frame. The mode is CFB8, with an eight-bit segment, not the block-wide CFB in
+  the standard library.
+- Added `protocol.TransportControl`, a control a stream applies to its conduit
+  instead of its session, and `java.EncryptionControl`, which implements it.
+  Encryption is applied through `Stream.Control` rather than proposed by a
+  session, because no packet carries the plaintext key.
+- Added the Java key-exchange primitives: `java.ParseServerPublicKey`,
+  `java.EncodeServerPublicKey`, `java.EncryptToServerKey`,
+  `java.DecryptFromServerKey`, `java.VerifyToken`, and
+  `java.ComputeServerHash`, which renders the digest the way Java renders a
+  signed BigInteger.
+- Added strict identity types for login. `java.ParseUUID` accepts the dashed
+  and undashed wire forms and nothing else, `java.ParseUsername` bounds bytes
+  rather than runes and rejects control characters, and `java.ServerHash` is a
+  distinct type so it cannot be transposed with a username.
+- Added `java.SharedSecret`, which redacts under every formatting verb.
+  `Reveal` is the only way to read the key.
+- Added observation redaction. `Observation.Redacted` reports a withheld body,
+  the new `ObservationSecret` stage marks the encryption switch point,
+  `Observation.Secret` names the kind of material, and
+  `protocol.WithSecretDisclosure` turns redaction off for a stated reason. The
+  generated protocol 47 session marks both key-exchange packets sensitive
+  through the optional `protocol.SensitivePackets` interface.
+- Added `protocol.LoginRole` and the optional `protocol.LoginRoles` interface.
+  The generated session reports which part of a login each packet plays, so a
+  later protocol is tagged rather than special-cased.
+- Added the `login` package: `login.Negotiator` drives the client half of the
+  protocol 47 login sequence, `login.Offline` is the authenticator for a server
+  that does not verify accounts, `login.Authenticator` and `login.Verifier` are
+  the two halves a consumer implements, and `login.Profile` holds only parsed
+  identity types.
+- Added the sentinel errors `protocol.ErrEncryptionOverrun`,
+  `protocol.ErrEncryptionEnabled`, `protocol.ErrEncryptionUnavailable`,
+  `java.ErrInvalidSharedSecret`, `java.ErrInvalidUUID`,
+  `java.ErrInvalidUsername`, `java.ErrInvalidServerKey`,
+  `java.ErrVerifyTokenMismatch`, and the `login` package's own set.
+- Added encrypted interoperability scenarios in both directions against the
+  pinned Node `minecraft-protocol` 1.66.2.
+
+
 - Added the asynchronous managed stream. `protocol.Stream` runs a read pump and
   a write pump over `io.Reader` and `io.Writer` while one coordinator orders
   every state change, control, observation, and shutdown step at complete frame
@@ -44,6 +89,14 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   `minecraft-protocol` 1.66.2, wired into a required `task test:interop` gate.
 
 ### Changed
+
+- `Stream.Snapshot` now reports `encryption.enabled` alongside the compression
+  settings. It merges the conduit's view with the session's, so one snapshot
+  describes everything a caller can configure at runtime.
+- Bumped the pinned Go toolchain to 1.26.6. Parsing an untrusted server public
+  key reaches `encoding/asn1`, whose recursion-depth fix landed in that patch
+  release.
+
 
 - Replaced `protocol.Codec` with `protocol.Session`, and `Protocol.NewCodec`
   with `Protocol.NewSession`. There is no compatibility adapter. A session owns

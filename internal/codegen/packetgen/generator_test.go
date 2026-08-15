@@ -122,6 +122,29 @@ func TestGenerateCompilesRepresentativePackageWithoutReflection(t *testing.T) {
 	compileGeneratedPackage(t, files)
 }
 
+// moduleGoVersion reads the go directive from the repository's own go.mod.
+//
+// The scratch module must not name an older toolchain than the module it
+// replaces, so hardcoding a version here breaks on the next toolchain bump
+// with an error that points at the generated code rather than at this line.
+func moduleGoVersion(t *testing.T, root string) string {
+	t.Helper()
+
+	source, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(string(source), "\n") {
+		if version, found := strings.CutPrefix(strings.TrimSpace(line), "go "); found {
+			return strings.TrimSpace(version)
+		}
+	}
+
+	t.Fatal("go.mod has no go directive")
+
+	return ""
+}
+
 func compileGeneratedPackage(t *testing.T, files map[string][]byte) {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -129,7 +152,11 @@ func compileGeneratedPackage(t *testing.T, files map[string][]byte) {
 		t.Fatal(err)
 	}
 	temporary := t.TempDir()
-	module := fmt.Sprintf("module packetgentest\n\ngo 1.26.5\n\nrequire github.com/go-theft-craft/minecraft-protocol v0.0.0\n\nreplace github.com/go-theft-craft/minecraft-protocol => %s\n", filepath.ToSlash(root))
+	module := fmt.Sprintf(
+		"module packetgentest\n\ngo %s\n\nrequire github.com/go-theft-craft/minecraft-protocol v0.0.0\n\nreplace github.com/go-theft-craft/minecraft-protocol => %s\n",
+		moduleGoVersion(t, root),
+		filepath.ToSlash(root),
+	)
 	if err := os.WriteFile(filepath.Join(temporary, "go.mod"), []byte(module), 0o600); err != nil {
 		t.Fatal(err)
 	}

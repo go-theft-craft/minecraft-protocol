@@ -206,6 +206,50 @@ hook, err := java.NewLegacyPingHook(func(ctx context.Context, _ java.LegacyPing)
 stream, err := protocol.NewStream(session, transport, protocol.WithPreFrameHook(hook))
 ```
 
+## Encryption and login
+
+A stream enables AES-128/CFB8 through `Stream.Control`, not through a session
+transition: no packet carries the plaintext session key, so the session never
+sees it. The `login` package drives the client sequence for protocol 47:
+
+```go
+authenticator, err := login.NewOffline("player")
+if err != nil {
+	return err
+}
+negotiator, err := login.NewNegotiator(authenticator)
+if err != nil {
+	return err
+}
+
+profile, err := negotiator.Negotiate(ctx, stream)
+if err != nil {
+	return err
+}
+// The stream is now in the play state, encrypted if the server asked for it.
+```
+
+Four rules matter:
+
+- Encryption is applied, not proposed. A consumer that runs its own login calls
+  `Stream.Control` with a `java.EncryptionControl` after the key exchange.
+  `Stream.Write` returns only once the frame has reached the transport and
+  `Control` queues behind it, so the response itself goes out in plaintext and
+  every later byte is encrypted.
+- The negotiator owns `Read` while it runs. A caller that reads concurrently
+  steals packets the sequence needs.
+- Captures are redacted by default. The key-exchange packet bodies and the
+  session key are withheld unless the stream was built with
+  `protocol.WithSecretDisclosure`, which requires a stated reason. A disclosed
+  capture is a credential; treat it as one.
+- Every peer-supplied identity crosses the boundary as a parsed type. A
+  `login.Profile` holds a `java.Username` and a `java.UUID`, so holding one is
+  itself proof that validation ran.
+
+`Stream.Snapshot` reports `encryption.enabled` alongside the compression
+settings, and an `ObservationSecret` record marks the switch point even when
+the material itself is withheld.
+
 ## Observation points
 
 A stream can publish a lossless record of everything it moves. Install a sink

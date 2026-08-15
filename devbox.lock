@@ -57,9 +57,9 @@
       "last_modified": "2026-08-04T08:36:17Z",
       "resolved": "github:openserbia/go-flake/0bd6efdd1b5592df7bd261f2585b51c762230d2f?lastModified=1785832577&narHash=sha256-%2BRstNKQy%2Bs9bDt3MelwG2jRnOrylaxCydI0EYzp2O28%3D#delve_1_27_0"
     },
-    "github:openserbia/go-flake#go_1_26_5": {
-      "last_modified": "2026-08-04T08:36:17Z",
-      "resolved": "github:openserbia/go-flake/0bd6efdd1b5592df7bd261f2585b51c762230d2f?lastModified=1785832577&narHash=sha256-%2BRstNKQy%2Bs9bDt3MelwG2jRnOrylaxCydI0EYzp2O28%3D#go_1_26_5"
+    "github:openserbia/go-flake#go_1_26_6": {
+      "last_modified": "2026-08-14T07:24:33Z",
+      "resolved": "github:openserbia/go-flake/5ddca63f9a9b313effcd4e7c4e0a6bd09080af0c?lastModified=1786692273&narHash=sha256-bBvlXj7LcXQ76BVULJcKhbrNfx8genwdNAS%2FSpgSRHs%3D#go_1_26_6"
     },
     "github:openserbia/go-flake#gofumpt_0_10_0": {
       "last_modified": "2026-08-04T08:36:17Z",

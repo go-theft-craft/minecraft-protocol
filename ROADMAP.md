@@ -8,7 +8,7 @@ flowchart LR
     P1["P1: extract Java 1.8<br/>wire, data, and generator<br/>complete"]
     P2["P2: generate Java 26.1<br/>and all PrismarineJS data"]
     P3a["P3a: managed stream<br/>and compression<br/>complete"]
-    P3b["P3b: encryption and<br/>login lifecycle"]
+    P3b["P3b: encryption and<br/>login lifecycle<br/>complete"]
     P3c["P3c: router, capture,<br/>replay, and mcproto CLI"]
     P4["P4: migrate server<br/>and proxy consumers"]
     P5["P5: stable v1 contracts"]
@@ -66,9 +66,18 @@ Status: complete.
 
 ## P3b: encryption and login lifecycle
 
-- Add AES-CFB8 at the transport boundary, in the correct pipeline order.
-- Support offline and Microsoft-backed identities without coupling
-  authentication to the stream.
+Status: complete, except for the modern-login transitions, which need the
+protocol 775 codecs that P2 generates.
+
+- Added AES-CFB8 at the transport boundary, in the correct pipeline order,
+  through a conduit that transforms bytes as it hands them out.
+- Added the key-exchange primitives, the Java server hash, and strict identity
+  types for every peer-supplied login field.
+- Added the opt-in `login` negotiator, which drives the client sequence for an
+  offline or externally authenticated identity without coupling authentication
+  to the stream.
+- Added secret redaction in observations, with disclosure behind an explicit,
+  reasoned opt-in.
 - Add configuration and play transitions for modern Java login, keeping every
   automatic transition optional.
 
