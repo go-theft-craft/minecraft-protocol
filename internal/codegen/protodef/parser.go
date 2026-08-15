@@ -634,13 +634,25 @@ func parseCountObject(
 	return &Count{Kind: CountReference, Reference: reference}, nil
 }
 
+// fieldReferenceExists reports whether a reference names a field that is in
+// scope.
+//
+// A reference written with "../" names an exact level and is resolved there
+// and nowhere else. A bare name resolves lexically: the innermost scope first,
+// then outward. Protocol 775 needs the outward walk. DebugSubscriptionUpdate
+// discriminates a nested switch on "type", a field of the container two scopes
+// out, and there is no other "type" anywhere in the chain — resolving it in the
+// innermost scope alone leaves the packet uncompilable.
 func fieldReferenceExists(reference string, scopes []map[string]struct{}) bool {
 	if strings.HasPrefix(reference, "$") {
 		return true
 	}
+
 	level := len(scopes) - 1
+	explicit := false
 	for strings.HasPrefix(reference, "../") {
 		level--
+		explicit = true
 		reference = strings.TrimPrefix(reference, "../")
 	}
 	if level < 0 || reference == "" {
@@ -649,8 +661,19 @@ func fieldReferenceExists(reference string, scopes []map[string]struct{}) bool {
 	if strings.Contains(reference, "/") {
 		reference = strings.Split(reference, "/")[0]
 	}
-	_, ok := scopes[level][reference]
-	return ok
+
+	if explicit {
+		_, ok := scopes[level][reference]
+
+		return ok
+	}
+	for ; level >= 0; level-- {
+		if _, ok := scopes[level][reference]; ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 func parseArguments(

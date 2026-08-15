@@ -237,6 +237,11 @@ type FieldReference struct {
 	Path   string
 	GoType string
 	Mapper string
+	// Members are the named parts a bitfield or bitflags field unpacks into.
+	// They are what lets a reference name one bit of a sibling field, as
+	// protocol 775 does with "flags/has_redirect_node". A field with no
+	// members cannot be reached through a path.
+	Members map[string]FieldReference
 }
 
 // Factory describes one exact packet constructor lookup entry.
@@ -548,6 +553,9 @@ func (b *builder) compileContainerFields(
 				Path:   fieldPath,
 				GoType: compiled.goType,
 				Mapper: compiled.mapper,
+				// A named bitfield or bitflags field keeps its unpacked parts
+				// reachable, so a sibling can discriminate on one of them.
+				Members: compiled.visible,
 			}
 		} else if sourceField.Anonymous {
 			for name, reference := range compiled.visible {
@@ -880,7 +888,7 @@ func (b *builder) compileSwitch(
 	value string,
 	current *scope,
 ) (compiledValue, error) {
-	compare, err := resolveReference(current, node.CompareTo)
+	compare, err := resolvePath(current, node.CompareTo)
 	if err != nil {
 		return compiledValue{}, modelError(path, "switch compareTo %q: %v", node.CompareTo, err)
 	}
@@ -1023,18 +1031,21 @@ func (b *builder) compileBitFlags(node *protodef.TypeNode, desiredName, path, va
 		Kind:     DeclarationBitFlags,
 		BitFlags: BitFlags{WireGoType: rule.goType, ReadMethod: rule.read, WriteMethod: rule.write},
 	}
+	visible := make(map[string]FieldReference, len(node.Flags))
 	for bit, sourceName := range node.Flags {
 		goName := fieldNames.allocate(exportedName(sourceName))
 		fieldPath := path + "." + sourceName
 		field := BitFlagField{SourceName: sourceName, GoName: goName, Bit: bit, Mask: integerMaskAt(bit), Path: fieldPath}
 		declaration.BitFlags.Fields = append(declaration.BitFlags.Fields, field)
 		declaration.Fields = append(declaration.Fields, Field{SourceName: sourceName, GoName: goName, GoType: "bool", Path: fieldPath})
+		visible[sourceName] = FieldReference{Source: sourceName, Value: selector(value, goName), Path: fieldPath, GoType: "bool"}
 	}
 	b.packet.Declarations = append(b.packet.Declarations, declaration)
 	return compiledValue{
-		goType: name,
-		decode: Operation{Kind: OpBitFlags, Method: rule.read, Value: value, GoType: name, WireGoType: rule.goType, Path: path, Declaration: name},
-		encode: Operation{Kind: OpBitFlags, Method: rule.write, Value: value, GoType: name, WireGoType: rule.goType, Path: path, Declaration: name},
+		goType:  name,
+		decode:  Operation{Kind: OpBitFlags, Method: rule.read, Value: value, GoType: name, WireGoType: rule.goType, Path: path, Declaration: name},
+		encode:  Operation{Kind: OpBitFlags, Method: rule.write, Value: value, GoType: name, WireGoType: rule.goType, Path: path, Declaration: name},
+		visible: visible,
 	}, nil
 }
 
@@ -1046,7 +1057,7 @@ func (b *builder) compileCount(source *protodef.Count, current *scope, path stri
 	case protodef.CountFixed:
 		return Count{Kind: CountFixed, Fixed: source.Fixed, ValidateMethod: "ValidateCollection"}, nil
 	case protodef.CountReference:
-		reference, err := resolveReference(current, source.Reference)
+		reference, err := resolvePath(current, source.Reference)
 		if err != nil {
 			return Count{}, modelError(path, "count reference %q: %v", source.Reference, err)
 		}
@@ -1135,26 +1146,41 @@ func resolveReference(current *scope, source string) (FieldReference, error) {
 		source = bound
 		current = owner.parent
 	}
+	explicit := false
 	for strings.HasPrefix(source, "../") {
 		if current == nil || current.parent == nil {
 			return FieldReference{}, fmt.Errorf("reference escapes the packet")
 		}
 		current = current.parent
 		source = strings.TrimPrefix(source, "../")
+		explicit = true
 	}
 	if current == nil || source == "" {
 		return FieldReference{}, fmt.Errorf("reference is empty")
 	}
-	if strings.ContainsRune(source, '/') {
-		return FieldReference{}, fmt.Errorf("nested field references are unsupported")
-	}
+
 	name := source
-	reference, ok := current.bindings[name]
-	if !ok {
-		return FieldReference{}, fmt.Errorf("field %q is not available", name)
+	// A reference written with "../" names an exact level. A bare name
+	// resolves lexically, innermost scope outward, which is what protocol
+	// 775's nested switches rely on.
+	for level := current; level != nil; level = level.parent {
+		reference, ok := level.bindings[name]
+		if !ok {
+			if explicit {
+				break
+			}
+
+			continue
+		}
+		// A binding's Value is a selector rooted at the packet variable, so a
+		// reference found further out stays valid where it is used: nested
+		// containers decode inline, under one root.
+		reference.Source = source
+
+		return reference, nil
 	}
-	reference.Source = source
-	return reference, nil
+
+	return FieldReference{}, fmt.Errorf("field %q is not available", name)
 }
 
 func switchMatch(source string, compare FieldReference) (string, error) {

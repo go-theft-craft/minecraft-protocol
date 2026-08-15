@@ -153,9 +153,9 @@ func TestParseErrorsIncludeJSONPath(t *testing.T) {
 			want: `$.types.bad[1][1].type[1].compareTo: unknown field reference "missing"`,
 		},
 		{
-			name: "unqualified compareTo cannot escape container",
-			raw:  `{"types":{"container":"native","switch":"native","u8":"native","bad":["container",[{"name":"value","type":"u8"},{"name":"child","type":["container",[{"name":"choice","type":["switch",{"compareTo":"value","fields":{}}]}]]}]]}}`,
-			want: `$.types.bad[1][1].type[1][0].type[1].compareTo: unknown field reference "value"`,
+			name: "qualified compareTo names an exact level",
+			raw:  `{"types":{"container":"native","switch":"native","u8":"native","bad":["container",[{"name":"value","type":"u8"},{"name":"child","type":["container",[{"name":"choice","type":["switch",{"compareTo":"../../value","fields":{}}]}]]}]]}}`,
+			want: `$.types.bad[1][1].type[1][0].type[1].compareTo: unknown field reference "../../value"`,
 		},
 		{
 			name: "invalid native compareTo reference",
@@ -301,4 +301,29 @@ func packetFixture(mappings, fields string) string {
     }
   }
 }`)
+}
+
+// TestUnqualifiedReferenceResolvesOutward pins the scoping rule protocol 775
+// forced.
+//
+// A bare name resolves lexically: the innermost scope first, then outward. The
+// parser used to require it in the innermost scope alone, which matches
+// node-protodef's getField literally. Protocol 775's DebugSubscriptionUpdate
+// discriminates a nested switch on "type", a field two containers out, and
+// that switch declares no default — so under the literal rule the packet
+// cannot be decoded by anything, this generator included.
+//
+// The outward walk only ever accepts more than the old rule did. A reference
+// that resolved before still resolves to the same field, because the innermost
+// scope is searched first, so no wire format can change underneath it.
+func TestUnqualifiedReferenceResolvesOutward(t *testing.T) {
+	raw := `{"types":{"container":"native","switch":"native","u8":"native","void":"native",` +
+		`"good":["container",[{"name":"value","type":"u8"},` +
+		`{"name":"child","type":["container",[` +
+		`{"name":"choice","type":["switch",{"compareTo":"value","fields":{"1":"u8"},"default":"void"}]}` +
+		`]]}]]}}`
+
+	if _, err := Parse([]byte(raw)); err != nil {
+		t.Fatalf("Parse() error = %v, want a reference resolved in the enclosing container", err)
+	}
 }
