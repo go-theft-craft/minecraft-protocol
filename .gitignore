@@ -21,8 +21,7 @@ go.work.sum
 .idea/
 .vscode/
 
-# Local design documents
-/docs/
+# Local agent workspace
 /.superpowers/
 
 # Interoperability runner dependencies
