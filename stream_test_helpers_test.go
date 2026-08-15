@@ -258,6 +258,9 @@ type testSession struct {
 	encodeErr  error
 	decodeHook func(payload []byte) (Packet, error)
 
+	// sensitivePackets are the packet IDs whose bodies observations withhold.
+	sensitivePackets map[int32]bool
+
 	proposeHook           func(Packet) (Transition, bool, error)
 	validateTransitionErr error
 	validateControlErr    error
@@ -269,6 +272,25 @@ type testSession struct {
 	appliedControls    []Control
 	decodeStates       []State
 	encodeStates       []State
+}
+
+// Sensitive implements protocol.SensitivePackets.
+func (s *testSession) Sensitive(packet Packet) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.sensitivePackets[packet.ID]
+}
+
+// markSensitive registers a packet ID as carrying secret material.
+func (s *testSession) markSensitive(id int32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.sensitivePackets == nil {
+		s.sensitivePackets = map[int32]bool{}
+	}
+	s.sensitivePackets[id] = true
 }
 
 func (s *testSession) setDecodeErr(err error) {
@@ -490,4 +512,14 @@ func (s *testSession) Disconnect(reason string) (Packet, bool, error) {
 func testFrameBytes(id byte, payload ...byte) []byte {
 	body := append([]byte{id}, payload...)
 	return append([]byte{byte(len(body))}, body...)
+}
+
+// newTestStreamOrError builds a stream and returns the construction error
+// rather than failing, so option validation can be asserted.
+func newTestStreamOrError(t *testing.T, options ...StreamOption) (*Stream, error) {
+	t.Helper()
+
+	transport := &countingTransport{}
+
+	return NewStream(newTestSession(t, testStreamLimits(t)), transport.transport(), options...)
 }

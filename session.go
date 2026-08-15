@@ -151,6 +151,16 @@ type Session interface {
 	Disconnect(string) (Packet, bool, error)
 }
 
+// SensitivePackets reports packets whose bodies must be withheld from
+// observations. A session that does not implement it has no sensitive packets.
+//
+// It is an optional interface rather than a Session method so that adding a
+// sensitive packet in one protocol version does not change the contract every
+// session must satisfy.
+type SensitivePackets interface {
+	Sensitive(Packet) bool
+}
+
 // TransitionContext describes the packet that produced a proposed transition.
 type TransitionContext struct {
 	// Packet is the decoded inbound packet or the accepted outbound packet.

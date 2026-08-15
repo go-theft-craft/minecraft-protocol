@@ -253,6 +253,19 @@ func (session *protocolSession) ApplyControl(control protocol.Control) {
 	}
 }
 
+// Sensitive implements protocol.SensitivePackets. The key-exchange packets
+// carry material that must not reach a capture by default.
+func (session *protocolSession) Sensitive(packet protocol.Packet) bool {
+	switch packet.Value.(type) {
+	case *LoginClientboundEncryptionBegin, *LoginServerboundEncryptionBegin:
+		return true
+	default:
+		return false
+	}
+}
+
+var _ protocol.SensitivePackets = (*protocolSession)(nil)
+
 // ProposeTransition reports the state or pipeline change a packet implies.
 //
 // It matches concrete generated types rather than packet names, so a packet

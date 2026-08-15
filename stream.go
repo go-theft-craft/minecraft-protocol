@@ -26,6 +26,9 @@ type Stream struct {
 	preFrame PreFrameHook
 	sink     ObservationSink
 
+	// disclosureReason is empty unless the developer opted into disclosure.
+	disclosureReason string
+
 	// inboundFrames hands one complete frame from the read pump to the
 	// coordinator. Receiving from it also transfers the processing slot.
 	inboundFrames chan Frame
@@ -106,6 +109,25 @@ func WithPreFrameHook(hook PreFrameHook) StreamOption {
 			return fmt.Errorf("%w: nil pre-frame hook", ErrInvalidStream)
 		}
 		stream.preFrame = hook
+
+		return nil
+	}
+}
+
+// WithSecretDisclosure turns off redaction of secret material in observations.
+//
+// A capture then contains the session key and the full key-exchange bodies,
+// which makes it as sensitive as the account it belongs to. Use it to debug
+// an encrypted connection, and treat the resulting capture as a credential.
+//
+// reason must be non-empty. It is recorded on the stream so a capture can
+// state why it is unredacted.
+func WithSecretDisclosure(reason string) StreamOption {
+	return func(stream *Stream) error {
+		if reason == "" {
+			return fmt.Errorf("%w: secret disclosure needs a reason", ErrInvalidStream)
+		}
+		stream.disclosureReason = reason
 
 		return nil
 	}

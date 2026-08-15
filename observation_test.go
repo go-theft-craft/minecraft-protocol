@@ -296,3 +296,154 @@ func TestStreamWithoutSinkRecordsNothing(t *testing.T) {
 		t.Fatalf("stream assigned %d observation sequences without a sink", harness.stream.sequence)
 	}
 }
+
+// sensitivePacketID is the packet the fake session reports as carrying secret
+// material.
+const sensitivePacketID int32 = 12
+
+// findRecord returns the single record at stage, failing when there is not
+// exactly one.
+func findRecord(t *testing.T, records []Observation, stage ObservationStage) Observation {
+	t.Helper()
+
+	var found []Observation
+	for _, record := range records {
+		if record.Stage == stage {
+			found = append(found, record)
+		}
+	}
+	if len(found) != 1 {
+		t.Fatalf("found %d records at stage %q, want 1", len(found), stage)
+	}
+
+	return found[0]
+}
+
+// collectObservationsForPacket writes one sensitive packet and returns every
+// record the sink saw.
+func collectObservationsForPacket(t *testing.T, options ...StreamOption) []Observation {
+	t.Helper()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, append([]StreamOption{WithObservationSink(sink)}, options...)...)
+	harness.session.markSensitive(sensitivePacketID)
+
+	packet := Packet{ID: sensitivePacketID, Payload: []byte{0xde, 0xad, 0xbe, 0xef}}
+	if err := harness.stream.Write(context.Background(), packet); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	return sink.waitFor(t, 2)
+}
+
+// disclosingTestControl is a TransportControl that also discloses secret
+// material. It is defined here rather than reusing wire/java's, because
+// importing wire/java from package protocol would be an import cycle.
+type disclosingTestControl struct{}
+
+func (disclosingTestControl) ControlName() string { return "test.secret" }
+
+func (disclosingTestControl) SecretLabel() string { return "test.session-key" }
+
+func (disclosingTestControl) DisclosedSecret() []byte { return []byte("0123456789abcdef") }
+
+func (disclosingTestControl) ApplyTransport(conduit *Conduit) error {
+	if conduit == nil {
+		return errors.New("nil conduit")
+	}
+
+	return nil
+}
+
+// collectObservationsForSecret applies one disclosing control and returns
+// every record the sink saw.
+func collectObservationsForSecret(t *testing.T, options ...StreamOption) []Observation {
+	t.Helper()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, append([]StreamOption{WithObservationSink(sink)}, options...)...)
+
+	if err := harness.stream.Control(context.Background(), disclosingTestControl{}); err != nil {
+		t.Fatalf("Control() error = %v", err)
+	}
+
+	return sink.waitFor(t, 1)
+}
+
+func TestObservationsRedactSensitivePacketsByDefault(t *testing.T) {
+	t.Parallel()
+
+	records := collectObservationsForPacket(t)
+
+	packetRecord := findRecord(t, records, ObservationPacket)
+	if !packetRecord.Redacted {
+		t.Fatal("a sensitive packet record must be marked redacted")
+	}
+	if len(packetRecord.Bytes) != 0 {
+		t.Fatalf("a redacted record must carry no body, got %d bytes", len(packetRecord.Bytes))
+	}
+
+	rawRecord := findRecord(t, records, ObservationRawFrame)
+	if rawRecord.Redacted {
+		t.Fatal("raw frame records are never redacted")
+	}
+	if len(rawRecord.Bytes) == 0 {
+		t.Fatal("a raw frame record must carry the exact wire bytes")
+	}
+}
+
+func TestObservationsDiscloseSensitivePacketsWhenAsked(t *testing.T) {
+	t.Parallel()
+
+	records := collectObservationsForPacket(t, WithSecretDisclosure("interoperability debugging"))
+
+	packetRecord := findRecord(t, records, ObservationPacket)
+	if packetRecord.Redacted {
+		t.Fatal("disclosure must clear the redacted flag")
+	}
+	if len(packetRecord.Bytes) == 0 {
+		t.Fatal("disclosure must carry the real body")
+	}
+}
+
+func TestSecretRecordKeepsItsLabelWhenRedacted(t *testing.T) {
+	t.Parallel()
+
+	records := collectObservationsForSecret(t)
+
+	record := findRecord(t, records, ObservationSecret)
+	if !record.Redacted {
+		t.Fatal("a secret record must be redacted by default")
+	}
+	if len(record.Bytes) != 0 {
+		t.Fatal("a redacted secret record must carry no material")
+	}
+	if record.Secret == nil || record.Secret.Label == "" {
+		t.Fatal("a redacted secret record must still name the kind of material")
+	}
+}
+
+func TestSecretRecordCarriesMaterialUnderDisclosure(t *testing.T) {
+	t.Parallel()
+
+	records := collectObservationsForSecret(t, WithSecretDisclosure("interoperability debugging"))
+
+	record := findRecord(t, records, ObservationSecret)
+	if record.Redacted {
+		t.Fatal("disclosure must clear the redacted flag")
+	}
+	if len(record.Bytes) == 0 {
+		t.Fatal("disclosure must carry the material")
+	}
+	if record.Secret == nil {
+		t.Fatal("a secret record must always name its material")
+	}
+}
+
+func TestSecretDisclosureRequiresAReason(t *testing.T) {
+	t.Parallel()
+
+	if _, err := newTestStreamOrError(t, WithSecretDisclosure("")); !errors.Is(err, ErrInvalidStream) {
+		t.Fatalf("error = %v, want ErrInvalidStream", err)
+	}
+}

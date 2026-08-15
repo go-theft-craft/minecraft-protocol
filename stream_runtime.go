@@ -283,10 +283,14 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 
 	// The raw record is emitted before decoding, so a capture keeps the exact
 	// bytes even when the frame turns out to be undecodable.
-	if err := s.observe(
-		s.session.Inbound(), ObservationRawFrame, frameID,
-		before, before, nil, frame.WireBytes(),
-	); err != nil {
+	if err := s.observe(observationInput{
+		direction: s.session.Inbound(),
+		stage:     ObservationRawFrame,
+		frame:     frameID,
+		before:    before,
+		after:     before,
+		payload:   frame.WireBytes(),
+	}); err != nil {
 		return nil, err
 	}
 
@@ -304,10 +308,16 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 		s.session.ApplyTransition(decision.transition)
 	}
 
-	if err := s.observe(
-		s.session.Inbound(), ObservationPacket, frameID,
-		before, s.session.Snapshot(), packetMetadata(packet), packet.Payload,
-	); err != nil {
+	if err := s.observe(observationInput{
+		direction: s.session.Inbound(),
+		stage:     ObservationPacket,
+		frame:     frameID,
+		before:    before,
+		after:     s.session.Snapshot(),
+		packet:    packetMetadata(packet),
+		payload:   packet.Payload,
+		redacted:  s.sensitive(packet),
+	}); err != nil {
 		return nil, err
 	}
 
@@ -414,17 +424,27 @@ func (s *Stream) observeOutbound(
 	packet Packet,
 	payload []byte,
 ) error {
-	if err := s.observe(
-		s.session.Outbound(), ObservationRawFrame, frameID,
-		before, before, nil, frame.WireBytes(),
-	); err != nil {
+	if err := s.observe(observationInput{
+		direction: s.session.Outbound(),
+		stage:     ObservationRawFrame,
+		frame:     frameID,
+		before:    before,
+		after:     before,
+		payload:   frame.WireBytes(),
+	}); err != nil {
 		return err
 	}
 
-	return s.observe(
-		s.session.Outbound(), ObservationPacket, frameID,
-		before, s.session.Snapshot(), packetMetadata(packet), payload,
-	)
+	return s.observe(observationInput{
+		direction: s.session.Outbound(),
+		stage:     ObservationPacket,
+		frame:     frameID,
+		before:    before,
+		after:     s.session.Snapshot(),
+		packet:    packetMetadata(packet),
+		payload:   payload,
+		redacted:  s.sensitive(packet),
+	})
 }
 
 // finishShutdown runs the graceful shutdown sequence on the coordinator, which
@@ -600,6 +620,38 @@ func (s *Stream) resolveTransition(
 	return transitionDecision{transition: resolved, commit: true}, nil
 }
 
+// observeSecret records that secret material was installed. The key itself is
+// present only under disclosure; otherwise the record marks the switch point
+// so a capture is never silently missing it.
+func (s *Stream) observeSecret(control Control) error {
+	disclosing, ok := control.(SecretDisclosure)
+	if !ok {
+		return nil
+	}
+
+	// The label is always recorded; the material is only read when the
+	// developer asked for it, so the default path never materializes a key.
+	redacted := s.disclosureReason == ""
+
+	var material []byte
+	if !redacted {
+		material = disclosing.DisclosedSecret()
+	}
+
+	snapshot := s.snapshot()
+
+	return s.observe(observationInput{
+		direction: s.session.Outbound(),
+		stage:     ObservationSecret,
+		frame:     s.frameCounter,
+		before:    snapshot,
+		after:     snapshot,
+		secret:    &SecretMetadata{Label: disclosing.SecretLabel()},
+		payload:   material,
+		redacted:  redacted,
+	})
+}
+
 // snapshot merges the session's view with the conduit's, so one snapshot
 // describes everything a caller can configure at runtime.
 func (s *Stream) snapshot() Snapshot {
@@ -621,7 +673,19 @@ func (s *Stream) snapshot() Snapshot {
 // stopping the stream.
 func (s *Stream) processControl(request *controlRequest) {
 	if transport, ok := request.control.(TransportControl); ok {
-		request.result <- transport.ApplyTransport(s.conduit)
+		if err := transport.ApplyTransport(s.conduit); err != nil {
+			request.result <- err
+
+			return
+		}
+		if err := s.observeSecret(request.control); err != nil {
+			request.result <- err
+			s.fail(err)
+			s.stop()
+
+			return
+		}
+		request.result <- nil
 
 		return
 	}

@@ -16,6 +16,11 @@ const (
 	// ObservationPacket is recorded after decoding and after the packet's own
 	// transition has been committed.
 	ObservationPacket ObservationStage = "packet"
+	// ObservationSecret is recorded when secret material is installed on the
+	// conduit. It carries the key only under WithSecretDisclosure; otherwise
+	// it marks the switch point and nothing more, so a capture always shows
+	// when encryption began.
+	ObservationSecret ObservationStage = "secret"
 )
 
 // PacketMetadata describes a decoded packet without exposing its value. A
@@ -47,6 +52,20 @@ type Observation struct {
 	// Bytes is owned by the record: raw records hold the complete frame
 	// including its length prefix, packet records hold the decoded body.
 	Bytes []byte
+	// Redacted reports that Bytes was withheld. It is set per record rather
+	// than inferred from stream configuration, so a sink never has to guess
+	// whether it holds a real body or a placeholder.
+	Redacted bool
+	// Secret is present on ObservationSecret records and names the kind of
+	// material the record describes.
+	Secret *SecretMetadata
+}
+
+// SecretMetadata names the kind of secret material a record carries. A capture
+// with more than one kind of secret in it is ambiguous without this, and a
+// discriminator cannot be added retroactively to captures already written.
+type SecretMetadata struct {
+	Label string
 }
 
 // ObservationSink receives observations in order.
@@ -77,21 +96,34 @@ type observationRecord struct {
 	bytes       int
 }
 
+// observationInput is what one call to observe describes. It is a struct
+// rather than a parameter list because a nine-argument call whose arguments
+// are three snapshots, two pointers, and two booleans is unreadable at the
+// call site and easy to transpose.
+type observationInput struct {
+	direction Direction
+	stage     ObservationStage
+	frame     uint64
+	before    Snapshot
+	after     Snapshot
+	packet    *PacketMetadata
+	secret    *SecretMetadata
+	payload   []byte
+	redacted  bool
+}
+
 // observe submits one record to the dispatcher. It charges the shared budget
 // first, so a slow sink applies backpressure instead of growing memory.
-func (s *Stream) observe(
-	direction Direction,
-	stage ObservationStage,
-	frame uint64,
-	before, after Snapshot,
-	metadata *PacketMetadata,
-	payload []byte,
-) error {
+func (s *Stream) observe(input observationInput) error {
 	if s.sink == nil {
 		return nil
 	}
 
-	charge := len(payload)
+	body := input.payload
+	if input.redacted {
+		body = nil
+	}
+	charge := len(body)
 	if err := s.queued.acquireUntil(s.stopping, 1, charge); err != nil {
 		return err
 	}
@@ -100,15 +132,17 @@ func (s *Stream) observe(
 	record := observationRecord{
 		observation: Observation{
 			Sequence:  s.sequence,
-			Frame:     frame,
-			Direction: direction,
-			Stage:     stage,
-			Before:    before.Clone(),
-			After:     after.Clone(),
-			Packet:    metadata,
+			Frame:     input.frame,
+			Direction: input.direction,
+			Stage:     input.stage,
+			Before:    input.before.Clone(),
+			After:     input.after.Clone(),
+			Packet:    input.packet,
+			Secret:    input.secret,
 			// Owned bytes: a borrowed frame view would change under the
 			// observer as soon as the stream reuses the buffer.
-			Bytes: bytes.Clone(payload),
+			Bytes:    bytes.Clone(body),
+			Redacted: input.redacted,
 		},
 		bytes: charge,
 	}
@@ -184,6 +218,17 @@ func (s *Stream) drainObservations(ctx context.Context) {
 type SecretDisclosure interface {
 	SecretLabel() string
 	DisclosedSecret() []byte
+}
+
+// sensitive reports whether the session withholds this packet's body.
+func (s *Stream) sensitive(packet Packet) bool {
+	if s.disclosureReason != "" {
+		return false
+	}
+
+	marker, ok := s.session.(SensitivePackets)
+
+	return ok && marker.Sensitive(packet)
 }
 
 // packetMetadata copies the identifying fields of a packet.
