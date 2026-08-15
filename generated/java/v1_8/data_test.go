@@ -3,6 +3,7 @@ package v1_8
 import (
 	"bytes"
 	"errors"
+	"math"
 	"reflect"
 	"testing"
 
@@ -603,4 +604,104 @@ func containsBiome(biomes data.Biomes, want data.Biome) bool {
 		}
 	}
 	return false
+}
+
+func TestPhysicsDocumentRanges(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	physics := set.Physics()
+
+	if physics.DefaultSlipperiness <= 0 || physics.DefaultSlipperiness > 1 {
+		t.Fatalf("default slipperiness = %v, want a value in (0, 1]", physics.DefaultSlipperiness)
+	}
+	if len(physics.BlockSlipperiness) == 0 {
+		t.Fatal("block slipperiness is empty")
+	}
+	for name, value := range physics.BlockSlipperiness {
+		if value <= 0 || value > 1.2 {
+			t.Fatalf("slipperiness for %s = %v, want a value in (0, 1.2]", name, value)
+		}
+	}
+
+	for name, motion := range physics.EntityMotion {
+		if motion.Gravity <= 0 || motion.Gravity > 1 {
+			t.Fatalf("%s gravity = %v, want a value in (0, 1]", name, motion.Gravity)
+		}
+		if motion.HorizontalDrag <= 0 || motion.HorizontalDrag > 1 {
+			t.Fatalf("%s horizontal drag = %v, want a value in (0, 1]", name, motion.HorizontalDrag)
+		}
+		if motion.VerticalDrag <= 0 || motion.VerticalDrag > 1 {
+			t.Fatalf("%s vertical drag = %v, want a value in (0, 1]", name, motion.VerticalDrag)
+		}
+		if motion.StepHeight < 0 || motion.StepHeight > 2 {
+			t.Fatalf("%s step height = %v, want a value in [0, 2]", name, motion.StepHeight)
+		}
+	}
+	for _, required := range []string{"player", "item", "arrow"} {
+		if _, ok := physics.EntityMotion[required]; !ok {
+			t.Fatalf("entity motion is missing %s", required)
+		}
+	}
+}
+
+func TestSinTableMatchesSine(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	table := set.Physics().SinTable
+
+	if len(table) == 0 || len(table)&(len(table)-1) != 0 {
+		t.Fatalf("sin table length = %d, want a non-zero power of two", len(table))
+	}
+	for index := 0; index < len(table); index += len(table) / 64 {
+		want := math.Sin(float64(index) * math.Pi * 2 / float64(len(table)))
+		if math.Abs(float64(table[index])-want) > 1e-4 {
+			t.Fatalf("sin table[%d] = %v, want approximately %v", index, table[index], want)
+		}
+	}
+}
+
+func TestPhysicsIsCallerOwned(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	first := set.Physics()
+	first.BlockSlipperiness["ice"] = 0
+
+	if set.Physics().BlockSlipperiness["ice"] == 0 {
+		t.Fatal("Set.Physics returned an aliased index")
+	}
+}
+
+// TestSlipperinessMatchesVanilla pins the values a movement kernel is most
+// sensitive to. Ice and slime are the only 1.8.9 blocks that differ from the
+// default, so a wrong registry or a wrong field would show up here.
+func TestSlipperinessMatchesVanilla(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	physics := set.Physics()
+
+	for _, test := range []struct {
+		block string
+		want  float64
+	}{
+		{"ice", 0.98},
+		{"packed_ice", 0.98},
+		{"slime", 0.8},
+		{"stone", 0.6},
+		{"soul_sand", 0.6},
+	} {
+		if got := physics.Slipperiness(test.block); got != test.want {
+			t.Errorf("Slipperiness(%s) = %v, want %v", test.block, got, test.want)
+		}
+	}
+	if got := physics.Slipperiness("a block that does not exist"); got != physics.DefaultSlipperiness {
+		t.Errorf("unknown block slipperiness = %v, want the default", got)
+	}
 }

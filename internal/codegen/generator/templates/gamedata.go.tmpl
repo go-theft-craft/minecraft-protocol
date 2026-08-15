@@ -30,6 +30,9 @@ func Data() (*data.Set, error) {
 		Recipes: newRecipeRegistry(),
 		Language: newLanguageRegistry(),
 		CollisionShapes: newCollisionShapes(),
+{{- if .Data.HasPhysics }}
+		Physics: newPhysics(),
+{{- end }}
 		Protocol: newProtocol(),
 		Version: newDataVersion(),
 	})

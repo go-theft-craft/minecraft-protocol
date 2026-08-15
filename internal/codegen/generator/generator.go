@@ -75,6 +75,7 @@ var generatedFileNames = []string{
 	"codec.go",
 	"descriptor.go",
 	"particles.go",
+	"physics.go",
 	"protocol.go",
 	"recipes.go",
 	"version.go",
@@ -259,6 +260,15 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 		}
 	}
 
+	_, hasPhysics := source.Files["physics"]
+	if hasPhysics {
+		if err := add("physics", "physics.go.tmpl", "physics.go", func(raw []byte) (any, error) {
+			return loadPhysics(raw)
+		}); err != nil {
+			return nil, err
+		}
+	}
+
 	for _, entry := range []struct {
 		templateName string
 		outputFile   string
@@ -266,7 +276,7 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 		{"helpers.go.tmpl", "helpers.go"},
 		{"gamedata.go.tmpl", "gamedata.go"},
 	} {
-		raw, err := renderFile(templates, entry.templateName, newTemplateData(packageName, versionKey, nil))
+		raw, err := renderFile(templates, entry.templateName, newTemplateData(packageName, versionKey, gamedataTmpl{HasPhysics: hasPhysics}))
 		if err != nil {
 			return nil, fmt.Errorf("generate %s: %w", entry.outputFile, err)
 		}
@@ -312,6 +322,10 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 	for _, name := range generatedFileNames {
 		raw, ok := rendered[name]
 		if !ok {
+			if optionalGeneratedFileNames[name] {
+				continue
+			}
+
 			return nil, fmt.Errorf("render plan is missing %s", name)
 		}
 		files = append(files, renderedFile{name: name, raw: raw})
@@ -413,6 +427,13 @@ func parseStableVersionKey(value string) (stableVersionKey, error) {
 		return stableVersionKey{}, fmt.Errorf("version %q must be a stable key in edition/target form", value)
 	}
 	return stableVersionKey{full: value, edition: edition, target: target}, nil
+}
+
+// optionalGeneratedFileNames are generated only for source trees that carry the
+// dataset behind them. Physics constants are measured from a Mojang jar, and
+// only the versions someone has run mcreference against have them.
+var optionalGeneratedFileNames = map[string]bool{
+	"physics.go": true,
 }
 
 func newTemplateData(packageName string, versionKey stableVersionKey, value any) templateData {
@@ -518,7 +539,7 @@ func compareGeneratedPackage(target string, files []renderedFile) error {
 		}
 	}
 	for _, name := range generatedFileNames {
-		if !seen[name] {
+		if !seen[name] && !optionalGeneratedFileNames[name] {
 			return fmt.Errorf("generated output is missing %s", name)
 		}
 	}
@@ -754,6 +775,85 @@ func fixLogMeta(ingredient schema.RecipeIngredient) int {
 		return ingredient.Metadata & 0x3
 	}
 	return ingredient.Metadata
+}
+
+// gamedataTmpl carries the render-time facts gamedata.go.tmpl branches on.
+type gamedataTmpl struct {
+	HasPhysics bool
+}
+
+type physicsTmpl struct {
+	DefaultSlipperiness float64
+	SinTableBase64      string
+	BlockSlipperiness   []slipperinessTmpl
+	EntityMotion        []entityMotionTmpl
+}
+
+type slipperinessTmpl struct {
+	Name  string
+	Value float64
+}
+
+type entityMotionTmpl struct {
+	Name           string
+	Gravity        float64
+	HorizontalDrag float64
+	VerticalDrag   float64
+	StepHeight     float64
+}
+
+func loadPhysics(raw []byte) (*physicsTmpl, error) {
+	var source struct {
+		Version             string             `json:"version"`
+		Side                string             `json:"side"`
+		JarSHA256           string             `json:"jarSha256"`
+		DefaultSlipperiness float64            `json:"defaultSlipperiness"`
+		BlockSlipperiness   map[string]float64 `json:"blockSlipperiness"`
+		SinTableBase64      string             `json:"sinTableBase64"`
+		EntityMotion        map[string]struct {
+			Gravity        float64 `json:"gravity"`
+			HorizontalDrag float64 `json:"horizontalDrag"`
+			VerticalDrag   float64 `json:"verticalDrag"`
+			StepHeight     float64 `json:"stepHeight"`
+		} `json:"entityMotion"`
+	}
+	if err := json.Unmarshal(raw, &source); err != nil {
+		return nil, fmt.Errorf("unmarshal physics: %w", err)
+	}
+	if source.SinTableBase64 == "" {
+		return nil, fmt.Errorf("physics is missing the sin table")
+	}
+	if len(source.BlockSlipperiness) == 0 {
+		return nil, fmt.Errorf("physics is missing block slipperiness")
+	}
+	if len(source.EntityMotion) == 0 {
+		return nil, fmt.Errorf("physics is missing entity motion constants")
+	}
+
+	blocks := make([]slipperinessTmpl, 0, len(source.BlockSlipperiness))
+	for name, value := range source.BlockSlipperiness {
+		blocks = append(blocks, slipperinessTmpl{Name: name, Value: value})
+	}
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].Name < blocks[j].Name })
+
+	motion := make([]entityMotionTmpl, 0, len(source.EntityMotion))
+	for name, value := range source.EntityMotion {
+		motion = append(motion, entityMotionTmpl{
+			Name:           name,
+			Gravity:        value.Gravity,
+			HorizontalDrag: value.HorizontalDrag,
+			VerticalDrag:   value.VerticalDrag,
+			StepHeight:     value.StepHeight,
+		})
+	}
+	sort.Slice(motion, func(i, j int) bool { return motion[i].Name < motion[j].Name })
+
+	return &physicsTmpl{
+		DefaultSlipperiness: source.DefaultSlipperiness,
+		SinTableBase64:      source.SinTableBase64,
+		BlockSlipperiness:   blocks,
+		EntityMotion:        motion,
+	}, nil
 }
 
 type collisionShapesTmpl struct {

@@ -900,3 +900,48 @@ func TestExtractedPhysicsChecksumIsEnforced(t *testing.T) {
 		t.Fatalf("validateManifest() error = %v, want a checksum mismatch", err)
 	}
 }
+
+// TestRunWithoutPhysicsOmitsTheGeneratedFile pins that measured constants are
+// optional. Only versions someone has run mcreference against have them, so a
+// tree without a physics dataset must still generate rather than fail on a
+// missing render-plan entry.
+func TestRunWithoutPhysicsOmitsTheGeneratedFile(t *testing.T) {
+	dir := copySource(t)
+	if err := os.Remove(filepath.Join(dir, "physics.json")); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest map[string]any
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	delete(manifest, "extracted")
+	updated, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), append(updated, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out := t.TempDir()
+	if err := Run(Config{SourceDir: dir, OutDir: out, Package: "v1_8", Version: "java/1.8.9"}); err != nil {
+		t.Fatalf("Run() without physics error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(out, "v1_8", "physics.go")); !os.IsNotExist(err) {
+		t.Fatalf("physics.go was generated for a tree with no physics dataset: %v", err)
+	}
+
+	gamedata, err := os.ReadFile(filepath.Join(out, "v1_8", "gamedata.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(gamedata), "newPhysics()") {
+		t.Fatal("gamedata.go calls newPhysics() but no physics.go was generated")
+	}
+}
