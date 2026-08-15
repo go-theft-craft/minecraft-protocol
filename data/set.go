@@ -28,6 +28,19 @@ type SetOptions struct {
 	Protocol        Protocol
 	Version         Version
 	Raw             []RawDataset
+
+	// The fields below describe datasets only some versions publish. A
+	// version that has no such dataset leaves the field nil or zero, and the
+	// matching accessor answers with the same emptiness rather than an error:
+	// "this version does not publish sounds" is a fact about the version, not
+	// a failure to build the set.
+	Sounds      SoundRegistry
+	MapIcons    MapIconRegistry
+	BlockLoot   BlockLootRegistry
+	EntityLoot  EntityLootRegistry
+	Commands    CommandTree
+	LoginPacket LoginPacket
+	Tints       Tints
 }
 
 // Set is an immutable collection of game-data registries and values.
@@ -51,6 +64,13 @@ type Set struct {
 	protocol        Protocol
 	version         Version
 	raw             map[string]RawDataset
+	sounds          SoundRegistry
+	mapIcons        MapIconRegistry
+	blockLoot       BlockLootRegistry
+	entityLoot      EntityLootRegistry
+	commands        CommandTree
+	loginPacket     LoginPacket
+	tints           Tints
 }
 
 // NewSet creates a Set that does not retain caller-owned mutable values.
@@ -87,6 +107,13 @@ func NewSet(options SetOptions) (*Set, error) {
 		protocol:        options.Protocol.Clone(),
 		version:         options.Version,
 		raw:             raw,
+		sounds:          options.Sounds,
+		mapIcons:        options.MapIcons,
+		blockLoot:       options.BlockLoot,
+		entityLoot:      options.EntityLoot,
+		commands:        options.Commands.Clone(),
+		loginPacket:     options.LoginPacket.Clone(),
+		tints:           options.Tints.Clone(),
 	}, nil
 }
 
@@ -140,6 +167,34 @@ func (s *Set) Physics() Physics { return s.physics.Clone() }
 
 // Protocol returns a clone owned by the caller.
 func (s *Set) Protocol() Protocol { return s.protocol.Clone() }
+
+// Sounds returns the sound registry supplied to NewSet, or nil for a version
+// that publishes no sounds.
+func (s *Set) Sounds() SoundRegistry { return s.sounds }
+
+// MapIcons returns the map-marker registry supplied to NewSet, or nil for a
+// version that publishes none.
+func (s *Set) MapIcons() MapIconRegistry { return s.mapIcons }
+
+// BlockLoot returns the block loot registry supplied to NewSet, or nil for a
+// version that publishes no loot tables.
+func (s *Set) BlockLoot() BlockLootRegistry { return s.blockLoot }
+
+// EntityLoot returns the entity loot registry supplied to NewSet, or nil for a
+// version that publishes no loot tables.
+func (s *Set) EntityLoot() EntityLootRegistry { return s.entityLoot }
+
+// Commands returns a clone of the command tree owned by the caller. A version
+// that publishes no command tree returns the zero value.
+func (s *Set) Commands() CommandTree { return s.commands.Clone() }
+
+// LoginPacket returns a clone of the sample login packet owned by the caller.
+// A version that publishes no sample returns the zero value.
+func (s *Set) LoginPacket() LoginPacket { return s.loginPacket.Clone() }
+
+// Tints returns a clone of the tint categories owned by the caller. A version
+// that publishes no tints returns nil.
+func (s *Set) Tints() Tints { return s.tints.Clone() }
 
 // Version returns the protocol version.
 func (s *Set) Version() Version { return s.version }

@@ -84,6 +84,13 @@ var generatedFileNames = []string{
 	"recipes.go",
 	"version.go",
 	"windows.go",
+	"sounds.go",
+	"map_icons.go",
+	"block_loot.go",
+	"entity_loot.go",
+	"commands.go",
+	"login_packet.go",
+	"tints.go",
 }
 
 var preservedGeneratedTestNames = []string{
@@ -273,6 +280,35 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, packageName 
 		}
 	}
 
+	// Datasets only some versions publish. Presence in the tree is what
+	// selects them: a version whose manifest does not name the dataset
+	// generates neither the file nor the accessor, rather than generating an
+	// empty registry that reads as "this version has no sounds".
+	optionalGenerators := []struct {
+		datasetName  string
+		templateName string
+		outputFile   string
+		load         func([]byte) (any, error)
+	}{
+		{"sounds", "sounds.go.tmpl", "sounds.go", loadSounds},
+		{"mapIcons", "map_icons.go.tmpl", "map_icons.go", loadMapIcons},
+		{"blockLoot", "block_loot.go.tmpl", "block_loot.go", loadBlockLoot},
+		{"entityLoot", "entity_loot.go.tmpl", "entity_loot.go", loadEntityLoot},
+		{"commands", "commands.go.tmpl", "commands.go", func(raw []byte) (any, error) { return loadCommands(raw) }},
+		{"loginPacket", "login_packet.go.tmpl", "login_packet.go", func(raw []byte) (any, error) { return loadLoginPacket(raw) }},
+		{"tints", "tints.go.tmpl", "tints.go", func(raw []byte) (any, error) { return loadTints(raw) }},
+	}
+	present := gamedataTmpl{HasPhysics: hasPhysics}
+	for _, entry := range optionalGenerators {
+		if _, ok := source.Files[entry.datasetName]; !ok {
+			continue
+		}
+		if err := add(entry.datasetName, entry.templateName, entry.outputFile, entry.load); err != nil {
+			return nil, err
+		}
+		present.set(entry.datasetName)
+	}
+
 	for _, entry := range []struct {
 		templateName string
 		outputFile   string
@@ -280,7 +316,7 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, packageName 
 		{"helpers.go.tmpl", "helpers.go"},
 		{"gamedata.go.tmpl", "gamedata.go"},
 	} {
-		raw, err := renderFile(templates, entry.templateName, newTemplateData(packageName, versionKey, gamedataTmpl{HasPhysics: hasPhysics}))
+		raw, err := renderFile(templates, entry.templateName, newTemplateData(packageName, versionKey, present))
 		if err != nil {
 			return nil, fmt.Errorf("generate %s: %w", entry.outputFile, err)
 		}
@@ -437,7 +473,14 @@ func parseStableVersionKey(value string) (stableVersionKey, error) {
 // dataset behind them. Physics constants are measured from a Mojang jar, and
 // only the versions someone has run mcreference against have them.
 var optionalGeneratedFileNames = map[string]bool{
-	"physics.go": true,
+	"physics.go":      true,
+	"sounds.go":       true,
+	"map_icons.go":    true,
+	"block_loot.go":   true,
+	"entity_loot.go":  true,
+	"commands.go":     true,
+	"login_packet.go": true,
+	"tints.go":        true,
 }
 
 func newTemplateData(packageName string, versionKey stableVersionKey, value any) templateData {
@@ -781,9 +824,38 @@ func fixLogMeta(ingredient schema.RecipeIngredient) int {
 	return ingredient.Metadata
 }
 
-// gamedataTmpl carries the render-time facts gamedata.go.tmpl branches on.
+// gamedataTmpl carries the render-time facts gamedata.go.tmpl branches on:
+// which of the datasets that only some versions publish this one has.
 type gamedataTmpl struct {
-	HasPhysics bool
+	HasPhysics     bool
+	HasSounds      bool
+	HasMapIcons    bool
+	HasBlockLoot   bool
+	HasEntityLoot  bool
+	HasCommands    bool
+	HasLoginPacket bool
+	HasTints       bool
+}
+
+// set records that the tree publishes a dataset. It is keyed by upstream's
+// dataset name so the render plan and this record cannot drift apart.
+func (g *gamedataTmpl) set(datasetName string) {
+	switch datasetName {
+	case "sounds":
+		g.HasSounds = true
+	case "mapIcons":
+		g.HasMapIcons = true
+	case "blockLoot":
+		g.HasBlockLoot = true
+	case "entityLoot":
+		g.HasEntityLoot = true
+	case "commands":
+		g.HasCommands = true
+	case "loginPacket":
+		g.HasLoginPacket = true
+	case "tints":
+		g.HasTints = true
+	}
 }
 
 type physicsTmpl struct {
@@ -962,10 +1034,14 @@ func loadProtocol(raw []byte) (*protocolTmpl, error) {
 		types[name] = summary
 	}
 
-	phases := make([]protocolPhaseTmpl, 0, 4)
-	for _, phaseName := range []string{"handshaking", "status", "login", "play"} {
+	phases := make([]protocolPhaseTmpl, 0, len(protocolPhaseOrder))
+	for _, phaseName := range protocolPhaseOrder {
 		phaseRaw, ok := rawProtocol[phaseName]
 		if !ok {
+			if optionalProtocolPhases[phaseName] {
+				continue
+			}
+
 			return nil, fmt.Errorf("protocol phase %s is missing", phaseName)
 		}
 		var phase struct {
@@ -985,11 +1061,11 @@ func loadProtocol(raw []byte) (*protocolTmpl, error) {
 		if phase.ToServer == nil {
 			return nil, fmt.Errorf("protocol phase %s direction toServer is missing", phaseName)
 		}
-		toClient, err := extractPackets(phase.ToClient.Types, phaseName, "toClient")
+		toClient, err := extractPackets(phase.ToClient.Types, rawTypes, phaseName, "toClient")
 		if err != nil {
 			return nil, err
 		}
-		toServer, err := extractPackets(phase.ToServer.Types, phaseName, "toServer")
+		toServer, err := extractPackets(phase.ToServer.Types, rawTypes, phaseName, "toServer")
 		if err != nil {
 			return nil, err
 		}
@@ -1042,9 +1118,20 @@ func parseProtocolDefinition(raw json.RawMessage, location string) (string, json
 type protocolFieldDefinition struct {
 	Name string          `json:"name"`
 	Type json.RawMessage `json:"type"`
+	// Anon marks a field whose contents merge into the enclosing container.
+	// It has no name, and more than one may appear in the same container.
+	Anon bool `json:"anon"`
 }
 
-func extractPackets(types map[string]json.RawMessage, phaseName, direction string) ([]packetTmpl, error) {
+// protocolPhaseOrder is every state a supported protocol declares, in the
+// order a connection walks them. Configuration is listed because protocol 775
+// has it; protocol 47 does not, and a phase a version does not declare is
+// absent rather than an error.
+var protocolPhaseOrder = []string{"handshaking", "status", "login", "configuration", "play"}
+
+var optionalProtocolPhases = map[string]bool{"configuration": true}
+
+func extractPackets(types, rootTypes map[string]json.RawMessage, phaseName, direction string) ([]packetTmpl, error) {
 	location := fmt.Sprintf("protocol phase %s direction %s", phaseName, direction)
 	if types == nil {
 		return nil, fmt.Errorf("%s types are missing", location)
@@ -1140,31 +1227,51 @@ func extractPackets(types map[string]json.RawMessage, phaseName, direction strin
 		}
 		mappings[name] = id
 		ids[id] = name
-		wantType := "packet_" + name
-		if gotType, ok := (*packetSwitch.Fields)[name]; !ok || gotType != wantType {
-			return nil, fmt.Errorf("%s packet mapping %q is missing matching switch field %q", location, name, wantType)
+		if _, ok := (*packetSwitch.Fields)[name]; !ok {
+			return nil, fmt.Errorf("%s packet mapping %q is missing a matching switch field", location, name)
 		}
 	}
+	// declaredPacketTypes is what the switch names, so a packet_ type nothing
+	// selects is still caught while a shared type named under another name is
+	// not mistaken for one.
+	declaredPacketTypes := make(map[string]bool, len(*packetSwitch.Fields))
 	for name, typeName := range *packetSwitch.Fields {
 		if _, ok := mappings[name]; !ok {
 			return nil, fmt.Errorf("%s packet switch field %q has no mapping", location, name)
 		}
-		if typeName != "packet_"+name {
-			return nil, fmt.Errorf("%s packet switch field %q references %q", location, name, typeName)
+		if typeName == "" {
+			return nil, fmt.Errorf("%s packet switch field %q references an empty type", location, name)
 		}
+		declaredPacketTypes[typeName] = true
 	}
 
-	packets := make([]packetTmpl, 0, len(types))
-	for typeName, typeRaw := range types {
-		if !strings.HasPrefix(typeName, "packet_") || typeName == "packet_" {
+	packets := make([]packetTmpl, 0, len(mappings))
+	for name, id := range mappings {
+		typeName := (*packetSwitch.Fields)[name]
+		if typeName == "void" {
+			// A packet whose ID is the whole message. Protocol 775's
+			// bundle_delimiter is the only one.
+			packets = append(packets, packetTmpl{
+				Name:      name,
+				ID:        id,
+				Framed:    isFramedPacket(phaseName, direction, name, id),
+				LoginRole: loginRoleFor(phaseName, direction, name),
+			})
+
 			continue
 		}
-		name := strings.TrimPrefix(typeName, "packet_")
-		id, ok := mappings[name]
+		typeRaw, ok := types[typeName]
 		if !ok {
-			return nil, fmt.Errorf("%s packet type %q has no mapping", location, typeName)
+			// A packet a state shares with another state is defined once in
+			// the protocol's root types and named from each state's switch.
+			// Protocol 775 does this for the packets common to login,
+			// configuration, and play.
+			typeRaw, ok = rootTypes[typeName]
 		}
-		packetFields, err := extractPacketFields(typeRaw, location+" packet "+name)
+		if !ok {
+			return nil, fmt.Errorf("%s packet mapping %q has no packet definition %q", location, name, typeName)
+		}
+		packetFields, err := extractPacketFields(typeRaw, rootTypes, location+" packet "+name, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -1176,9 +1283,12 @@ func extractPackets(types map[string]json.RawMessage, phaseName, direction strin
 			LoginRole: loginRoleFor(phaseName, direction, name),
 		})
 	}
-	for name := range mappings {
-		if _, ok := types["packet_"+name]; !ok {
-			return nil, fmt.Errorf("%s packet mapping %q has no packet definition", location, name)
+	for typeName := range types {
+		if !strings.HasPrefix(typeName, "packet_") || typeName == "packet_" {
+			continue
+		}
+		if !declaredPacketTypes[typeName] {
+			return nil, fmt.Errorf("%s packet type %q has no mapping", location, typeName)
 		}
 	}
 	sort.Slice(packets, func(i, j int) bool {
@@ -1190,7 +1300,31 @@ func extractPackets(types map[string]json.RawMessage, phaseName, direction strin
 	return packets, nil
 }
 
-func extractPacketFields(raw json.RawMessage, location string) ([]packetFieldTmpl, error) {
+// packetTypeReferenceDepth bounds how far a packet body may be a name for
+// another name. Upstream nests one level; the bound is what keeps a cycle in
+// the schema from becoming a hang.
+const packetTypeReferenceDepth = 8
+
+func extractPacketFields(raw json.RawMessage, rootTypes map[string]json.RawMessage, location string, depth int) ([]packetFieldTmpl, error) {
+	// A packet body may be a bare type name. Protocol 775 writes
+	// bundle_delimiter as "void", because its ID is the whole message, and
+	// writes spawn_position as the name of a shared type.
+	var named string
+	if err := json.Unmarshal(raw, &named); err == nil {
+		if named == "void" {
+			return nil, nil
+		}
+		if depth >= packetTypeReferenceDepth {
+			return nil, fmt.Errorf("%s resolves through more than %d type names", location, packetTypeReferenceDepth)
+		}
+		referenced, ok := rootTypes[named]
+		if !ok {
+			return nil, fmt.Errorf("%s type is the native %q, want a container, a shared type, or void", location, named)
+		}
+
+		return extractPacketFields(referenced, rootTypes, location+" type "+named, depth+1)
+	}
+
 	kind, fieldsRaw, err := parseProtocolDefinition(raw, location)
 	if err != nil {
 		return nil, err
@@ -1205,13 +1339,15 @@ func extractPacketFields(raw json.RawMessage, location string) ([]packetFieldTmp
 	result := make([]packetFieldTmpl, 0, len(fields))
 	seen := make(map[string]bool, len(fields))
 	for _, field := range fields {
-		if field.Name == "" {
+		if field.Name == "" && !field.Anon {
 			return nil, fmt.Errorf("%s has a field with an empty name", location)
 		}
-		if seen[field.Name] {
-			return nil, fmt.Errorf("%s has duplicate field %q", location, field.Name)
+		if field.Name != "" {
+			if seen[field.Name] {
+				return nil, fmt.Errorf("%s has duplicate field %q", location, field.Name)
+			}
+			seen[field.Name] = true
 		}
-		seen[field.Name] = true
 		if len(bytes.TrimSpace(field.Type)) == 0 || bytes.Equal(bytes.TrimSpace(field.Type), []byte("null")) {
 			return nil, fmt.Errorf("%s field %q has no type", location, field.Name)
 		}
@@ -1381,6 +1517,285 @@ func fixAbbreviations(value string) string {
 		result.WriteByte(value[index])
 	}
 	return result.String()
+}
+
+func loadSounds(raw []byte) (any, error)   { return schema.LoadJSON[schema.Sound](raw) }
+func loadMapIcons(raw []byte) (any, error) { return schema.LoadJSON[schema.MapIcon](raw) }
+
+type lootTableTmpl struct {
+	// Subject is the block or entity the table belongs to. One template
+	// renders both, because a loot table differs only in what it hangs off.
+	Subject string
+	Drops   []lootDropTmpl
+}
+
+type lootDropTmpl struct {
+	Item            string
+	DropChance      float64
+	MinStackSize    int
+	HasMinStackSize bool
+	MaxStackSize    int
+	HasMaxStackSize bool
+	SilkTouch       bool
+	NoSilkTouch     bool
+	BlockAge        int
+	HasBlockAge     bool
+	PlayerKill      bool
+}
+
+func loadBlockLoot(raw []byte) (any, error) {
+	tables, err := schema.LoadJSON[schema.BlockLoot](raw)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]lootTableTmpl, len(tables))
+	for index, table := range tables {
+		drops, err := parseLootDrops(table.Block, table.Drops)
+		if err != nil {
+			return nil, err
+		}
+		result[index] = lootTableTmpl{Subject: table.Block, Drops: drops}
+	}
+
+	return result, nil
+}
+
+func loadEntityLoot(raw []byte) (any, error) {
+	tables, err := schema.LoadJSON[schema.EntityLoot](raw)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]lootTableTmpl, len(tables))
+	for index, table := range tables {
+		drops, err := parseLootDrops(table.Entity, table.Drops)
+		if err != nil {
+			return nil, err
+		}
+		result[index] = lootTableTmpl{Subject: table.Entity, Drops: drops}
+	}
+
+	return result, nil
+}
+
+// parseLootDrops normalizes upstream's stack size range into the bounds the
+// generated model carries. The range is always two entries, and either may be
+// null: that is an open end, and it is carried as an absent bound rather than
+// as a zero that would read as upstream's number.
+func parseLootDrops(subject string, drops []schema.LootDrop) ([]lootDropTmpl, error) {
+	result := make([]lootDropTmpl, len(drops))
+	for index, drop := range drops {
+		if len(drop.StackSizeRange) != 2 {
+			return nil, fmt.Errorf("loot table %s drop %d: stack size range has %d bounds, want 2", subject, index, len(drop.StackSizeRange))
+		}
+		parsed := lootDropTmpl{
+			Item:            drop.Item,
+			DropChance:      drop.DropChance,
+			SilkTouch:       drop.SilkTouch,
+			NoSilkTouch:     drop.NoSilkTouch,
+			PlayerKill:      drop.PlayerKill,
+			HasMinStackSize: drop.StackSizeRange[0] != nil,
+			HasMaxStackSize: drop.StackSizeRange[1] != nil,
+			HasBlockAge:     drop.BlockAge != nil,
+		}
+		if parsed.HasMinStackSize {
+			parsed.MinStackSize = *drop.StackSizeRange[0]
+		}
+		if parsed.HasMaxStackSize {
+			parsed.MaxStackSize = *drop.StackSizeRange[1]
+		}
+		if drop.BlockAge != nil {
+			parsed.BlockAge = *drop.BlockAge
+		}
+		result[index] = parsed
+	}
+
+	return result, nil
+}
+
+type commandTreeTmpl struct {
+	Root    commandNodeTmpl
+	Parsers []commandParserTmpl
+}
+
+type commandNodeTmpl struct {
+	Type       string
+	Name       string
+	Executable bool
+	Redirects  []string
+	Children   []commandNodeTmpl
+	Parser     *commandParserTmpl
+}
+
+type commandParserTmpl struct {
+	Name     string
+	Modifier *commandModifierTmpl
+	Examples []string
+}
+
+// commandModifierTmpl flattens the modifier's optional bounds, because a
+// template can test a flag but cannot dereference a pointer.
+type commandModifierTmpl struct {
+	Type     string
+	Amount   string
+	Registry string
+	Min      float64
+	Max      float64
+	HasMin   bool
+	HasMax   bool
+}
+
+func parseCommandModifier(modifier *schema.CommandModifier) *commandModifierTmpl {
+	if modifier == nil {
+		return nil
+	}
+	parsed := commandModifierTmpl{
+		Type:     modifier.Type,
+		Amount:   modifier.Amount,
+		Registry: modifier.Registry,
+		HasMin:   modifier.Min != nil,
+		HasMax:   modifier.Max != nil,
+	}
+	if modifier.Min != nil {
+		parsed.Min = *modifier.Min
+	}
+	if modifier.Max != nil {
+		parsed.Max = *modifier.Max
+	}
+
+	return &parsed
+}
+
+func loadCommands(raw []byte) (*commandTreeTmpl, error) {
+	tree, err := schema.LoadJSONValue[schema.CommandTree](raw)
+	if err != nil {
+		return nil, err
+	}
+	root, err := parseCommandNode(tree.Root, tree.Root.Name)
+	if err != nil {
+		return nil, err
+	}
+	parsers := make([]commandParserTmpl, len(tree.Parsers))
+	for index, parser := range tree.Parsers {
+		parsers[index] = commandParserTmpl{Name: parser.Parser, Modifier: parseCommandModifier(parser.Modifier), Examples: parser.Examples}
+	}
+
+	return &commandTreeTmpl{Root: *root, Parsers: parsers}, nil
+}
+
+// commandNodeTypes is the closed set of node kinds, for the same reason entity
+// classifications are closed: a kind nobody has seen fails generation rather
+// than becoming free text in the tree.
+var commandNodeTypes = map[string]bool{"root": true, "literal": true, "argument": true}
+
+func parseCommandNode(node schema.CommandNode, path string) (*commandNodeTmpl, error) {
+	if !commandNodeTypes[node.Type] {
+		return nil, fmt.Errorf("command node %s has unsupported type %q", path, node.Type)
+	}
+	parsed := commandNodeTmpl{
+		Type:       node.Type,
+		Name:       node.Name,
+		Executable: node.Executable,
+		Redirects:  node.Redirects,
+	}
+	if node.Parser != nil {
+		if len(node.Parser.Examples) != 0 {
+			return nil, fmt.Errorf("command node %s publishes parser examples, which belong to the catalogue", path)
+		}
+		parsed.Parser = &commandParserTmpl{Name: node.Parser.Parser, Modifier: parseCommandModifier(node.Parser.Modifier)}
+	}
+	if len(node.Children) != 0 {
+		parsed.Children = make([]commandNodeTmpl, len(node.Children))
+		for index, child := range node.Children {
+			parsedChild, err := parseCommandNode(child, path+"/"+child.Name)
+			if err != nil {
+				return nil, err
+			}
+			parsed.Children[index] = *parsedChild
+		}
+	}
+
+	return &parsed, nil
+}
+
+type loginPacketTmpl struct {
+	schema.LoginPacket
+	// DimensionCodec is the registry payload with its formatting removed. It
+	// is the same JSON document upstream published — the pinned source tree
+	// keeps the published bytes — compacted so the generated literal carries
+	// the content rather than a quarter megabyte of indentation.
+	DimensionCodec string
+	HashedSeed     [2]int32
+}
+
+func loadLoginPacket(raw []byte) (*loginPacketTmpl, error) {
+	packet, err := schema.LoadJSONValue[schema.LoginPacket](raw)
+	if err != nil {
+		return nil, err
+	}
+	if len(packet.WorldState.HashedSeed) != 2 {
+		return nil, fmt.Errorf("login packet hashed seed has %d halves, want 2", len(packet.WorldState.HashedSeed))
+	}
+	var codec bytes.Buffer
+	if err := json.Compact(&codec, packet.DimensionCodec); err != nil {
+		return nil, fmt.Errorf("compact login packet dimension codec: %w", err)
+	}
+
+	return &loginPacketTmpl{
+		LoginPacket:    packet,
+		DimensionCodec: codec.String(),
+		HashedSeed:     [2]int32{packet.WorldState.HashedSeed[0], packet.WorldState.HashedSeed[1]},
+	}, nil
+}
+
+type tintCategoryTmpl struct {
+	Name string
+	Data []tintTmpl
+}
+
+type tintTmpl struct {
+	Keys  []string
+	Color int
+}
+
+func loadTints(raw []byte) ([]tintCategoryTmpl, error) {
+	categories, err := schema.LoadJSONValue[map[string]schema.TintCategory](raw)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]tintCategoryTmpl, 0, len(categories))
+	for name, category := range categories {
+		entries := make([]tintTmpl, len(category.Data))
+		for index, entry := range category.Data {
+			keys := make([]string, len(entry.Keys))
+			for keyIndex, rawKey := range entry.Keys {
+				key, err := tintKey(rawKey)
+				if err != nil {
+					return nil, fmt.Errorf("tint category %s entry %d: %w", name, index, err)
+				}
+				keys[keyIndex] = key
+			}
+			entries[index] = tintTmpl{Keys: keys, Color: entry.Color}
+		}
+		result = append(result, tintCategoryTmpl{Name: name, Data: entries})
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
+
+	return result, nil
+}
+
+// tintKey accepts the two forms a tint key takes. Most categories key by biome
+// name; redstone keys by power level, which upstream publishes as a number.
+func tintKey(raw json.RawMessage) (string, error) {
+	var name string
+	if err := json.Unmarshal(raw, &name); err == nil {
+		return name, nil
+	}
+	var level json.Number
+	if err := json.Unmarshal(raw, &level); err == nil {
+		return level.String(), nil
+	}
+
+	return "", fmt.Errorf("tint key %s must be a biome name or a level", raw)
 }
 
 // entityTypeConstants maps upstream's entity classification to the Go constant

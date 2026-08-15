@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1130,5 +1131,311 @@ func TestEntityTypesAreAClosedSet(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "unheard_of") {
 		t.Errorf("error = %q, want it to name the type", err)
+	}
+}
+
+// modernSourceDir is the pinned Java 26.1 tree. The tests below read it
+// directly rather than through a fixture, because the point of a typed model
+// is that it describes what upstream actually published.
+const modernSourceDir = "../../../source/java/26.1/data"
+
+func loadModernDataset[T any](t *testing.T, name string, load func([]byte) (any, error)) T {
+	t.Helper()
+
+	raw, err := os.ReadFile(filepath.Join(modernSourceDir, name+".json"))
+	if err != nil {
+		t.Fatalf("read %s: %v", name, err)
+	}
+	loaded, err := load(raw)
+	if err != nil {
+		t.Fatalf("load %s: %v", name, err)
+	}
+	value, ok := loaded.(T)
+	if !ok {
+		t.Fatalf("load %s returned %T", name, loaded)
+	}
+
+	return value
+}
+
+// TestModernBlocksCarryStates pins one block against upstream rather than
+// against a count. A count survives a template that drops every state; a named
+// block with its state range does not.
+func TestModernBlocksCarryStates(t *testing.T) {
+	blocks := loadModernDataset[[]blockTmpl](t, "blocks", loadBlocks)
+	if len(blocks) != 1168 {
+		t.Errorf("blocks = %d, want 1168", len(blocks))
+	}
+
+	var diorite *blockTmpl
+	for index := range blocks {
+		if blocks[index].Name == "polished_diorite" {
+			diorite = &blocks[index]
+
+			break
+		}
+	}
+	if diorite == nil {
+		t.Fatal("blocks has no polished_diorite")
+	}
+	if diorite.ID != 5 || diorite.MinStateID != 5 || diorite.MaxStateID != 5 {
+		t.Errorf("polished_diorite = {ID:%d Min:%d Max:%d}, want {5 5 5}", diorite.ID, diorite.MinStateID, diorite.MaxStateID)
+	}
+	if len(diorite.States) != 0 {
+		t.Errorf("polished_diorite states = %d, want 0", len(diorite.States))
+	}
+	if len(diorite.HarvestTools) != 7 {
+		t.Errorf("polished_diorite harvest tools = %d, want 7", len(diorite.HarvestTools))
+	}
+}
+
+// TestModernEntitiesCarryMetadataKeys pins the field Java 1.8 has no notion of.
+func TestModernEntitiesCarryMetadataKeys(t *testing.T) {
+	entities := loadModernDataset[[]entityTmpl](t, "entities", loadEntities)
+
+	for _, entity := range entities {
+		if entity.Name != "acacia_boat" {
+			continue
+		}
+		if len(entity.MetadataKeys) != 14 {
+			t.Errorf("acacia_boat metadata keys = %d, want 14", len(entity.MetadataKeys))
+		}
+		if len(entity.MetadataKeys) > 0 && entity.MetadataKeys[0] != "shared_flags" {
+			t.Errorf("acacia_boat first metadata key = %q, want shared_flags", entity.MetadataKeys[0])
+		}
+
+		return
+	}
+	t.Fatal("entities has no acacia_boat")
+}
+
+// TestModernItemsAndLanguageMatchUpstream keeps the two datasets whose shape
+// did not change honest about their contents.
+func TestModernItemsAndLanguageMatchUpstream(t *testing.T) {
+	items := loadModernDataset[[]schema.Item](t, "items", loadItems)
+	if len(items) != 1506 {
+		t.Errorf("items = %d, want 1506", len(items))
+	}
+
+	raw, err := os.ReadFile(filepath.Join(modernSourceDir, "language.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	language, err := loadLanguage(raw)
+	if err != nil {
+		t.Fatalf("loadLanguage: %v", err)
+	}
+	if len(language) != 7886 {
+		t.Errorf("language keys = %d, want 7886", len(language))
+	}
+}
+
+// TestModernRecipesAreKeyedByResult pins that a recipe result is an item and a
+// count. Metadata is what the flattening removed.
+func TestModernRecipesAreKeyedByResult(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join(modernSourceDir, "recipes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recipes, err := loadRecipes(raw)
+	if err != nil {
+		t.Fatalf("loadRecipes: %v", err)
+	}
+	if len(recipes) != 887 {
+		t.Errorf("recipe results = %d, want 887", len(recipes))
+	}
+	first := recipes[0]
+	if first.ID != 2 {
+		t.Errorf("first recipe result ID = %d, want 2", first.ID)
+	}
+	if len(first.Recipes) != 1 {
+		t.Fatalf("recipes for result 2 = %d, want 1", len(first.Recipes))
+	}
+	result := first.Recipes[0].Result
+	if result.ID != 2 || result.Count != 1 || result.Metadata != 0 {
+		t.Errorf("result = %+v, want {ID:2 Count:1 Metadata:0}", result)
+	}
+}
+
+// TestModernWindowsKeepTheAliasedShape records that windows is not a Java 26.1
+// dataset at all: the pinned tree resolves it to Java 1.16.1, whose windows
+// carry a namespaced string ID.
+func TestModernWindowsKeepTheAliasedShape(t *testing.T) {
+	windows := loadModernDataset[[]schema.Window](t, "windows", loadWindows)
+	if len(windows) != 14 {
+		t.Errorf("windows = %d, want 14", len(windows))
+	}
+
+	for _, window := range windows {
+		if window.Name == "Anvil" {
+			if window.ID != "minecraft:anvil" {
+				t.Errorf("anvil window ID = %q, want minecraft:anvil", window.ID)
+			}
+
+			return
+		}
+	}
+	t.Fatal("windows has no Anvil")
+}
+
+// TestModernSoundsAndMapIcons covers the two datasets with no Java 1.8
+// equivalent whose shape is a flat record.
+func TestModernSoundsAndMapIcons(t *testing.T) {
+	sounds := loadModernDataset[[]schema.Sound](t, "sounds", loadSounds)
+	if len(sounds) != 1902 {
+		t.Errorf("sounds = %d, want 1902", len(sounds))
+	}
+	if len(sounds) > 0 && (sounds[0].ID != 1 || sounds[0].Name != "entity.allay.ambient_with_item") {
+		t.Errorf("first sound = %+v, want {1 entity.allay.ambient_with_item}", sounds[0])
+	}
+
+	icons := loadModernDataset[[]schema.MapIcon](t, "mapIcons", loadMapIcons)
+	if len(icons) != 34 {
+		t.Errorf("map icons = %d, want 34", len(icons))
+	}
+	if len(icons) > 0 && (icons[0].Name != "player" || icons[0].VisibleInItemFrame) {
+		t.Errorf("first map icon = %+v, want the player marker, not visible in an item frame", icons[0])
+	}
+}
+
+// TestModernLootTablesCarryConditions pins both the conditions upstream
+// attaches to a drop and the open-ended stack size range, which is the shape
+// that would otherwise be read as a zero.
+func TestModernLootTablesCarryConditions(t *testing.T) {
+	blockLoot := loadModernDataset[[]lootTableTmpl](t, "blockLoot", loadBlockLoot)
+	if len(blockLoot) != 925 {
+		t.Errorf("block loot tables = %d, want 925", len(blockLoot))
+	}
+
+	var mushroom *lootTableTmpl
+	for index := range blockLoot {
+		if blockLoot[index].Subject == "brown_mushroom_block" {
+			mushroom = &blockLoot[index]
+
+			break
+		}
+	}
+	if mushroom == nil {
+		t.Fatal("block loot has no brown_mushroom_block")
+	}
+	if len(mushroom.Drops) != 2 {
+		t.Fatalf("brown_mushroom_block drops = %d, want 2", len(mushroom.Drops))
+	}
+	if !mushroom.Drops[0].SilkTouch {
+		t.Error("the first brown_mushroom_block drop should require silk touch")
+	}
+	open := mushroom.Drops[1]
+	if !open.NoSilkTouch {
+		t.Error("the second brown_mushroom_block drop should forbid silk touch")
+	}
+	if !open.HasMinStackSize || open.MinStackSize != 0 {
+		t.Errorf("open drop min = {%d present:%t}, want 0 present", open.MinStackSize, open.HasMinStackSize)
+	}
+	if open.HasMaxStackSize {
+		t.Error("the open drop should have no maximum stack size")
+	}
+
+	entityLoot := loadModernDataset[[]lootTableTmpl](t, "entityLoot", loadEntityLoot)
+	if len(entityLoot) != 81 {
+		t.Errorf("entity loot tables = %d, want 81", len(entityLoot))
+	}
+	for _, table := range entityLoot {
+		if table.Subject != "blaze" {
+			continue
+		}
+		if len(table.Drops) != 1 || table.Drops[0].Item != "blaze_rod" || !table.Drops[0].PlayerKill {
+			t.Errorf("blaze drops = %+v, want one player-kill blaze rod", table.Drops)
+		}
+
+		return
+	}
+	t.Fatal("entity loot has no blaze")
+}
+
+// TestModernCommandTree pins the catalogue size and the tree's root, and that
+// an argument node carries its parser.
+func TestModernCommandTree(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join(modernSourceDir, "commands.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := loadCommands(raw)
+	if err != nil {
+		t.Fatalf("loadCommands: %v", err)
+	}
+	if len(tree.Parsers) != 75 {
+		t.Errorf("parsers = %d, want 75", len(tree.Parsers))
+	}
+	if tree.Root.Type != "root" || len(tree.Root.Children) == 0 {
+		t.Fatalf("root = {Type:%q children:%d}, want a root with children", tree.Root.Type, len(tree.Root.Children))
+	}
+
+	var arguments int
+	var walk func(commandNodeTmpl)
+	walk = func(node commandNodeTmpl) {
+		if node.Type == "argument" {
+			arguments++
+			if node.Parser == nil {
+				t.Errorf("argument node %q has no parser", node.Name)
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(tree.Root)
+	if arguments == 0 {
+		t.Error("the command tree has no argument nodes")
+	}
+}
+
+// TestModernLoginPacketAndTints covers the two remaining datasets: the sample
+// login packet, whose registry payload is kept as bytes, and the tints, whose
+// redstone category keys by power level rather than by biome name.
+func TestModernLoginPacketAndTints(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join(modernSourceDir, "loginPacket.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	packet, err := loadLoginPacket(raw)
+	if err != nil {
+		t.Fatalf("loadLoginPacket: %v", err)
+	}
+	if packet.EntityID != 1 || packet.WorldState.Name != "minecraft:overworld" {
+		t.Errorf("login packet = {EntityID:%d World:%q}, want {1 minecraft:overworld}", packet.EntityID, packet.WorldState.Name)
+	}
+	if packet.HashedSeed != [2]int32{-517260770, -1150015120} {
+		t.Errorf("hashed seed = %v, want [-517260770 -1150015120]", packet.HashedSeed)
+	}
+	if !json.Valid([]byte(packet.DimensionCodec)) {
+		t.Error("the compacted dimension codec is not valid JSON")
+	}
+
+	raw, err = os.ReadFile(filepath.Join(modernSourceDir, "tints.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tints, err := loadTints(raw)
+	if err != nil {
+		t.Fatalf("loadTints: %v", err)
+	}
+	names := make([]string, len(tints))
+	for index, category := range tints {
+		names[index] = category.Name
+	}
+	want := []string{"constant", "foliage", "grass", "redstone", "water"}
+	if !slices.Equal(names, want) {
+		t.Errorf("tint categories = %v, want %v", names, want)
+	}
+	for _, category := range tints {
+		if category.Name != "redstone" {
+			continue
+		}
+		if len(category.Data) == 0 || len(category.Data[0].Keys) == 0 {
+			t.Fatal("the redstone tint category is empty")
+		}
+		if _, err := strconv.Atoi(category.Data[0].Keys[0]); err != nil {
+			t.Errorf("redstone tint key = %q, want a power level", category.Data[0].Keys[0])
+		}
 	}
 }

@@ -33,6 +33,27 @@ func Data() (*data.Set, error) {
 {{- if .Data.HasPhysics }}
 		Physics: newPhysics(),
 {{- end }}
+{{- if .Data.HasSounds }}
+		Sounds: newSoundRegistry(),
+{{- end }}
+{{- if .Data.HasMapIcons }}
+		MapIcons: newMapIconRegistry(),
+{{- end }}
+{{- if .Data.HasBlockLoot }}
+		BlockLoot: newBlockLootRegistry(),
+{{- end }}
+{{- if .Data.HasEntityLoot }}
+		EntityLoot: newEntityLootRegistry(),
+{{- end }}
+{{- if .Data.HasCommands }}
+		Commands: newCommandTree(),
+{{- end }}
+{{- if .Data.HasLoginPacket }}
+		LoginPacket: newLoginPacket(),
+{{- end }}
+{{- if .Data.HasTints }}
+		Tints: newTints(),
+{{- end }}
 		Protocol: newProtocol(),
 		Version: newDataVersion(),
 	})

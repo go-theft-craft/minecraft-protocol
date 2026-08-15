@@ -293,6 +293,120 @@ type RawCollisionShapes struct {
 	Shapes map[string][][]float64     `json:"shapes"`
 }
 
+// Sound describes one source sound-event record.
+type Sound struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// MapIcon describes one source filled-map marker record.
+type MapIcon struct {
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	Appearance         string `json:"appearance"`
+	VisibleInItemFrame bool   `json:"visibleInItemFrame"`
+}
+
+// LootDrop describes one drop in a source loot table. StackSizeRange holds
+// nullable bounds because upstream publishes a two-element array whose members
+// it does not promise to fill.
+type LootDrop struct {
+	Item           string  `json:"item"`
+	DropChance     float64 `json:"dropChance"`
+	StackSizeRange []*int  `json:"stackSizeRange"`
+	SilkTouch      bool    `json:"silkTouch"`
+	NoSilkTouch    bool    `json:"noSilkTouch"`
+	BlockAge       *int    `json:"blockAge"`
+	PlayerKill     bool    `json:"playerKill"`
+}
+
+// BlockLoot describes one source block loot table.
+type BlockLoot struct {
+	Block string     `json:"block"`
+	Drops []LootDrop `json:"drops"`
+}
+
+// EntityLoot describes one source entity loot table.
+type EntityLoot struct {
+	Entity string     `json:"entity"`
+	Drops  []LootDrop `json:"drops"`
+}
+
+// CommandTree describes the source command dataset: the tree a server
+// publishes and the catalogue of parsers its argument nodes draw on.
+type CommandTree struct {
+	Root    CommandNode     `json:"root"`
+	Parsers []CommandParser `json:"parsers"`
+}
+
+// CommandNode describes one source command tree node.
+type CommandNode struct {
+	Type       string         `json:"type"`
+	Name       string         `json:"name"`
+	Executable bool           `json:"executable"`
+	Redirects  []string       `json:"redirects"`
+	Children   []CommandNode  `json:"children"`
+	Parser     *CommandParser `json:"parser"`
+}
+
+// CommandParser describes a source Brigadier parser. Examples appear in the
+// catalogue only; a tree node publishes the parser and its modifier alone.
+type CommandParser struct {
+	Parser   string           `json:"parser"`
+	Modifier *CommandModifier `json:"modifier"`
+	Examples []string         `json:"examples"`
+}
+
+// CommandModifier describes the properties that configure a source parser.
+type CommandModifier struct {
+	Type     string   `json:"type"`
+	Amount   string   `json:"amount"`
+	Registry string   `json:"registry"`
+	Min      *float64 `json:"min"`
+	Max      *float64 `json:"max"`
+}
+
+// LoginPacket describes the source sample play-login packet.
+type LoginPacket struct {
+	EntityID            int32           `json:"entityId"`
+	IsHardcore          bool            `json:"isHardcore"`
+	WorldNames          []string        `json:"worldNames"`
+	MaxPlayers          int             `json:"maxPlayers"`
+	ViewDistance        int             `json:"viewDistance"`
+	SimulationDistance  int             `json:"simulationDistance"`
+	ReducedDebugInfo    bool            `json:"reducedDebugInfo"`
+	EnableRespawnScreen bool            `json:"enableRespawnScreen"`
+	DoLimitedCrafting   bool            `json:"doLimitedCrafting"`
+	WorldState          LoginWorldState `json:"worldState"`
+	EnforcesSecureChat  bool            `json:"enforcesSecureChat"`
+	DimensionCodec      json.RawMessage `json:"dimensionCodec"`
+}
+
+// LoginWorldState describes the world in the source sample login packet.
+type LoginWorldState struct {
+	Dimension        int     `json:"dimension"`
+	Name             string  `json:"name"`
+	HashedSeed       []int32 `json:"hashedSeed"`
+	Gamemode         string  `json:"gamemode"`
+	PreviousGamemode int     `json:"previousGamemode"`
+	IsDebug          bool    `json:"isDebug"`
+	IsFlat           bool    `json:"isFlat"`
+	PortalCooldown   int     `json:"portalCooldown"`
+	SeaLevel         int     `json:"seaLevel"`
+}
+
+// TintCategory describes one source tint category.
+type TintCategory struct {
+	Data []TintEntry `json:"data"`
+}
+
+// TintEntry describes one colour and the keys that take it. The keys are raw
+// because a category keys by biome name and redstone keys by power level.
+type TintEntry struct {
+	Keys  []json.RawMessage `json:"keys"`
+	Color int               `json:"color"`
+}
+
 // LoadJSON decodes a source JSON array.
 func LoadJSON[T any](raw []byte) ([]T, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
@@ -302,4 +416,18 @@ func LoadJSON[T any](raw []byte) ([]T, error) {
 		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 	return items, nil
+}
+
+// LoadJSONValue decodes a source JSON document that is not an array. It is
+// strict for the same reason LoadJSON is: a field nothing models is an error
+// naming it, rather than a value that silently disappears.
+func LoadJSONValue[T any](raw []byte) (T, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	var value T
+	if err := decoder.Decode(&value); err != nil {
+		return value, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return value, nil
 }

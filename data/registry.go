@@ -108,3 +108,35 @@ type LanguageRegistry interface {
 	Get(string) (string, bool)
 	All() Language
 }
+
+// SoundRegistry provides read-only sound lookup. The caller owns returned
+// collections and nested reference fields and may mutate them.
+type SoundRegistry interface {
+	ByID(SoundID) (Sound, bool)
+	ByName(string) (Sound, bool)
+	All() Sounds
+}
+
+// MapIconRegistry provides read-only map-marker lookup. The caller owns
+// returned collections and nested reference fields and may mutate them.
+type MapIconRegistry interface {
+	ByID(MapIconID) (MapIcon, bool)
+	ByName(string) (MapIcon, bool)
+	All() MapIcons
+}
+
+// BlockLootRegistry provides read-only block loot lookup, keyed by block name.
+// The caller owns returned collections and nested reference fields and may
+// mutate them.
+type BlockLootRegistry interface {
+	ByBlock(string) (BlockLoot, bool)
+	All() BlockLootTables
+}
+
+// EntityLootRegistry provides read-only entity loot lookup, keyed by entity
+// name. The caller owns returned collections and nested reference fields and
+// may mutate them.
+type EntityLootRegistry interface {
+	ByEntity(string) (EntityLoot, bool)
+	All() EntityLootTables
+}

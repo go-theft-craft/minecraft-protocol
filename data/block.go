@@ -30,7 +30,56 @@ type Block struct {
 	Resistance   float64
 	Drops        Drops
 	HarvestTools HarvestToolSet
-	Variations   Variations
+	// Variations is how a block carried its variants before the flattening.
+	// Java 26.1 leaves it empty.
+	Variations Variations
+	// DefaultState, MinStateID, MaxStateID, and States describe the block
+	// states that replaced metadata variants in the flattening. Java 1.8
+	// leaves them zero.
+	DefaultState BlockStateID
+	MinStateID   BlockStateID
+	MaxStateID   BlockStateID
+	States       BlockStates
+}
+
+// BlockStateID identifies one state of a Minecraft block. A block occupies the
+// closed range MinStateID through MaxStateID, and DefaultState is the one it
+// takes when nothing says otherwise.
+type BlockStateID int
+
+// BlockState describes one property a block state varies over.
+type BlockState struct {
+	Name string
+	Type string
+	// NumValues is how many values the property takes. It is published even
+	// for properties whose Values upstream leaves implicit, such as bool.
+	NumValues int
+	Values    []string
+}
+
+// Clone returns a BlockState whose mutable fields do not alias the source.
+func (b BlockState) Clone() BlockState {
+	clone := b
+	clone.Values = slices.Clone(b.Values)
+
+	return clone
+}
+
+// BlockStates is a collection of block state properties.
+type BlockStates []BlockState
+
+// Clone returns block states whose mutable fields do not alias the source.
+func (b BlockStates) Clone() BlockStates {
+	if b == nil {
+		return nil
+	}
+
+	clone := make(BlockStates, len(b))
+	for index := range clone {
+		clone[index] = b[index].Clone()
+	}
+
+	return clone
 }
 
 // Drop describes an item dropped by a block. MinCount and MaxCount retain the
@@ -61,6 +110,7 @@ func (b Block) Clone() Block {
 	clone.Drops = b.Drops.Clone()
 	clone.HarvestTools = b.HarvestTools.Clone()
 	clone.Variations = b.Variations.Clone()
+	clone.States = b.States.Clone()
 
 	return clone
 }

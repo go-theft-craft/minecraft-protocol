@@ -1,5 +1,7 @@
 package data
 
+import "slices"
+
 // EntityID identifies a Minecraft entity.
 type EntityID int
 
@@ -50,6 +52,10 @@ type Entity struct {
 	Width       *float64
 	Height      *float64
 	Category    string
+	// MetadataKeys names the entity's metadata fields in wire order, so an
+	// index in an entity-metadata packet can be read as a name. Java 1.8 does
+	// not publish it and leaves this empty.
+	MetadataKeys []string
 }
 
 // Entities is a collection of Minecraft entities.
@@ -80,6 +86,7 @@ func (e Entity) Clone() Entity {
 		height := *e.Height
 		clone.Height = &height
 	}
+	clone.MetadataKeys = slices.Clone(e.MetadataKeys)
 
 	return clone
 }
