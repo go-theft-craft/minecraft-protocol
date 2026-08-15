@@ -28,7 +28,7 @@ injectable interfaces.
 | Protocol or data | Status |
 | --- | --- |
 | Edition-neutral contracts, resource limits, and game-data registry | Implemented |
-| Java Edition 1.8, protocol 47 | Built-in descriptor, generated packet sessions, managed asynchronous stream, compression, automatic transitions, graceful disconnect, and generated game data implemented |
+| Java Edition 1.8, protocol 47 | Built-in descriptor, generated packet sessions, managed asynchronous stream, compression, automatic transitions, graceful disconnect, generated game data, and physics constants implemented |
 | Java Edition 26.1, protocol 775 | Generated built-in descriptor and dataset planned |
 | Additional PrismarineJS versions and datasets beyond the Java 1.8 bundle | Planned generated built-ins |
 | Application-provided protocols and datasets | Supported by the core contracts; adapters remain application code |
@@ -155,6 +155,13 @@ digest for every required source file. The generator renders typed registries
 and packet values from that fixed input set. See
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for attribution and license
 details.
+
+Physics constants come from a different source than the rest of the bundle.
+`physics.json` holds block slipperiness and the trigonometry table measured from
+a verified Mojang server jar, plus entity motion constants transcribed from a
+local research workspace. Its digest and provenance live in the `extracted`
+block of the same manifest. Regenerating it requires a JDK and the
+`mcreference dump` command; verifying the checked-in output needs neither.
 
 Use the generated Java 1.8 data directly:
 

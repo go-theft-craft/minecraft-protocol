@@ -4,6 +4,12 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Added
+
+- Java 1.8 physics constants: block slipperiness, the trigonometry table, and
+  entity motion constants for the player, dropped item, and arrow families,
+  reachable through `data.Set.Physics`.
+
 ## 0.1.0 - 2026-08-15
 
 First tagged release. It publishes the managed stream, transport encryption,

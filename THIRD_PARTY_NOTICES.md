@@ -81,3 +81,18 @@ interface. No part of it is vendored, linked, or redistributed here: only
 
 The pinned lock file records the exact integrity hash for that version and for
 every transitive dependency it installs.
+
+## Extracted Minecraft constants
+
+`source/java/1.8/physics.json` contains numeric constants measured from a
+Minecraft Java Edition 1.8.9 server jar obtained from Mojang, together with
+constants transcribed by maintainers from a local research workspace. The
+`extracted` block in `source/java/1.8/manifest.json` records the extraction
+tool, its revision, the Minecraft version, the side, and the SHA-256 digest of
+the jar as Mojang published it, so the provenance can be checked against
+Mojang's own metadata.
+
+This repository contains no Minecraft jar, no mapping file, no decompiled Java
+source, and no game asset. It contains measured numeric values only. Minecraft
+is a product of Mojang AB. This project is not an official Minecraft product
+and is not approved by or associated with Mojang or Microsoft.
