@@ -22,7 +22,11 @@ import (
 	"github.com/go-theft-craft/minecraft-protocol/internal/codegen/schema"
 )
 
-//go:embed templates/*.tmpl
+// The whole directory is embedded rather than a pattern per level, so a
+// version directory can be added without touching this line — and so its
+// absence is not a build error before the first one exists.
+//
+//go:embed templates
 var templateFS embed.FS
 
 // Config selects generator input, output, package name, and stable version key.
@@ -148,9 +152,9 @@ func prepare(config Config) (targetPaths, []renderedFile, error) {
 		return targetPaths{}, nil, fmt.Errorf("version target %q does not match manifest target %q", versionKey.target, source.Manifest.TargetMinecraftVersion)
 	}
 
-	templates, err := template.ParseFS(templateFS, "templates/*.tmpl")
+	templates, err := newTemplateSet(templateFS, config.Package)
 	if err != nil {
-		return targetPaths{}, nil, fmt.Errorf("parse templates: %w", err)
+		return targetPaths{}, nil, err
 	}
 	files, err := buildRenderPlan(templates, source, config.Package, versionKey)
 	if err != nil {
@@ -195,7 +199,7 @@ func validateConfig(config Config) (targetPaths, stableVersionKey, error) {
 	return targetPaths{outDir: outDir, target: target}, versionKey, nil
 }
 
-func buildRenderPlan(templates *template.Template, source *verifiedSource, packageName string, versionKey stableVersionKey) ([]renderedFile, error) {
+func buildRenderPlan(templates templateSet, source *verifiedSource, packageName string, versionKey stableVersionKey) ([]renderedFile, error) {
 	rendered := make(map[string][]byte, len(generatedFileNames))
 	add := func(datasetName, templateName, outputFile string, load func([]byte) (any, error)) error {
 		body, err := source.dataset(datasetName)
@@ -546,15 +550,20 @@ func compareGeneratedPackage(target string, files []renderedFile) error {
 	return nil
 }
 
-func renderFile(templates *template.Template, name string, value any) ([]byte, error) {
+func renderFile(templates templateSet, name string, value any) ([]byte, error) {
+	return templates.render(name, value)
+}
+
+func renderTemplate(defined *template.Template, name string, value any) ([]byte, error) {
 	var buffer bytes.Buffer
-	if err := templates.ExecuteTemplate(&buffer, name, value); err != nil {
+	if err := defined.Execute(&buffer, value); err != nil {
 		return nil, fmt.Errorf("execute template %s: %w", name, err)
 	}
 	formatted, err := format.Source(buffer.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("format template %s: %w", name, err)
 	}
+
 	return formatted, nil
 }
 

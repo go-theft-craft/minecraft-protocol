@@ -2,6 +2,7 @@
 package schema
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -22,7 +23,23 @@ type Block struct {
 	Resistance   float64         `json:"resistance"`
 	Drops        []RawDrop       `json:"drops"`
 	HarvestTools map[string]bool `json:"harvestTools"`
-	Variations   []RawVariation  `json:"variations"`
+	// Variations is Java 1.8 only: metadata values were how a block carried
+	// its variants before block states existed.
+	Variations []RawVariation `json:"variations"`
+	// DefaultState, MinStateID, MaxStateID, and States replaced metadata
+	// variants in the flattening. They are absent from Java 1.8.
+	DefaultState int          `json:"defaultState"`
+	MinStateID   int          `json:"minStateId"`
+	MaxStateID   int          `json:"maxStateId"`
+	States       []BlockState `json:"states"`
+}
+
+// BlockState describes one property a modern block state varies over.
+type BlockState struct {
+	Name      string   `json:"name"`
+	Type      string   `json:"type"`
+	NumValues int      `json:"num_values"`
+	Values    []string `json:"values"`
 }
 
 // RawDrop retains the integer-or-object drop representation from source JSON.
@@ -81,6 +98,9 @@ type Entity struct {
 	Width       *float64 `json:"width"`
 	Height      *float64 `json:"height"`
 	Category    string   `json:"category"`
+	// MetadataKeys names the entity's metadata fields in wire order. Java 1.8
+	// does not publish it.
+	MetadataKeys []string `json:"metadataKeys"`
 }
 
 // Biome describes one source biome record.
@@ -96,6 +116,10 @@ type Biome struct {
 	Dimension     string  `json:"dimension"`
 	Color         int     `json:"color"`
 	Rainfall      float64 `json:"rainfall"`
+	// Climates is Java 1.8 only and is null in every record upstream ships.
+	Climates json.RawMessage `json:"climates"`
+	// HasPrecipitation replaced the 1.8 precipitation string.
+	HasPrecipitation bool `json:"has_precipitation"`
 }
 
 // Effect describes one source effect record.
@@ -243,8 +267,10 @@ type RawCollisionShapes struct {
 
 // LoadJSON decodes a source JSON array.
 func LoadJSON[T any](raw []byte) ([]T, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
 	var items []T
-	if err := json.Unmarshal(raw, &items); err != nil {
+	if err := decoder.Decode(&items); err != nil {
 		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
 	return items, nil

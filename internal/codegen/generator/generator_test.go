@@ -945,3 +945,83 @@ func TestRunWithoutPhysicsOmitsTheGeneratedFile(t *testing.T) {
 		t.Fatal("gamedata.go calls newPhysics() but no physics.go was generated")
 	}
 }
+
+// TestStrictDecodingRejectsAnUnknownField pins the rule that a dataset shape
+// nobody modelled is an error rather than silence.
+//
+// It matters because the alternative is invisible. An upstream field this
+// repository does not know about would simply not appear in the generated data,
+// and nothing would say so — the generated package would look complete and be
+// missing whatever that field described.
+func TestStrictDecodingRejectsAnUnknownField(t *testing.T) {
+	dir := copySource(t)
+
+	raw, err := os.ReadFile(filepath.Join(dir, "biomes.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A field neither supported version declares.
+	mutated := bytes.Replace(raw, []byte(`"id":`), []byte(`"unmodelled_field":1,"id":`), 1)
+	if bytes.Equal(mutated, raw) {
+		t.Fatal("the biomes fixture has no id field to anchor on")
+	}
+	rewriteSourceFile(t, dir, "biomes", mutated)
+
+	out := t.TempDir()
+	err = Run(Config{SourceDir: dir, OutDir: out, Package: "v1_8", Version: "java/1.8.9"})
+	if err == nil {
+		t.Fatal("generation accepted a field it does not model")
+	}
+	if !strings.Contains(err.Error(), "biomes") {
+		t.Errorf("error = %q, want it to name the dataset", err)
+	}
+	if !strings.Contains(err.Error(), "unmodelled_field") {
+		t.Errorf("error = %q, want it to name the field", err)
+	}
+}
+
+// TestStrictDecodingAcceptsBothVersionsShapes covers the reason the schema
+// types carry the union of what the two versions publish: 1.8 blocks have
+// metadata variations, 26.1 blocks have block states, and neither version's
+// data may be rejected for lacking the other's fields.
+func TestStrictDecodingAcceptsBothVersionsShapes(t *testing.T) {
+	cases := []struct {
+		name string
+		raw  string
+		load func([]byte) (any, error)
+	}{
+		{
+			name: "a 1.8 block with metadata variations",
+			raw:  `[{"id":1,"name":"stone","displayName":"Stone","variations":[{"metadata":1,"displayName":"Granite"}]}]`,
+			load: loadBlocks,
+		},
+		{
+			name: "a 26.1 block with states",
+			raw:  `[{"id":1,"name":"stone","displayName":"Stone","defaultState":1,"minStateId":1,"maxStateId":2,"states":[{"name":"snowy","type":"bool","num_values":2}]}]`,
+			load: loadBlocks,
+		},
+		{
+			name: "a 1.8 biome with precipitation and rainfall",
+			raw:  `[{"id":0,"name":"ocean","displayName":"Ocean","precipitation":"rain","rainfall":0.5,"climates":null}]`,
+			load: loadBiomes,
+		},
+		{
+			name: "a 26.1 biome with has_precipitation",
+			raw:  `[{"id":0,"name":"ocean","displayName":"Ocean","has_precipitation":true}]`,
+			load: loadBiomes,
+		},
+		{
+			name: "a 26.1 entity with metadata keys",
+			raw:  `[{"id":0,"name":"allay","displayName":"Allay","type":"mob","metadataKeys":["shared_flags","air_supply"]}]`,
+			load: loadEntities,
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := test.load([]byte(test.raw)); err != nil {
+				t.Errorf("load: %v", err)
+			}
+		})
+	}
+}
