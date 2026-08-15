@@ -2,7 +2,6 @@
 /build/
 *.test
 *.out
-coverage.*
 
 # Local dependencies and workspaces
 /vendor/
