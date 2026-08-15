@@ -8,7 +8,27 @@
 // It never binds or dials anything but the loopback interface.
 
 import process from 'node:process'
+import { createRequire } from 'node:module'
 import mc from 'minecraft-protocol'
+
+const require = createRequire(import.meta.url)
+
+// The pinned minecraft-protocol 1.66.2 gates the encryption request and the
+// hasJoined call on the same flag, so there is no configuration that encrypts
+// without contacting Mojang. server/login.js resolves yggdrasil.server through
+// the module object at connection time, so replacing the export here is
+// enough. This is confined to the loopback interoperability runner and never
+// ships; no scenario contacts a host outside 127.0.0.1.
+function stubSessionServer () {
+  const yggdrasil = require('yggdrasil')
+  const real = yggdrasil.server
+  yggdrasil.server = (options) => ({
+    ...real(options),
+    hasJoined (username, serverId, sharedSecret, publicKey, callback) {
+      callback(null, { id: '00000000000040008000000000000000', name: username })
+    }
+  })
+}
 
 const LOOPBACK = '127.0.0.1'
 const DEFAULT_TIMEOUT_MS = 30_000
@@ -109,6 +129,52 @@ async function runClient (args) {
     return
   }
 
+  if (args.scenario === 'encrypted-login') {
+    // Version 1.66.2 answers encryption_begin regardless of credentials and
+    // skips the join call in offline mode, which is exactly what a Go server
+    // without account verification needs.
+    const encrypted = mc.createClient({
+      host: args.host,
+      port: args.port,
+      username: 'interop',
+      version: '1.8.8',
+      auth: 'offline',
+      keepAlive: false
+    })
+
+    encrypted.on('success', (packet) => {
+      emit({ event: 'login_success', username: packet.username, uuid: packet.uuid })
+    })
+
+    encrypted.on('keep_alive', (packet) => {
+      emit({ event: 'packet', name: 'keep_alive', keepAliveId: packet.keepAliveId })
+    })
+
+    encrypted.on('disconnect', (packet) => {
+      emit({ event: 'disconnect', state: 'login', reason: packet.reason })
+      cancelTimeout()
+      encrypted.end()
+      process.exit(0)
+    })
+
+    encrypted.on('kick_disconnect', (packet) => {
+      emit({ event: 'disconnect', state: 'play', reason: packet.reason })
+      cancelTimeout()
+      encrypted.end()
+      process.exit(0)
+    })
+
+    encrypted.on('error', (err) => fail(`client error: ${err.message}`))
+
+    encrypted.on('end', (reason) => {
+      emit({ event: 'end', reason: reason ?? null })
+      cancelTimeout()
+      process.exit(0)
+    })
+
+    return
+  }
+
   if (args.scenario !== 'login') {
     fail(`unknown client scenario ${args.scenario}`)
   }
@@ -168,6 +234,57 @@ async function runClient (args) {
 // runServer listens on loopback for the Go client-role stream.
 async function runServer (args) {
   const cancelTimeout = withTimeout(args.timeout, `scenario ${args.scenario}`)
+
+  if (args.scenario === 'encrypted-login') {
+    // online-mode is what makes the pinned server send encryption_begin. The
+    // session-server call it implies is stubbed above, so nothing leaves
+    // loopback.
+    stubSessionServer()
+    const encrypting = mc.createServer({
+      host: LOOPBACK,
+      port: args.port,
+      'online-mode': true,
+      version: '1.8.8',
+      maxPlayers: 20,
+      motd: 'interop',
+      keepAlive: false
+    })
+
+    encrypting.on('listening', () => {
+      emit({ event: 'listening', port: encrypting.socketServer.address().port })
+    })
+
+    encrypting.on('error', (err) => fail(`server error: ${err.message}`))
+
+    encrypting.on('login', (client) => {
+      emit({ event: 'login_success', username: client.username, uuid: client.uuid })
+
+      client.write('login', {
+        entityId: 1,
+        levelType: 'default',
+        gameMode: 0,
+        dimension: 0,
+        difficulty: 1,
+        maxPlayers: 20,
+        reducedDebugInfo: false
+      })
+      emit({ event: 'state', state: 'play' })
+
+      client.on('chat', (packet) => {
+        emit({ event: 'packet', name: 'chat', length: packet.message.length })
+
+        client.end(JSON.stringify({ text: 'goodbye' }))
+        emit({ event: 'disconnect', state: 'play', reason: 'goodbye' })
+        cancelTimeout()
+        encrypting.close()
+        process.exit(0)
+      })
+
+      client.on('error', (err) => fail(`client error: ${err.message}`))
+    })
+
+    return
+  }
 
   const server = mc.createServer({
     host: LOOPBACK,

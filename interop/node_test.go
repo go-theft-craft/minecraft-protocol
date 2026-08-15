@@ -8,6 +8,8 @@ package interop
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +25,7 @@ import (
 
 	protocol "github.com/go-theft-craft/minecraft-protocol"
 	v1_8 "github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8"
+	"github.com/go-theft-craft/minecraft-protocol/login"
 	"github.com/go-theft-craft/minecraft-protocol/wire/java"
 )
 
@@ -718,4 +721,208 @@ func hasEvent(events []runnerEvent, name string) bool {
 		}
 	}
 	return false
+}
+
+// TestGoClientAgainstNodeServerEncryptedLogin runs the Go negotiator against
+// the pinned Node server in online mode, which is the only configuration that
+// makes it send an encryption request.
+func TestGoClientAgainstNodeServerEncryptedLogin(t *testing.T) {
+	runner := startRunner(t, "--mode", "server", "--scenario", "encrypted-login", "--port", "0")
+	listening := runner.await(t, "listening")
+	if listening.Port == nil {
+		t.Fatal("node server did not report a port")
+	}
+
+	conn := dialLoopback(t, *listening.Port)
+	client := newGoEndpoint(t, protocol.RoleClient, conn)
+
+	client.write(t, v1_8.StateHandshaking, protocol.DirectionServerbound, 0x00,
+		&v1_8.HandshakingServerboundSetProtocol{
+			ProtocolVersion: 47,
+			ServerHost:      loopback,
+			ServerPort:      uint16(*listening.Port),
+			NextState:       2,
+		})
+
+	authenticator, err := login.NewOffline("interop")
+	if err != nil {
+		t.Fatalf("NewOffline() error = %v", err)
+	}
+	negotiator, err := login.NewNegotiator(authenticator)
+	if err != nil {
+		t.Fatalf("NewNegotiator() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), scenarioBudget)
+	defer cancel()
+
+	profile, err := negotiator.Negotiate(ctx, client.stream)
+	if err != nil {
+		t.Fatalf("Negotiate() error = %v", err)
+	}
+	if profile.Name.String() != "interop" {
+		t.Fatalf("profile name = %q, want interop", profile.Name)
+	}
+	if profile.UUID.IsZero() {
+		t.Fatal("a successful login must carry a UUID")
+	}
+
+	snapshot := client.snapshot(t)
+	if snapshot.Pipeline["encryption.enabled"] != "true" {
+		t.Fatalf("pipeline = %v, want encryption enabled", snapshot.Pipeline)
+	}
+	if snapshot.State != v1_8.StatePlay {
+		t.Fatalf("client state = %q, want %q", snapshot.State, v1_8.StatePlay)
+	}
+
+	success := runner.await(t, "login_success")
+	if success.Username != "interop" {
+		t.Fatalf("node saw username %q, want interop", success.Username)
+	}
+
+	// A play packet after the switch proves the cipher survives the state
+	// change rather than only the login exchange.
+	client.write(t, v1_8.StatePlay, protocol.DirectionServerbound, 0x01,
+		&v1_8.PlayServerboundChat{Message: strings.Repeat("y", 100)})
+
+	chat := runner.await(t, "packet")
+	if chat.Name != "chat" {
+		t.Fatalf("node saw packet %q, want chat", chat.Name)
+	}
+
+	disconnect := runner.await(t, "disconnect")
+	if disconnect.Reason != "goodbye" {
+		t.Fatalf("node disconnect reason = %q, want goodbye", disconnect.Reason)
+	}
+
+	// The encryption switch is recorded even though the key is not.
+	if !contains(client.sink.packetNames(), "success") {
+		t.Errorf("Go observations %v are missing the login success", client.sink.packetNames())
+	}
+
+	runner.waitForExit(t)
+}
+
+// TestNodeClientAgainstGoServerEncryptedLogin drives the pinned Node client
+// through a Go-served encryption handshake.
+func TestNodeClientAgainstGoServerEncryptedLogin(t *testing.T) {
+	nodeAvailable(t)
+
+	listener, port := listenLoopback(t)
+
+	accepted := acceptOne(t, listener)
+	runner := startRunner(t, "--mode", "client", "--scenario", "encrypted-login",
+		"--host", loopback, "--port", fmt.Sprint(port))
+
+	conn := <-accepted
+	server := newGoEndpoint(t, protocol.RoleServer, conn)
+
+	handshake := server.read(t)
+	if handshakeValue, ok := handshake.Value.(*v1_8.HandshakingServerboundSetProtocol); !ok || handshakeValue.NextState != 2 {
+		t.Fatalf("server read %#v, want a handshake into login", handshake.Value)
+	}
+
+	start := server.read(t)
+	startValue, ok := start.Value.(*v1_8.LoginServerboundLoginStart)
+	if !ok || startValue.Username != "interop" {
+		t.Fatalf("server read %#v, want login_start from interop", start.Value)
+	}
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+	encoded, err := java.EncodeServerPublicKey(&key.PublicKey)
+	if err != nil {
+		t.Fatalf("encode key: %v", err)
+	}
+
+	token := []byte{0x0a, 0x0b, 0x0c, 0x0d}
+	server.write(t, v1_8.StateLogin, protocol.DirectionClientbound, 0x01,
+		&v1_8.LoginClientboundEncryptionBegin{
+			ServerID:    "",
+			PublicKey:   encoded,
+			VerifyToken: token,
+		})
+
+	response := server.read(t)
+	responseValue, ok := response.Value.(*v1_8.LoginServerboundEncryptionBegin)
+	if !ok {
+		t.Fatalf("server read %T, want the encryption response", response.Value)
+	}
+
+	returnedToken, err := java.DecryptFromServerKey(key, responseValue.VerifyToken)
+	if err != nil {
+		t.Fatalf("decrypt verify token: %v", err)
+	}
+	if err := java.VerifyToken(token, returnedToken); err != nil {
+		t.Fatalf("verify token: %v", err)
+	}
+
+	secretBytes, err := java.DecryptFromServerKey(key, responseValue.SharedSecret)
+	if err != nil {
+		t.Fatalf("decrypt session key: %v", err)
+	}
+	secret, err := java.SharedSecretFrom(secretBytes)
+	if err != nil {
+		t.Fatalf("adopt session key: %v", err)
+	}
+
+	controlCtx, cancel := context.WithTimeout(context.Background(), stepBudget)
+	defer cancel()
+	if err := server.stream.Control(controlCtx, java.EncryptionControl{Secret: secret}); err != nil {
+		t.Fatalf("enable encryption: %v", err)
+	}
+	if got := server.snapshot(t).Pipeline["encryption.enabled"]; got != "true" {
+		t.Fatalf("encryption.enabled = %q, want true", got)
+	}
+
+	server.write(t, v1_8.StateLogin, protocol.DirectionClientbound, 0x02,
+		&v1_8.LoginClientboundSuccess{
+			UUID:     "00000000-0000-0000-0000-000000000001",
+			Username: "interop",
+		})
+
+	success := runner.await(t, "login_success")
+	if success.Username != "interop" {
+		t.Fatalf("node saw username %q, want interop", success.Username)
+	}
+
+	// Everything from here is encrypted, so a keep-alive that arrives intact
+	// proves the cipher is composed correctly in both directions.
+	server.write(t, v1_8.StatePlay, protocol.DirectionClientbound, 0x01,
+		&v1_8.PlayClientboundLogin{
+			EntityID:   1,
+			GameMode:   0,
+			Dimension:  0,
+			Difficulty: 1,
+			MaxPlayers: 20,
+			LevelType:  "default",
+		})
+	server.write(t, v1_8.StatePlay, protocol.DirectionClientbound, 0x00,
+		&v1_8.PlayClientboundKeepAlive{KeepAliveID: 7})
+
+	keepAlive := runner.await(t, "packet")
+	if keepAlive.Name != "keep_alive" {
+		t.Fatalf("node saw packet %q, want keep_alive", keepAlive.Name)
+	}
+	if keepAlive.KeepAliveID == nil || *keepAlive.KeepAliveID != 7 {
+		t.Fatalf("node saw keep alive %v, want 7", keepAlive.KeepAliveID)
+	}
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), stepBudget)
+	defer cancelShutdown()
+	if err := server.stream.Shutdown(shutdownCtx, `{"text":"goodbye"}`); err != nil {
+		t.Fatalf("Shutdown() error = %v", err)
+	}
+
+	disconnect := runner.await(t, "disconnect")
+	if !strings.Contains(disconnect.Reason, "goodbye") {
+		t.Fatalf("node disconnect reason = %q, want it to mention goodbye", disconnect.Reason)
+	}
+
+	if err := server.stream.Wait(); err != nil {
+		t.Fatalf("Wait() error = %v, want a clean shutdown", err)
+	}
+	runner.waitForExit(t)
 }

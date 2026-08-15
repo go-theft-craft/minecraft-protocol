@@ -2,7 +2,6 @@ package java
 
 import (
 	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -177,11 +176,11 @@ func (c EncryptionControl) ApplyTransport(conduit *protocol.Conduit) error {
 		return fmt.Errorf("build session cipher: %w", err)
 	}
 
+	// Java uses the key as its own initialization vector, and the mode is
+	// CFB8 rather than the standard library's block-wide CFB.
 	return conduit.EnableEncryption(
-		//nolint:staticcheck // SA1019: the wire format mandates AES-CFB8.
-		cipher.NewCFBDecrypter(block, key),
-		//nolint:staticcheck // SA1019: the wire format mandates AES-CFB8.
-		cipher.NewCFBEncrypter(block, key),
+		newCFB8Decrypter(block, key),
+		newCFB8Encrypter(block, key),
 	)
 }
 

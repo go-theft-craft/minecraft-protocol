@@ -46,7 +46,11 @@ func TestConduitReportsDisabledEncryptionInPipeline(t *testing.T) {
 	}
 }
 
-// testCiphers builds the same CFB8 pair on both sides of a loopback pipe.
+// testCiphers builds a matched pair for the conduit tests.
+//
+// The conduit is agnostic about which stream cipher it is handed, so this uses
+// the standard library's CFB rather than reaching into wire/java, which would
+// be an import cycle. The real mode is CFB8 and lives in wire/java.
 func testCiphers(t *testing.T, key []byte) (cipher.Stream, cipher.Stream) {
 	t.Helper()
 
@@ -55,7 +59,7 @@ func testCiphers(t *testing.T, key []byte) (cipher.Stream, cipher.Stream) {
 		t.Fatalf("aes: %v", err)
 	}
 
-	//nolint:staticcheck // SA1019: the wire format mandates AES-CFB8.
+	//nolint:staticcheck // SA1019: any matched stream pair exercises the conduit.
 	return cipher.NewCFBDecrypter(block, key), cipher.NewCFBEncrypter(block, key)
 }
 
