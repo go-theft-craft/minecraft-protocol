@@ -371,6 +371,20 @@ devbox run -- task generate:check
 allows only `data_test.go` and `codec_test.go` as hand-written exceptions. The
 generator preserves these files without creating them.
 
+### Differential verification against ProtoDef
+
+`task test:protodef` compares the generated protocol 775 codecs against the
+pinned Node ProtoDef, packet by packet: Go encodes a packet, ProtoDef reads and
+re-encodes it, and the bytes must match; then Go reads ProtoDef's bytes back
+and must recover the value it started from. The test first checks that both
+sides are reading the same `protocol.json`, by hash, so an agreement between
+two different schemas cannot pass for a result.
+
+This is codec-level and not session-level, because the pinned Node
+`minecraft-protocol` 1.66.2 supports up to Minecraft 1.21.11 and cannot speak
+26.1 at all. Protocol 47 keeps its loopback session lane in `task test:interop`;
+protocol 775 has no session-level oracle until upstream adds the version.
+
 The public API is still changing. Before starting a substantial contribution,
 [open an issue](https://github.com/go-theft-craft/minecraft-protocol/issues) to
 agree on the contract and compatibility fixtures.

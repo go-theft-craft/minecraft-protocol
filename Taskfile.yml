@@ -67,6 +67,13 @@ tasks:
       - npm ci --prefix interop/node
       - go test -race -count=1 ./interop
 
+  test:protodef:
+    desc: Compare the generated protocol 775 codecs against pinned Node ProtoDef
+    deps: [deps]
+    cmds:
+      - npm ci --prefix interop/node
+      - go test -race -count=1 -run "ProtoDef|Protocol775Differential" ./interop
+
   vuln:
     desc: Check dependencies for known vulnerabilities
     deps: [deps]
@@ -129,6 +136,7 @@ tasks:
       - task: secrets
       - task: test
       - task: test:interop
+      - task: test:protodef
       - task: vuln
       - task: build
 
