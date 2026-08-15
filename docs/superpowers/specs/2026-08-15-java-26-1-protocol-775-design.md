@@ -36,15 +36,22 @@ Everything else resolves to `pc/26.1`. `version.json` reports
 `{"version": 775, "minecraftVersion": "26.1", "majorVersion": "26.1",
 "releaseType": "release"}`.
 
-`protocol.json` declares five states and 242 packets:
+`protocol.json` declares five states and 257 packets:
 
 | State | Clientbound | Serverbound |
 | --- | --- | --- |
 | handshaking | 0 | 2 |
 | status | 2 | 2 |
-| login | 5 | 4 |
-| configuration | 11 | 6 |
-| play | 143 | 67 |
+| login | 6 | 5 |
+| configuration | 20 | 10 |
+| play | 141 | 69 |
+
+> **Corrected 2026-08-15, during M4.2.** This table originally read 242
+> packets, with 5/4 for login, 11/6 for configuration, and 143/67 for play.
+> Counting the packet mappings in the pinned `protocol.json` at commit
+> `8a80816c` gives the numbers above. Configuration is the largest divergence,
+> 30 against 17. The original figures were written before the tree was pinned
+> and do not describe it. M4.5's coverage assertions use the measured counts.
 
 It declares 111 root named types and 31 root natives. The natives are the
 interesting part, because a native is a name the schema refuses to define and
