@@ -37,7 +37,7 @@
 | `wire/java/identity_test.go` | Both UUID wire forms, username bounds, every malformed form |
 | `wire/java/encryption.go` | `EncryptionControl`, key parsing, PKCS#1 v1.5, `ComputeServerHash` |
 | `wire/java/encryption_test.go` | Canonical hash vectors, key parsing, cipher construction |
-| `login/negotiator.go` | `Profile`, `Authenticator`, `Negotiator` for protocol 47 |
+| `login/negotiator.go` | `Profile`, `Authenticator`, `Negotiator`, driven by descriptor login roles |
 | `login/negotiator_test.go` | Success and every failure mode |
 | `stream_encryption_test.go` | Encrypted loopback login, Go client against Go server |
 
@@ -50,7 +50,7 @@
 | `stream_errors.go` | Four new sentinels |
 | `observation.go` | `Observation.Redacted`, `ObservationSecret`, `SecretDisclosure`, redaction in `observe` |
 | `session.go` | The optional `SensitivePackets` interface |
-| `internal/codegen/generator/templates/protocol.go.tmpl` | A `Sensitive` method on the session |
+| `internal/codegen/generator/templates/protocol.go.tmpl` | A `Sensitive` method and a `LoginRole` lookup on the session |
 | `generated/java/v1_8/protocol.go` | Regenerated output |
 | `interop/node/runner.mjs` | Encrypted scenarios and the `yggdrasil` stub |
 | `interop/node_test.go` | Two encrypted interoperability tests |
@@ -1986,7 +1986,74 @@ git commit -m "feat(protocol): redact secret material in observations"
 
 ---
 
-### Task 7: The login negotiator
+### Task 7: Login roles on the generated descriptor
+
+**Files:**
+- Modify: `internal/codegen/generator/templates/protocol.go.tmpl`
+- Modify: `internal/codegen/generator/generator.go`
+- Modify: `internal/codegen/generator/generator_test.go`
+- Modify: `generated/java/v1_8/protocol.go` (regenerated output)
+
+**Interfaces:**
+- Produces: `type LoginRole string` with `RoleEncryptionRequest`, `RoleEncryptionResponse`, `RoleLoginSuccess`, `RoleSetCompression`, `RoleLoginStart`; and the optional session interface `LoginRoles interface{ LoginRole(State, Direction, int32) (LoginRole, bool) }`.
+
+- [ ] **Step 1: Why this exists**
+
+The negotiator in Task 8 must not name a concrete packet type. Protocol 775 has
+the same five roles plus two the 47 sequence has no analogue for, and a
+negotiator written against `*v1_8.LoginClientboundEncryptionBegin` would have to
+be rewritten rather than extended. Tagging costs one template change now and
+saves a duplicate negotiator with a duplicate failure-mode suite later.
+
+This follows the precedent already set in this plan: the generated session
+learns that two packets are sensitive without learning what encryption is. It
+now also learns which packet plays which part in a login, without learning what
+a login is.
+
+- [ ] **Step 2: Write the failing test**
+
+Assert that the generated protocol 47 session reports `RoleEncryptionRequest`
+for clientbound login `encryption_begin`, `RoleEncryptionResponse` for
+serverbound `encryption_begin`, `RoleLoginSuccess` for `success`,
+`RoleSetCompression` for `compress`, and `RoleLoginStart` for serverbound
+`login_start`. Assert that a play-state packet has no role. Assert that a
+protocol declaring no roles satisfies the interface and returns false for
+everything, so the mechanism is optional.
+
+- [ ] **Step 3: Run and verify failure**
+
+```bash
+devbox run -- task test -- ./internal/codegen/generator
+```
+
+- [ ] **Step 4: Implement**
+
+Roles come from the descriptor, keyed by state, direction, and packet name, and
+are emitted as a generated lookup with no map allocation per call. A packet with
+no role is absent rather than an error.
+
+- [ ] **Step 5: Regenerate and verify**
+
+```bash
+devbox run -- task generate
+devbox run -- task generate:check
+devbox run -- task test
+```
+
+Expected: `generated/java/v1_8/protocol.go` gains the lookup and nothing else
+changes.
+
+- [ ] **Step 6: Commit**
+
+```bash
+devbox run -- task precommit
+git add internal/codegen/generator generated/java/v1_8
+git commit -m "feat(codegen): tag login packets with their role"
+```
+
+---
+
+### Task 8: The login negotiator
 
 **Files:**
 - Create: `login/negotiator.go`
@@ -1994,7 +2061,7 @@ git commit -m "feat(protocol): redact secret material in observations"
 - Create: `login/negotiator_test.go`
 
 **Interfaces:**
-- Consumes: everything from Tasks 1 through 6.
+- Consumes: everything from Tasks 1 through 7. The negotiator reads packets through the login roles from Task 7 and must not reference a generated packet type by name, so protocol 775 extends it by tagging rather than by rewriting.
 - Produces: `type Profile struct{ Name java.Username; UUID java.UUID }`; `type Authenticator interface{...}`; `type Verifier interface{...}`; `func NewOffline(string) (Offline, error)`; `func NewNegotiator(Authenticator) (*Negotiator, error)`; `func (*Negotiator) Negotiate(context.Context, *protocol.Stream) (Profile, error)`; `login.ErrInvalidLoginField`; `login.MaxServerIDBytes`.
 
 - [ ] **Step 1: Write the failing test**
@@ -2732,7 +2799,7 @@ git commit -m "feat(login): add an opt-in Java login negotiator"
 
 ---
 
-### Task 8: Encrypted loopback over TCP
+### Task 9: Encrypted loopback over TCP
 
 **Files:**
 - Create: `stream_encryption_test.go`
@@ -2860,7 +2927,7 @@ git commit -m "test(protocol): cover encrypted login over loopback TCP"
 
 ---
 
-### Task 9: Node interoperability
+### Task 10: Node interoperability
 
 **Files:**
 - Modify: `interop/node/runner.mjs`
@@ -2990,7 +3057,7 @@ git commit -m "test(interop): cover encrypted login against pinned Node"
 
 ---
 
-### Task 10: Documentation and milestone records
+### Task 11: Documentation and milestone records
 
 **Files:**
 - Modify: `README.md`

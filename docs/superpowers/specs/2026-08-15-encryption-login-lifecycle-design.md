@@ -283,17 +283,24 @@ type Authenticator interface {
 }
 ```
 
-The negotiator needs concrete login packet types, so it lives in its own
-package, `login`, which imports `wire/java` and `generated/java/v1_8`. Putting
-it in `wire/java` would invert the dependency, because the generated package
-imports `wire/java`.
+The negotiator lives in its own package, `login`, which imports `wire/java`.
+Putting it in `wire/java` would invert the dependency, because the generated
+package imports `wire/java`.
 
-For M2 the negotiator is protocol 47 only. Protocol 775 changes the login
-packets themselves, adding a UUID to login start and an acknowledgement before
-the configuration state, so generalizing it now would mean designing against
-packets that do not exist yet. M4 either parameterizes it or adds a second
-constructor. Nothing else in this slice depends on that choice: the conduit,
-the controls, and the cryptography never see a packet.
+**Revised 2026-08-15, while planning M4.** The negotiator does not name a
+generated packet type. The generated descriptor tags each login packet with its
+role — login start, encryption request, encryption response, success, set
+compression — and the negotiator dispatches on the role. Protocol 775 has the
+same five roles plus two more, `login_acknowledged` and the configuration
+acknowledgement, and M4 adds it by tagging packets rather than by writing a
+second negotiator with a second copy of the failure-mode suite.
+
+M2 still implements and tests protocol 47 only. What changed is that the 47
+implementation is written once. A role a protocol does not declare is absent
+rather than an error, so nothing branches on a version anywhere in `login`.
+
+Nothing else in this slice is affected: the conduit, the controls, and the
+cryptography never see a packet.
 
 `LoginNegotiator` is a helper, not a stream mode. Given a running stream and an
 authenticator it writes `LoginStart`, reads until it sees `EncryptionBegin` or
