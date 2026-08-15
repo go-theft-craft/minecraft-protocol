@@ -74,6 +74,12 @@ tasks:
       - npm ci --prefix interop/node
       - go test -race -count=1 -run "ProtoDef|Protocol775Differential" ./interop
 
+  check:live:
+    desc: Run the opt-in live check against a real Java 26.1 server (needs MCPROTO_LIVE_ADDR)
+    deps: [deps]
+    cmds:
+      - go test -tags livecheck -count=1 -v ./livecheck
+
   vuln:
     desc: Check dependencies for known vulnerabilities
     deps: [deps]
