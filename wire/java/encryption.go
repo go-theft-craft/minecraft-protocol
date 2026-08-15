@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
-	"crypto/subtle"
 	"crypto/x509"
 	"fmt"
 	"math/big"
@@ -99,23 +98,6 @@ func ComputeServerHash(serverID string, secret SharedSecret, key *rsa.PublicKey)
 	digest.Write(encoded)
 
 	return ServerHash{hash: javaDigest(digest.Sum(nil))}, nil
-}
-
-// VerifyToken compares the token a server sent with the one a client returned
-// after decryption. It compares in constant time, because a server that leaks
-// the comparison position leaks the token.
-//
-// It is the server half of the exchange. This package supplies it so a server
-// implementation does not reimplement the comparison and get it wrong.
-func VerifyToken(expected, returned []byte) error {
-	if len(expected) == 0 {
-		return fmt.Errorf("%w: no expected token", ErrVerifyTokenMismatch)
-	}
-	if subtle.ConstantTimeCompare(expected, returned) != 1 {
-		return ErrVerifyTokenMismatch
-	}
-
-	return nil
 }
 
 // javaDigest renders bytes as Java's BigInteger(1 signed byte array) does:

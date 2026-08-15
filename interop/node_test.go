@@ -851,21 +851,13 @@ func TestNodeClientAgainstGoServerEncryptedLogin(t *testing.T) {
 		t.Fatalf("server read %T, want the encryption response", response.Value)
 	}
 
-	returnedToken, err := java.DecryptFromServerKey(key, responseValue.VerifyToken)
-	if err != nil {
-		t.Fatalf("decrypt verify token: %v", err)
-	}
-	if err := java.VerifyToken(token, returnedToken); err != nil {
+	if err := java.VerifyToken(key, token, responseValue.VerifyToken); err != nil {
 		t.Fatalf("verify token: %v", err)
 	}
 
-	secretBytes, err := java.DecryptFromServerKey(key, responseValue.SharedSecret)
+	secret, err := java.DecryptSharedSecret(key, responseValue.SharedSecret)
 	if err != nil {
 		t.Fatalf("decrypt session key: %v", err)
-	}
-	secret, err := java.SharedSecretFrom(secretBytes)
-	if err != nil {
-		t.Fatalf("adopt session key: %v", err)
 	}
 
 	controlCtx, cancel := context.WithTimeout(context.Background(), stepBudget)

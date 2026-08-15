@@ -156,25 +156,13 @@ func serveLogin(t *testing.T, stream *protocol.Stream, script serverScript) {
 			return
 		}
 
-		returnedToken, err := java.DecryptFromServerKey(key, response.VerifyToken)
-		if err != nil {
-			t.Errorf("decrypt verify token: %v", err)
-
-			return
-		}
-		if err := java.VerifyToken(token, returnedToken); err != nil {
+		if err := java.VerifyToken(key, token, response.VerifyToken); err != nil {
 			t.Errorf("verify token: %v", err)
 
 			return
 		}
 
-		secretBytes, err := java.DecryptFromServerKey(key, response.SharedSecret)
-		if err != nil {
-			t.Errorf("decrypt session key: %v", err)
-
-			return
-		}
-		secret, err := java.SharedSecretFrom(secretBytes)
+		secret, err := java.DecryptSharedSecret(key, response.SharedSecret)
 		if err != nil {
 			t.Errorf("adopt session key: %v", err)
 

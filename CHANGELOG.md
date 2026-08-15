@@ -27,9 +27,14 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   session, because no packet carries the plaintext key.
 - Added the Java key-exchange primitives: `java.ParseServerPublicKey`,
   `java.EncodeServerPublicKey`, `java.EncryptToServerKey`,
-  `java.DecryptFromServerKey`, `java.VerifyToken`, and
-  `java.ComputeServerHash`, which renders the digest the way Java renders a
-  signed BigInteger.
+  `java.DecryptFromServerKey`, and `java.ComputeServerHash`, which renders the
+  digest the way Java renders a signed BigInteger.
+- Added the server half of the key exchange: `java.DecryptSharedSecret`
+  recovers a client's session key as a redacting `java.SharedSecret`, refusing
+  a key of the wrong length before it can become one, and `java.VerifyToken`
+  decrypts the returned verify token and compares it with `crypto/subtle`. A
+  token of the wrong length fails with `java.ErrVerifyTokenMismatch` before any
+  content is compared, so the length is not an oracle that a mismatch is not.
 - Added strict identity types for login. `java.ParseUUID` accepts the dashed
   and undashed wire forms and nothing else, `java.ParseUsername` bounds bytes
   rather than runes and rejects control characters, and `java.ServerHash` is a
