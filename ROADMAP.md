@@ -81,6 +81,16 @@ protocol 775 codecs that P2 generates.
 - Add configuration and play transitions for modern Java login, keeping every
   automatic transition optional.
 
+## P3b.5: schema-first code generation
+
+Status: complete.
+
+- Compile every schema-defined type from its own schema; a hand-written codec
+  backs only a name the schema declares native.
+- Share named types that are recursive or used by more than one packet, and
+  bound decode recursion against the configured depth.
+- Delete the hand-written `Position`, `Slot`, and `EntityMetadata` value types.
+
 ## P3c: routing, capture, replay, and CLI
 
 Depends on the protocol 775 datasets from P2.

@@ -6,6 +6,14 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ### Added
 
+- Added `Buffer.EnterNested`, `Buffer.LeaveNested`, and `Buffer.NestingDepth`,
+  which bound decode recursion against `MaxRecursionDepth`. Generated decoders
+  for shared named types count depth, so a recursive schema cannot be driven
+  into a stack overflow by a peer.
+- Added `Buffer.ReadTerminator` and `Buffer.WriteTerminator` for loops that end
+  at a sentinel byte. The sentinel is a parameter taken from the schema rather
+  than a constant, because protocol 47 ends entity metadata at 127 and protocol
+  775 ends it at 255.
 - Added AES-128/CFB8 transport encryption. `protocol.Conduit` sits between the
   transport and both pumps, buffering raw bytes and transforming them as it
   hands them out, which is what makes a mid-stream cipher switch safe. It
@@ -90,6 +98,21 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ### Changed
 
+- **Breaking.** The generator now compiles every type a schema defines and
+  reserves hand-written codecs for names the schema declares `native`. Protocol
+  47's `position`, `slot`, and `entityMetadata` were schema-defined types being
+  resolved to hand-written codecs by name, which would have given protocol 775
+  protocol 47's bit order and metadata terminator. Every protocol 47 wire byte
+  is unchanged; the generated Go API is not.
+- **Breaking.** Removed `java.Position`, `java.Slot`, `java.EntityMetadata`,
+  `java.EntityMetadataEntry`, `java.EntityMetadataType`, their buffer methods,
+  and the `ErrInvalidSlot`, `ErrInvalidMetadata`, and
+  `ErrDuplicateMetadataIndex` sentinels. The generated package declares these
+  types itself, compiled from the schema. A consumer that held a `java.Slot`
+  now holds the generated `Slot` for its protocol version.
+- A named type used by two or more packets, or that is recursive, is generated
+  once and shared instead of being inlined per packet. Protocol 47 shares
+  `Position`, `Slot`, and `EntityMetadata`.
 - `Stream.Snapshot` now reports `encryption.enabled` alongside the compression
   settings. It merges the conduit's view with the session's, so one snapshot
   describes everything a caller can configure at runtime.

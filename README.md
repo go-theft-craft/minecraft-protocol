@@ -250,6 +250,25 @@ Four rules matter:
 settings, and an `ObservationSecret` record marks the switch point even when
 the material itself is withheld.
 
+## How generated codecs are built
+
+Every type a protocol schema defines is compiled from that schema. A
+hand-written codec backs a name only when the schema declares that name
+`native`, and a codec whose name the schema defines as something else fails
+generation rather than quietly winning. The rule exists because names repeat
+across protocol versions with different meanings: protocol 47 and protocol 775
+both define `position` and `entityMetadata`, but 47 packs x, y, z and 775 packs
+x, z, y, and 47 ends metadata at 127 where 775 ends it at 255. Binding a codec
+by bare name gives one of those versions the other's wire format, and a
+per-version round-trip test cannot see it, because both directions are wrong
+together.
+
+A named type is generated once, rather than inlined into each packet, when it
+is recursive, participates in a cycle, or is used by two or more packets. Shared
+decoders count nesting depth against `MaxRecursionDepth`, which is what keeps a
+recursive schema -- where a peer chooses the nesting -- a decode error instead
+of a stack overflow.
+
 ## Observation points
 
 A stream can publish a lossless record of everything it moves. Install a sink
