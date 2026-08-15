@@ -128,5 +128,21 @@
       "mediaType": "application/json",
       "sha256": "8e090f0868c7f9ee5958a107fa10a061084b33a6ccbf8be2605493eb7e236d88"
     }
-  ]
+  ],
+  "extracted": {
+    "tool": "mcreference",
+    "toolRevision": "b463b3ebc049bdb37bbe963cfe3e0e1e7647c805",
+    "minecraftVersion": "1.8.9",
+    "side": "server",
+    "jarSha256": "c18e4245073aaff580eb7359902f0251436568b1647a9e443a924cdb73fa8312",
+    "license": "Mojang End User Licence Agreement",
+    "datasets": [
+      {
+        "name": "physics",
+        "file": "physics.json",
+        "mediaType": "application/json",
+        "sha256": "bff0fa3640e98059ee624390e701c7c46574b38bd4ea5ec5177dcacb6688c440"
+      }
+    ]
+  }
 }

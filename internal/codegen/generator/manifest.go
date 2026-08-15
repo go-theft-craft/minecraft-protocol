@@ -46,6 +46,18 @@ func loadVerifiedSource(sourceDir string) (*verifiedSource, error) {
 		files[dataset.Name] = body
 	}
 
+	// Measured datasets are read the same way and land in the same map. Their
+	// provenance differs, not their use: Verify has already checked both.
+	if loaded.Extracted != nil {
+		for _, dataset := range loaded.Extracted.Datasets {
+			body, err := os.ReadFile(filepath.Join(sourceDir, filepath.FromSlash(dataset.File)))
+			if err != nil {
+				return nil, fmt.Errorf("read extracted dataset %s: %w", dataset.Name, err)
+			}
+			files[dataset.Name] = body
+		}
+	}
+
 	return &verifiedSource{Manifest: loaded, Files: files}, nil
 }
 

@@ -29,6 +29,13 @@ const FileName = "manifest.json"
 // else is either a different edition or a path escaping the data tree.
 const sourceRoot = "data/pc/"
 
+// extractionTool is the only tool whose measurements a manifest may pin.
+const extractionTool = "mcreference"
+
+// extractionSide is the only jar side constants are measured from. The server
+// jar carries every value the simulation needs and is the smaller download.
+const extractionSide = "server"
+
 // revisionLength is the length of a full Git commit hash. A branch or a short
 // hash is refused: only a full commit pins a tree.
 const revisionLength = 40
@@ -43,6 +50,33 @@ type Dataset struct {
 	SourcePath string `json:"sourcePath"`
 	MediaType  string `json:"mediaType"`
 	SHA256     string `json:"sha256"`
+}
+
+// ExtractedDataset is one dataset measured out of a Mojang artifact rather
+// than fetched from an upstream repository. It has no SourcePath: nothing
+// upstream published it.
+type ExtractedDataset struct {
+	Name      string `json:"name"`
+	File      string `json:"file"`
+	MediaType string `json:"mediaType"`
+	SHA256    string `json:"sha256"`
+}
+
+// Extracted records how measured datasets were produced and under whose terms.
+// It is separate from the upstream fields because the provenance is different
+// in kind: a tool reading a licensed binary, not a commit in a public
+// repository. A tree whose version has no measured constants omits it.
+type Extracted struct {
+	Tool             string `json:"tool"`
+	ToolRevision     string `json:"toolRevision"`
+	MinecraftVersion string `json:"minecraftVersion"`
+	Side             string `json:"side"`
+	// JarSHA256 is the digest of the jar as the publisher shipped it, so a
+	// third party can check it against the published metadata. A locally
+	// remapped jar would not be reproducible elsewhere.
+	JarSHA256 string             `json:"jarSha256"`
+	License   string             `json:"license"`
+	Datasets  []ExtractedDataset `json:"datasets"`
 }
 
 // Manifest describes one pinned source tree.
@@ -61,6 +95,8 @@ type Manifest struct {
 	SourceRevision         string    `json:"sourceRevision"`
 	License                string    `json:"license"`
 	Datasets               []Dataset `json:"datasets"`
+	// Extracted is nil for a tree with no measured constants.
+	Extracted *Extracted `json:"extracted,omitempty"`
 }
 
 // SourceVersion returns the upstream version directory a dataset was taken
@@ -96,6 +132,20 @@ func (m *Manifest) Dataset(name string) (Dataset, bool) {
 	}
 
 	return Dataset{}, false
+}
+
+// ExtractedDataset returns the named measured dataset.
+func (m *Manifest) ExtractedDataset(name string) (ExtractedDataset, bool) {
+	if m.Extracted == nil {
+		return ExtractedDataset{}, false
+	}
+	for _, dataset := range m.Extracted.Datasets {
+		if dataset.Name == name {
+			return dataset, true
+		}
+	}
+
+	return ExtractedDataset{}, false
 }
 
 // Names returns every dataset name, in manifest order.
@@ -181,6 +231,68 @@ func (m *Manifest) validate() error {
 		seen[dataset.Name] = struct{}{}
 	}
 
+	return m.validateExtracted(seen)
+}
+
+// validateExtracted checks measured-data provenance. seen carries the upstream
+// dataset names so a measured dataset cannot shadow one of them.
+func (m *Manifest) validateExtracted(seen map[string]struct{}) error {
+	if m.Extracted == nil {
+		return nil
+	}
+
+	if m.Extracted.Tool != extractionTool {
+		return fmt.Errorf("unsupported extraction tool %q, want %q", m.Extracted.Tool, extractionTool)
+	}
+	if m.Extracted.ToolRevision == "" {
+		return fmt.Errorf("extracted toolRevision is required")
+	}
+	if m.Extracted.MinecraftVersion != m.TargetMinecraftVersion {
+		return fmt.Errorf("extracted minecraftVersion %q does not match target %q", m.Extracted.MinecraftVersion, m.TargetMinecraftVersion)
+	}
+	if m.Extracted.Side != extractionSide {
+		return fmt.Errorf("unsupported extraction side %q, want %q", m.Extracted.Side, extractionSide)
+	}
+	if !isHex(m.Extracted.JarSHA256, sha256.Size*2) {
+		return fmt.Errorf("extracted jarSha256 %q must be 64 lowercase hex characters", m.Extracted.JarSHA256)
+	}
+	if m.Extracted.License == "" {
+		return fmt.Errorf("extracted license is required")
+	}
+	if len(m.Extracted.Datasets) == 0 {
+		return fmt.Errorf("extracted datasets must name at least one file")
+	}
+
+	for _, dataset := range m.Extracted.Datasets {
+		if err := dataset.validate(); err != nil {
+			return err
+		}
+		if _, duplicate := seen[dataset.Name]; duplicate {
+			return fmt.Errorf("duplicate dataset %q", dataset.Name)
+		}
+		seen[dataset.Name] = struct{}{}
+	}
+
+	return nil
+}
+
+func (d ExtractedDataset) validate() error {
+	if d.Name == "" {
+		return fmt.Errorf("every extracted dataset needs a name")
+	}
+	if strings.ContainsAny(d.Name, `/\.`) {
+		return fmt.Errorf("extracted dataset name %q must not name a path", d.Name)
+	}
+	if !isLocalPath(d.File) {
+		return fmt.Errorf("extracted dataset %s: file %q must be a relative path inside the source tree", d.Name, d.File)
+	}
+	if d.MediaType == "" {
+		return fmt.Errorf("extracted dataset %s: mediaType is required", d.Name)
+	}
+	if !isHex(d.SHA256, sha256.Size*2) {
+		return fmt.Errorf("extracted dataset %s: sha256 %q must be 64 lowercase hex characters", d.Name, d.SHA256)
+	}
+
 	return nil
 }
 
@@ -210,8 +322,12 @@ func (d Dataset) validate() error {
 // Verify reads every dataset in dir, checks its bytes against the manifest,
 // and reports any file in the tree the manifest does not name.
 func (m *Manifest) Verify(dir string) error {
-	recorded := make(map[string]struct{}, len(m.Datasets)+1)
+	recorded := make(map[string]struct{}, len(m.Datasets)+m.extractedCount()+1)
 	recorded[FileName] = struct{}{}
+
+	if err := m.verifyExtracted(dir, recorded); err != nil {
+		return err
+	}
 
 	for _, dataset := range m.Datasets {
 		recorded[dataset.File] = struct{}{}
@@ -228,6 +344,38 @@ func (m *Manifest) Verify(dir string) error {
 	}
 
 	return m.verifyNoExtraFiles(dir, recorded)
+}
+
+func (m *Manifest) extractedCount() int {
+	if m.Extracted == nil {
+		return 0
+	}
+
+	return len(m.Extracted.Datasets)
+}
+
+// verifyExtracted checksums measured datasets and records their files, so the
+// unrecorded-file scan does not report them as strays.
+func (m *Manifest) verifyExtracted(dir string, recorded map[string]struct{}) error {
+	if m.Extracted == nil {
+		return nil
+	}
+
+	for _, dataset := range m.Extracted.Datasets {
+		recorded[dataset.File] = struct{}{}
+
+		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(dataset.File)))
+		if err != nil {
+			return fmt.Errorf("extracted dataset %s: %w", dataset.Name, err)
+		}
+
+		digest := sha256.Sum256(body)
+		if hex.EncodeToString(digest[:]) != dataset.SHA256 {
+			return fmt.Errorf("extracted dataset %s: %s does not match its recorded checksum", dataset.Name, dataset.File)
+		}
+	}
+
+	return nil
 }
 
 func (m *Manifest) verifyNoExtraFiles(dir string, recorded map[string]struct{}) error {

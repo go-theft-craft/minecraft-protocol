@@ -857,3 +857,46 @@ func protocolFixtureMapping(document map[string]any, phase, direction string) (m
 	switchFields := paramsType[1].(map[string]any)["fields"].(map[string]any)
 	return mappings, switchFields
 }
+
+// TestVerifiedSourceProvidesExtractedPhysics pins the committed 1.8 tree: its
+// measured physics dataset verifies against the manifest and reaches the
+// generator by name, exactly like an upstream dataset.
+func TestVerifiedSourceProvidesExtractedPhysics(t *testing.T) {
+	source, err := loadVerifiedSource(copySource(t))
+	if err != nil {
+		t.Fatalf("loadVerifiedSource: %v", err)
+	}
+
+	body, err := source.dataset("physics")
+	if err != nil {
+		t.Fatalf("dataset(physics): %v", err)
+	}
+	if len(body) == 0 {
+		t.Fatal("physics dataset is empty")
+	}
+
+	extracted := source.Manifest.Extracted
+	if extracted == nil {
+		t.Fatal("the 1.8 tree records no extracted provenance")
+	}
+	if extracted.MinecraftVersion != "1.8.9" || extracted.Side != "server" {
+		t.Fatalf("extracted provenance = %+v", extracted)
+	}
+	if extracted.License == "" {
+		t.Fatal("extracted provenance carries no license")
+	}
+}
+
+// TestExtractedPhysicsChecksumIsEnforced proves the measured dataset is held to
+// the same standard as upstream data: a changed byte fails verification.
+func TestExtractedPhysicsChecksumIsEnforced(t *testing.T) {
+	dir := copySource(t)
+	if err := os.WriteFile(filepath.Join(dir, "physics.json"), []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := validateManifest(dir)
+	if err == nil || !strings.Contains(err.Error(), "does not match its recorded checksum") {
+		t.Fatalf("validateManifest() error = %v, want a checksum mismatch", err)
+	}
+}

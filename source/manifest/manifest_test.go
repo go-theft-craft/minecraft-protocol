@@ -316,3 +316,163 @@ func TestVerifyCatchesAnUnrecordedFile(t *testing.T) {
 		t.Errorf("error = %q, want it to name the file", err)
 	}
 }
+
+// physics is the extracted-provenance block and its dataset body. Extracted
+// data is measured from a Mojang jar, so it has no upstream sourcePath and
+// cannot be an ordinary dataset.
+func physics() (map[string]any, string) {
+	body := `{"defaultSlipperiness":0.6}`
+
+	return map[string]any{
+		"tool":             "mcreference",
+		"toolRevision":     "v1.0.1",
+		"minecraftVersion": "26.1",
+		"side":             "server",
+		"jarSha256":        sum("a jar"),
+		"license":          "Mojang End User Licence Agreement",
+		"datasets": []map[string]any{
+			{
+				"name":      "physics",
+				"file":      "data/physics.json",
+				"mediaType": "application/json",
+				"sha256":    sum(body),
+			},
+		},
+	}, body
+}
+
+func TestLoadAcceptsExtractedProvenance(t *testing.T) {
+	value, files := valid()
+	block, body := physics()
+	value["extracted"] = block
+	files["data/physics.json"] = body
+
+	dir := write(t, value, files)
+	loaded, err := manifest.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Extracted == nil {
+		t.Fatal("extracted provenance was not parsed")
+	}
+	if loaded.Extracted.JarSHA256 != sum("a jar") {
+		t.Fatalf("jarSha256 = %q", loaded.Extracted.JarSHA256)
+	}
+	if got, ok := loaded.ExtractedDataset("physics"); !ok || got.File != "data/physics.json" {
+		t.Fatalf("ExtractedDataset(physics) = %+v, ok=%v", got, ok)
+	}
+	if err := loaded.Verify(dir); err != nil {
+		t.Fatalf("Verify: %v", err)
+	}
+}
+
+// TestLoadAcceptsATreeWithoutExtractedProvenance pins that extracted data is
+// optional: trees whose version has no measured constants still load.
+func TestLoadAcceptsATreeWithoutExtractedProvenance(t *testing.T) {
+	value, files := valid()
+	dir := write(t, value, files)
+
+	loaded, err := manifest.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Extracted != nil {
+		t.Fatal("extracted provenance appeared from nowhere")
+	}
+}
+
+func TestLoadRejectsExtractedProvenance(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(map[string]any)
+		want   string
+	}{
+		{
+			name:   "unknown tool",
+			mutate: func(block map[string]any) { block["tool"] = "decompiler" },
+			want:   "unsupported extraction tool",
+		},
+		{
+			name:   "missing tool revision",
+			mutate: func(block map[string]any) { block["toolRevision"] = "" },
+			want:   "toolRevision is required",
+		},
+		{
+			name:   "version disagrees with target",
+			mutate: func(block map[string]any) { block["minecraftVersion"] = "1.8.9" },
+			want:   "does not match target",
+		},
+		{
+			name:   "unsupported side",
+			mutate: func(block map[string]any) { block["side"] = "client" },
+			want:   "unsupported extraction side",
+		},
+		{
+			name:   "malformed jar digest",
+			mutate: func(block map[string]any) { block["jarSha256"] = "abc" },
+			want:   "jarSha256",
+		},
+		{
+			name:   "missing license",
+			mutate: func(block map[string]any) { block["license"] = "" },
+			want:   "license is required",
+		},
+		{
+			name:   "no datasets",
+			mutate: func(block map[string]any) { block["datasets"] = []map[string]any{} },
+			want:   "at least one",
+		},
+		{
+			name: "dataset name collides with an upstream dataset",
+			mutate: func(block map[string]any) {
+				block["datasets"].([]map[string]any)[0]["name"] = "blocks"
+			},
+			want: "duplicate dataset",
+		},
+		{
+			name: "dataset escapes the tree",
+			mutate: func(block map[string]any) {
+				block["datasets"].([]map[string]any)[0]["file"] = "../physics.json"
+			},
+			want: "must be a relative path inside the source tree",
+		},
+		{
+			name: "malformed dataset digest",
+			mutate: func(block map[string]any) {
+				block["datasets"].([]map[string]any)[0]["sha256"] = "nope"
+			},
+			want: "sha256",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			value, files := valid()
+			block, body := physics()
+			test.mutate(block)
+			value["extracted"] = block
+			files["data/physics.json"] = body
+
+			_, err := manifest.Load(write(t, value, files))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("manifest.Load() error = %v, want containing %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestVerifyCatchesAChangedExtractedByte(t *testing.T) {
+	value, files := valid()
+	block, _ := physics()
+	value["extracted"] = block
+	files["data/physics.json"] = `{"defaultSlipperiness":0.7}`
+
+	dir := write(t, value, files)
+	loaded, err := manifest.Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if err := loaded.Verify(dir); err == nil {
+		t.Fatal("Verify accepted an extracted dataset that does not match its checksum")
+	}
+}
