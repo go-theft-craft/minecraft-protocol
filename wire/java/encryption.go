@@ -1,6 +1,8 @@
 package java
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -8,6 +10,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"math/big"
+
+	"github.com/go-theft-craft/minecraft-protocol"
 )
 
 // ParseServerPublicKey reads the DER SubjectPublicKeyInfo encoding that a
@@ -129,3 +133,59 @@ func javaDigest(sum []byte) string {
 
 	return value.Text(16)
 }
+
+// EncryptionControl enables AES-128/CFB8 on a stream's conduit.
+//
+// It is a protocol.TransportControl rather than a session control, because the
+// cipher covers the frame length prefix that the session never sees. It is not
+// proposed by a session either: no packet carries the plaintext key, so the
+// caller applies it through Stream.Control once the key exchange is complete.
+// Stream.Write returns only after the frame has reached the transport, and
+// Control queues behind it on the same coordinator, so applying it directly
+// after the write cannot encrypt the response packet itself.
+type EncryptionControl struct {
+	Secret SharedSecret
+}
+
+// ControlName implements protocol.Control.
+func (EncryptionControl) ControlName() string { return "java.encryption" }
+
+// SecretLabel implements protocol.SecretDisclosure. A stream calls it on every
+// switch, disclosing or not, so a redacted capture still says what kind of
+// material was installed.
+//
+// The label names the kind of material rather than describing one connection,
+// because it is written into durable captures that later tooling has to
+// interpret without knowing which milestone produced them.
+func (EncryptionControl) SecretLabel() string { return "java.session-key" }
+
+// DisclosedSecret implements protocol.SecretDisclosure. A stream calls it only
+// when the developer opted into disclosure, so the key is never materialized
+// on the default path. The returned slice is a copy the caller may retain.
+func (c EncryptionControl) DisclosedSecret() []byte { return c.Secret.Reveal() }
+
+// ApplyTransport implements protocol.TransportControl. Java uses the key as
+// its own initialization vector in both directions.
+func (c EncryptionControl) ApplyTransport(conduit *protocol.Conduit) error {
+	if c.Secret.IsZero() {
+		return fmt.Errorf("%w: empty session key", ErrInvalidSharedSecret)
+	}
+
+	key := c.Secret.Reveal()
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("build session cipher: %w", err)
+	}
+
+	return conduit.EnableEncryption(
+		//nolint:staticcheck // SA1019: the wire format mandates AES-CFB8.
+		cipher.NewCFBDecrypter(block, key),
+		//nolint:staticcheck // SA1019: the wire format mandates AES-CFB8.
+		cipher.NewCFBEncrypter(block, key),
+	)
+}
+
+var (
+	_ protocol.TransportControl = EncryptionControl{}
+	_ protocol.SecretDisclosure = EncryptionControl{}
+)

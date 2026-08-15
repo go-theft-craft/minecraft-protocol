@@ -3,6 +3,7 @@ package protocol
 import (
 	"bufio"
 	"crypto/cipher"
+	"fmt"
 	"io"
 	"strconv"
 	"sync"
@@ -69,6 +70,33 @@ func (c *Conduit) Write(p []byte) (int, error) {
 	c.mu.Unlock()
 
 	return c.writer.Write(p)
+}
+
+// EnableEncryption installs the per-direction ciphers.
+//
+// It refuses when the read buffer already holds unread bytes. Those bytes
+// arrived before the switch and would have been handed out as plaintext, so
+// accepting the switch would corrupt the very next frame with no way to tell
+// why. Failing here names the cause at the cause.
+func (c *Conduit) EnableEncryption(decrypt, encrypt cipher.Stream) error {
+	if decrypt == nil || encrypt == nil {
+		return fmt.Errorf("%w: nil cipher", ErrEncryptionUnavailable)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.decrypt != nil || c.encrypt != nil {
+		return ErrEncryptionEnabled
+	}
+	if buffered := c.buffered.Buffered(); buffered > 0 {
+		return fmt.Errorf("%w: %d unread bytes", ErrEncryptionOverrun, buffered)
+	}
+
+	c.decrypt = decrypt
+	c.encrypt = encrypt
+
+	return nil
 }
 
 // pipeline reports the conduit's contribution to a stream snapshot.

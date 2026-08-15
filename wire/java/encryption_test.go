@@ -6,6 +6,8 @@ import (
 	"crypto/sha1"
 	"errors"
 	"testing"
+
+	"github.com/go-theft-craft/minecraft-protocol"
 )
 
 // The three canonical server-hash vectors. Java renders a negative SHA-1
@@ -114,5 +116,43 @@ func TestServerKeyEncryptionRoundTrips(t *testing.T) {
 	}
 	if string(recovered) != string(plaintext) {
 		t.Fatalf("recovered %q, want %q", recovered, plaintext)
+	}
+}
+
+func TestEncryptionControlIsATransportControl(t *testing.T) {
+	secret, err := SharedSecretFrom([]byte("0123456789abcdef"))
+	if err != nil {
+		t.Fatalf("SharedSecretFrom: %v", err)
+	}
+
+	control := EncryptionControl{Secret: secret}
+	if control.ControlName() != "java.encryption" {
+		t.Fatalf("ControlName = %q", control.ControlName())
+	}
+
+	var _ protocol.TransportControl = control
+	var _ protocol.SecretDisclosure = control
+
+	if control.SecretLabel() != "java.session-key" {
+		t.Fatalf("SecretLabel = %q, want %q", control.SecretLabel(), "java.session-key")
+	}
+
+	material := control.DisclosedSecret()
+	if string(material) != "0123456789abcdef" {
+		t.Fatal("DisclosedSecret must return the key for a disclosing capture")
+	}
+
+	// The material must be a copy: a sink that mutates it must not reach the
+	// live cipher configuration.
+	material[0] = 0xff
+	if control.DisclosedSecret()[0] == 0xff {
+		t.Fatal("DisclosedSecret must return an independent copy")
+	}
+}
+
+func TestEncryptionControlRejectsAnEmptySecret(t *testing.T) {
+	control := EncryptionControl{}
+	if err := control.ApplyTransport(nil); !errors.Is(err, ErrInvalidSharedSecret) {
+		t.Fatalf("error = %v, want ErrInvalidSharedSecret", err)
 	}
 }

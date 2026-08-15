@@ -169,6 +169,23 @@ func (s *Stream) drainObservations(ctx context.Context) {
 	}
 }
 
+// SecretDisclosure is implemented by a TransportControl that carries secret
+// material a disclosing capture needs in order to be decryptable later.
+//
+// The two methods are separate because a stream needs them at different times.
+// SecretLabel is called on every switch, so a redacted capture still records
+// what kind of material was installed and when. DisclosedSecret is called only
+// when the developer passed WithSecretDisclosure, so the default path never
+// materializes a key it would immediately discard. It must return a copy the
+// caller may retain.
+//
+// The stream interprets neither value. It copies both into the record and
+// hands it to the sink.
+type SecretDisclosure interface {
+	SecretLabel() string
+	DisclosedSecret() []byte
+}
+
 // packetMetadata copies the identifying fields of a packet.
 func packetMetadata(packet Packet) *PacketMetadata {
 	return &PacketMetadata{
