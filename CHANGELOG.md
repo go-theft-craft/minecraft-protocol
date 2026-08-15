@@ -55,6 +55,14 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   that does not verify accounts, `login.Authenticator` and `login.Verifier` are
   the two halves a consumer implements, and `login.Profile` holds only parsed
   identity types.
+- Added `login.Acceptor`, the server half of the login sequence, with
+  `login.WithVerifier`, `login.WithCompressionThreshold`, and
+  `login.WithServerID`. Without a verifier the login is offline and
+  `login.OfflineUUID` derives the same identity vanilla does. With one, the
+  acceptor runs the key exchange, installs the cipher before it calls the
+  verifier so no session-server call happens over plaintext, and disconnects
+  with a readable reason when the verifier refuses. Both halves are tested
+  against each other over one connection, which is why they share a package.
 - Added the sentinel errors `protocol.ErrEncryptionOverrun`,
   `protocol.ErrEncryptionEnabled`, `protocol.ErrEncryptionUnavailable`,
   `java.ErrInvalidSharedSecret`, `java.ErrInvalidUUID`,
