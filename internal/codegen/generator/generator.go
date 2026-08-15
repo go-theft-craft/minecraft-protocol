@@ -196,10 +196,14 @@ func validateConfig(config Config) (targetPaths, stableVersionKey, error) {
 
 func buildRenderPlan(templates *template.Template, source *verifiedSource, packageName string, versionKey stableVersionKey) ([]renderedFile, error) {
 	rendered := make(map[string][]byte, len(generatedFileNames))
-	add := func(jsonFile, templateName, outputFile string, load func([]byte) (any, error)) error {
-		value, err := load(source.Files[jsonFile])
+	add := func(datasetName, templateName, outputFile string, load func([]byte) (any, error)) error {
+		body, err := source.dataset(datasetName)
 		if err != nil {
-			return fmt.Errorf("parse %s: %w", jsonFile, err)
+			return err
+		}
+		value, err := load(body)
+		if err != nil {
+			return fmt.Errorf("parse %s: %w", datasetName, err)
 		}
 		raw, err := renderFile(templates, templateName, newTemplateData(packageName, versionKey, value))
 		if err != nil {
@@ -213,44 +217,44 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 	}
 
 	arrayGenerators := []struct {
-		jsonFile     string
+		datasetName  string
 		templateName string
 		outputFile   string
 		load         func([]byte) (any, error)
 	}{
-		{"blocks.json", "blocks.go.tmpl", "blocks.go", loadBlocks},
-		{"items.json", "items.go.tmpl", "items.go", loadItems},
-		{"entities.json", "entities.go.tmpl", "entities.go", loadEntities},
-		{"biomes.json", "biomes.go.tmpl", "biomes.go", loadBiomes},
-		{"effects.json", "effects.go.tmpl", "effects.go", loadEffects},
-		{"enchantments.json", "enchantments.go.tmpl", "enchantments.go", loadEnchantments},
-		{"foods.json", "foods.go.tmpl", "foods.go", loadFoods},
-		{"particles.json", "particles.go.tmpl", "particles.go", loadParticles},
-		{"instruments.json", "instruments.go.tmpl", "instruments.go", loadInstruments},
-		{"attributes.json", "attributes.go.tmpl", "attributes.go", loadAttributes},
-		{"windows.json", "windows.go.tmpl", "windows.go", loadWindows},
+		{"blocks", "blocks.go.tmpl", "blocks.go", loadBlocks},
+		{"items", "items.go.tmpl", "items.go", loadItems},
+		{"entities", "entities.go.tmpl", "entities.go", loadEntities},
+		{"biomes", "biomes.go.tmpl", "biomes.go", loadBiomes},
+		{"effects", "effects.go.tmpl", "effects.go", loadEffects},
+		{"enchantments", "enchantments.go.tmpl", "enchantments.go", loadEnchantments},
+		{"foods", "foods.go.tmpl", "foods.go", loadFoods},
+		{"particles", "particles.go.tmpl", "particles.go", loadParticles},
+		{"instruments", "instruments.go.tmpl", "instruments.go", loadInstruments},
+		{"attributes", "attributes.go.tmpl", "attributes.go", loadAttributes},
+		{"windows", "windows.go.tmpl", "windows.go", loadWindows},
 	}
 	for _, entry := range arrayGenerators {
-		if err := add(entry.jsonFile, entry.templateName, entry.outputFile, entry.load); err != nil {
+		if err := add(entry.datasetName, entry.templateName, entry.outputFile, entry.load); err != nil {
 			return nil, err
 		}
 	}
 
 	specialGenerators := []struct {
-		jsonFile     string
+		datasetName  string
 		templateName string
 		outputFile   string
 		load         func([]byte) (any, error)
 	}{
-		{"version.json", "version.go.tmpl", "version.go", func(raw []byte) (any, error) { return loadVersion(raw, versionKey.target) }},
-		{"language.json", "language.go.tmpl", "language.go", func(raw []byte) (any, error) { return loadLanguage(raw) }},
-		{"materials.json", "materials.go.tmpl", "materials.go", func(raw []byte) (any, error) { return loadMaterials(raw) }},
-		{"recipes.json", "recipes.go.tmpl", "recipes.go", func(raw []byte) (any, error) { return loadRecipes(raw) }},
-		{"blockCollisionShapes.json", "collision_shapes.go.tmpl", "collision_shapes.go", func(raw []byte) (any, error) { return loadCollisionShapes(raw) }},
-		{"protocol.json", "protocol.go.tmpl", "protocol.go", func(raw []byte) (any, error) { return loadProtocol(raw) }},
+		{"version", "version.go.tmpl", "version.go", func(raw []byte) (any, error) { return loadVersion(raw, versionKey.target) }},
+		{"language", "language.go.tmpl", "language.go", func(raw []byte) (any, error) { return loadLanguage(raw) }},
+		{"materials", "materials.go.tmpl", "materials.go", func(raw []byte) (any, error) { return loadMaterials(raw) }},
+		{"recipes", "recipes.go.tmpl", "recipes.go", func(raw []byte) (any, error) { return loadRecipes(raw) }},
+		{"blockCollisionShapes", "collision_shapes.go.tmpl", "collision_shapes.go", func(raw []byte) (any, error) { return loadCollisionShapes(raw) }},
+		{"protocol", "protocol.go.tmpl", "protocol.go", func(raw []byte) (any, error) { return loadProtocol(raw) }},
 	}
 	for _, entry := range specialGenerators {
-		if err := add(entry.jsonFile, entry.templateName, entry.outputFile, entry.load); err != nil {
+		if err := add(entry.datasetName, entry.templateName, entry.outputFile, entry.load); err != nil {
 			return nil, err
 		}
 	}
@@ -269,9 +273,13 @@ func buildRenderPlan(templates *template.Template, source *verifiedSource, packa
 		rendered[entry.outputFile] = raw
 	}
 
-	packetSchema, err := protodef.Parse(source.Files["protocol.json"])
+	protocolSource, err := source.dataset("protocol")
 	if err != nil {
-		return nil, fmt.Errorf("parse protocol.json for packet generation: %w", err)
+		return nil, err
+	}
+	packetSchema, err := protodef.Parse(protocolSource)
+	if err != nil {
+		return nil, fmt.Errorf("parse the protocol dataset for packet generation: %w", err)
 	}
 	packetModel, err := packetgen.Build(framedPacketSchema(packetSchema), packetgen.Options{PackageName: packageName})
 	if err != nil {

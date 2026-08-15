@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/go-theft-craft/minecraft-protocol/internal/codegen/schema"
+	"github.com/go-theft-craft/minecraft-protocol/source/manifest"
 )
 
 const sourceDir = "../../../source/java/1.8"
@@ -33,7 +34,7 @@ func TestManifestValidation(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			want: "checksum mismatch for blocks.json",
+			want: "does not match its recorded checksum",
 		},
 		{
 			name: "missing JSON file",
@@ -43,7 +44,7 @@ func TestManifestValidation(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			want: "missing manifest file blocks.json",
+			want: "dataset blocks",
 		},
 		{
 			name: "extra JSON file",
@@ -53,7 +54,7 @@ func TestManifestValidation(t *testing.T) {
 					t.Fatal(err)
 				}
 			},
-			want: "unexpected JSON file extra.json",
+			want: "extra.json is not recorded in the manifest",
 		},
 	}
 
@@ -76,18 +77,22 @@ func TestManifestRejectsInvalidMetadata(t *testing.T) {
 		want   string
 	}{
 		{name: "edition", mutate: func(m map[string]any) { m["edition"] = "bedrock" }, want: "unsupported edition"},
-		{name: "target version", mutate: func(m map[string]any) { m["targetMinecraftVersion"] = "1.9" }, want: "unsupported target Minecraft version"},
-		{name: "source version", mutate: func(m map[string]any) { m["sourceMinecraftVersion"] = "1.8.9" }, want: "unsupported source Minecraft version"},
-		{name: "protocol", mutate: func(m map[string]any) { m["protocol"] = float64(48) }, want: "unsupported protocol"},
-		{name: "repository", mutate: func(m map[string]any) { m["sourceRepository"] = "https://example.invalid" }, want: "unsupported source repository"},
-		{name: "revision", mutate: func(m map[string]any) { m["sourceRevision"] = "unknown" }, want: "unsupported source revision"},
-		{name: "source path", mutate: func(m map[string]any) { m["sourcePath"] = "data/pc/latest" }, want: "unsupported source path"},
-		{name: "license", mutate: func(m map[string]any) { m["license"] = "unknown" }, want: "unsupported source license"},
+		{name: "manifest version", mutate: func(m map[string]any) { m["manifestVersion"] = float64(1) }, want: "unsupported manifest version"},
+		{name: "protocol", mutate: func(m map[string]any) { m["protocol"] = float64(0) }, want: "protocol"},
+		{name: "revision", mutate: func(m map[string]any) { m["sourceRevision"] = "unknown" }, want: "sourceRevision"},
+		{name: "license", mutate: func(m map[string]any) { m["license"] = "" }, want: "license is required"},
 		{name: "checksum", mutate: func(m map[string]any) {
-			files := m["files"].(map[string]any)
-			files["blocks.json"] = "bad"
-		}, want: "malformed checksum for blocks.json"},
+			datasets := m["datasets"].([]any)
+			datasets[0].(map[string]any)["sha256"] = "bad"
+		}, want: "sha256"},
+		{name: "unknown field", mutate: func(m map[string]any) { m["sourcePath"] = "data/pc/1.8" }, want: "parse manifest"},
 	}
+
+	// The target Minecraft version and the protocol number are no longer
+	// pinned to 1.8.9 and 47 here: the manifest states them, and a second
+	// version is the point of this milestone. What is still pinned is that a
+	// generation run's version key must agree with the manifest, which
+	// TestRunRejectsMismatchedStableVersionKey covers.
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -433,7 +438,7 @@ func TestRunRejectsDuplicatePacketRegistryKeys(t *testing.T) {
 		t.Fatalf("protocol fixture contains %d copies of %q, want 1", count, mapping)
 	}
 	raw = bytes.Replace(raw, []byte(mapping), []byte(mapping+"\n                    \"0\": \"ping_start\","), 1)
-	rewriteSourceFile(t, source, "protocol.json", raw)
+	rewriteSourceFile(t, source, "protocol", raw)
 
 	out := t.TempDir()
 	err = Run(Config{SourceDir: source, OutDir: out, Package: "v1_8", Version: "java/1.8.9"})
@@ -534,7 +539,7 @@ func TestRunPreservesLastGoodOutputOnInvalidVerifiedSource(t *testing.T) {
 			name: "malformed verified JSON",
 			mutate: func(t *testing.T, dir string) {
 				t.Helper()
-				rewriteSourceFile(t, dir, "blocks.json", []byte("{"))
+				rewriteSourceFile(t, dir, "blocks", []byte("{"))
 			},
 		},
 		{
@@ -544,9 +549,7 @@ func TestRunPreservesLastGoodOutputOnInvalidVerifiedSource(t *testing.T) {
 				if err := os.Remove(filepath.Join(dir, "blocks.json")); err != nil {
 					t.Fatal(err)
 				}
-				manifest := readManifest(t, dir)
-				delete(manifest.Files, "blocks.json")
-				writeManifest(t, dir, manifest)
+				dropDataset(t, dir, "blocks")
 			},
 		},
 	}
@@ -703,38 +706,59 @@ func copySource(t *testing.T) string {
 	return dir
 }
 
-func readManifest(t *testing.T, dir string) sourceManifest {
+func readManifest(t *testing.T, dir string) *manifest.Manifest {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	loaded, err := manifest.Load(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var manifest sourceManifest
-	if err := json.Unmarshal(raw, &manifest); err != nil {
-		t.Fatal(err)
-	}
-	return manifest
+	return loaded
 }
 
-func writeManifest(t *testing.T, dir string, manifest sourceManifest) {
+func writeManifest(t *testing.T, dir string, loaded *manifest.Manifest) {
 	t.Helper()
-	raw, err := json.MarshalIndent(manifest, "", "  ")
+	raw, err := json.MarshalIndent(loaded, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), append(raw, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, manifest.FileName), append(raw, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
 
+// dropDataset removes a dataset from the manifest, leaving the tree otherwise
+// intact. The caller removes the file itself when it wants both gone.
+func dropDataset(t *testing.T, dir, name string) {
+	t.Helper()
+	loaded := readManifest(t, dir)
+	kept := loaded.Datasets[:0]
+	for _, dataset := range loaded.Datasets {
+		if dataset.Name != name {
+			kept = append(kept, dataset)
+		}
+	}
+	loaded.Datasets = kept
+	writeManifest(t, dir, loaded)
+}
+
+// rewriteSourceFile replaces a dataset's bytes and re-records its checksum, so
+// the tree still verifies and the generator sees the new content.
 func rewriteSourceFile(t *testing.T, dir, name string, raw []byte) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), raw, 0o644); err != nil {
+	loaded := readManifest(t, dir)
+	dataset, ok := loaded.Dataset(name)
+	if !ok {
+		t.Fatalf("source tree has no dataset %q", name)
+	}
+	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(dataset.File)), raw, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	manifest := readManifest(t, dir)
-	manifest.Files[name] = fmt.Sprintf("%x", sha256.Sum256(raw))
-	writeManifest(t, dir, manifest)
+	for index := range loaded.Datasets {
+		if loaded.Datasets[index].Name == name {
+			loaded.Datasets[index].SHA256 = fmt.Sprintf("%x", sha256.Sum256(raw))
+		}
+	}
+	writeManifest(t, dir, loaded)
 }
 
 func snapshotTree(t *testing.T, dir string) map[string][]byte {
