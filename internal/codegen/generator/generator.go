@@ -84,6 +84,7 @@ var generatedFileNames = []string{
 var preservedGeneratedTestNames = []string{
 	"codec_test.go",
 	"data_test.go",
+	"roundtrip_test.go",
 	"login_role_test.go",
 	"transition_test.go",
 }
