@@ -167,6 +167,7 @@ func renderPackets(model *Model) (string, bool) {
 	}
 	for _, declaration := range model.Declarations {
 		renderStruct(&output, declaration.Name, declaration.Fields)
+		renderSwitchUnwrap(&output, declaration)
 		importJava = importJava || fieldsUseJava(declaration.Fields)
 	}
 	for _, state := range model.States {
@@ -726,7 +727,37 @@ func (r *operationRenderer) renderEncodeSwitch(output *sourceWriter, operation O
 
 func (r *operationRenderer) renderSwitch(output *sourceWriter, operation Operation, decode bool) error {
 	seen := make(map[string]struct{}, len(operation.Cases))
-	output.line("switch %s {", operation.Compare.Value)
+
+	compare := operation.Compare.Value
+	if operation.CompareOptional {
+		// The value comes from another switch's chosen branch, which may not
+		// be there at all. An absent one matches no case and falls to the
+		// default, the same as an undefined compareTo in ProtoDef.
+		value := r.next("compare")
+		present := r.next("present")
+		output.line("%s, %s := %s", value, present, compare)
+		output.line("if !%s {", present)
+		output.indent++
+		var err error
+		if decode {
+			err = r.renderDecodeOperations(output, operation.Default.Operations)
+		} else {
+			err = r.renderEncodeOperations(output, operation.Default.Operations)
+		}
+		if err != nil {
+			return err
+		}
+		output.indent--
+		output.line("} else {")
+		output.indent++
+		defer func() {
+			output.indent--
+			output.line("}")
+		}()
+		compare = value
+	}
+
+	output.line("switch %s {", compare)
 	for _, item := range operation.Cases {
 		if _, duplicate := seen[item.Match]; duplicate {
 			return fmt.Errorf("duplicate switch match %s", item.Match)
@@ -1159,4 +1190,31 @@ func generationPathError(path string, err error) error {
 		return fmt.Errorf("packetgen: %w", err)
 	}
 	return fmt.Errorf("packetgen: %s: %w", path, err)
+}
+
+// renderSwitchUnwrap emits the accessor that reads whichever branch of a switch
+// union is present, for unions another switch discriminates on.
+func renderSwitchUnwrap(output *sourceWriter, declaration Declaration) {
+	unwrap := declaration.Unwrap
+	if unwrap == nil {
+		return
+	}
+
+	output.line("// %s returns the value of whichever case is present, so a", unwrap.Method)
+	output.line("// switch on this field compares against the branch that decoded.")
+	output.line("func (value %s) %s() (%s, bool) {", declaration.Name, unwrap.Method, unwrap.GoType)
+	output.indent++
+	for _, field := range unwrap.Fields {
+		output.line("if value.%s != nil {", field)
+		output.indent++
+		output.line("return *value.%s, true", field)
+		output.indent--
+		output.line("}")
+	}
+	output.line("var absent %s", unwrap.GoType)
+	output.line("")
+	output.line("return absent, false")
+	output.indent--
+	output.line("}")
+	output.line("")
 }

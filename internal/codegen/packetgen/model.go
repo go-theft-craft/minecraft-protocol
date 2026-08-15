@@ -88,6 +88,26 @@ type Declaration struct {
 	Switch   Switch
 	BitField BitField
 	BitFlags BitFlags
+	// Unwrap is set on a switch union that another switch discriminates on.
+	// It describes the accessor that reads whichever branch is present.
+	Unwrap *SwitchUnwrap
+}
+
+// SwitchUnwrap describes reading a switch union as the single value its cases
+// all carry.
+//
+// ProtoDef gives a switch field the value its chosen branch produced, so a
+// later switch can compare against it directly. A union struct has no such
+// value, only a field per case, so one is recovered: when every non-void case
+// carries the same optional type, the branch that is present is the value.
+type SwitchUnwrap struct {
+	// Method is the generated accessor, returning the value and whether any
+	// branch was present.
+	Method string
+	// GoType is the value's type, with the case type's pointer removed.
+	GoType string
+	// Fields are the case fields to test, in declaration order.
+	Fields []string
 }
 
 // Switch describes the cases represented by a switch union declaration.
@@ -198,6 +218,11 @@ type Operation struct {
 	// 775 ends it at 255.
 	Terminator uint8
 	Compare    FieldReference
+	// CompareOptional reports that Compare.Value is an accessor returning a
+	// value and a presence flag, because the switch discriminates on another
+	// switch's chosen branch. An absent value matches no case and takes the
+	// default, which is what ProtoDef does with an undefined compareTo.
+	CompareOptional bool
 	// SourceNames are the names the schema gave a native's branches, kept so
 	// the generated Go type's fixed field names can be mapped back to what
 	// upstream calls them.
@@ -925,6 +950,17 @@ func (b *builder) compileSwitch(
 	if err != nil {
 		return compiledValue{}, modelError(path, "switch compareTo %q: %v", node.CompareTo, err)
 	}
+	compare, optional, err := b.unwrapSwitchCompare(compare, path)
+	if err != nil {
+		return compiledValue{}, err
+	}
+	if optional && node.Default == nil {
+		return compiledValue{}, modelError(
+			path,
+			"switch compares against %s and declares no default, so an absent value would match nothing",
+			node.CompareTo,
+		)
+	}
 	name := b.allocateTypeName(desiredName, "Switch")
 	fieldNames := newNameAllocator()
 	declaration := Declaration{
@@ -932,11 +968,25 @@ func (b *builder) compileSwitch(
 		Kind:   DeclarationSwitch,
 		Switch: Switch{CompareTo: node.CompareTo, CompareType: compare.GoType},
 	}
-	decode := Operation{Kind: OpSwitch, Value: value, GoType: name, Path: path, Declaration: name, Compare: compare}
+	decode := Operation{
+		Kind: OpSwitch, Value: value, GoType: name, Path: path,
+		Declaration: name, Compare: compare, CompareOptional: optional,
+	}
 	encode := decode
 	for _, sourceCase := range node.Cases {
 		match, matchErr := switchMatch(sourceCase.Key, compare)
 		if matchErr != nil {
+			// A key the compare type cannot hold can never be selected. When
+			// its branch also reads nothing, it contributes no wire behavior
+			// and is dropped: protocol 775's UntrustedSlot discriminates on a
+			// varint and lists both "0" and "false", and the second is an
+			// artifact of a key lookup written in a language where that is the
+			// same thing. A dead branch that would have read bytes is a real
+			// disagreement about the format, so that still fails.
+			if isVoidType(sourceCase.Type) {
+				continue
+			}
+
 			return compiledValue{}, modelError(path, "invalid switch case %q for %s", sourceCase.Key, compare.GoType)
 		}
 		declCase, decodeCase, encodeCase, compileErr := b.compileSwitchCase(
@@ -1490,4 +1540,19 @@ func isIntegerType(goType string) bool {
 // path; only the tests want the sentinel.
 func modelError(path, format string, arguments ...any) error {
 	return fmt.Errorf("packetgen: %s: %w", path, fmt.Errorf(format, arguments...))
+}
+
+// isVoidType reports whether a node resolves to void, following aliases.
+func isVoidType(node *protodef.TypeNode) bool {
+	for node != nil {
+		if node.Kind == protodef.KindPrimitive || node.Kind == protodef.KindNative {
+			return node.Name == "void"
+		}
+		if node.Kind != protodef.KindAlias {
+			return false
+		}
+		node = node.Target
+	}
+
+	return false
 }
