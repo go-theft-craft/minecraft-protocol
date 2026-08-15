@@ -25,6 +25,16 @@ type Conduit struct {
 	mu      sync.Mutex
 	decrypt cipher.Stream
 	encrypt cipher.Stream
+	// pending is how many bytes the read buffer still holds, recorded by the
+	// reader under the mutex.
+	//
+	// EnableEncryption cannot ask the bufio.Reader directly: the read pump is
+	// normally parked inside a transport read at switch time, and querying
+	// bufio state concurrently with that read is a data race. The reader
+	// publishes the count instead, which is exact for the same reason the
+	// switch is safe at all -- a parked read has buffered nothing yet, so the
+	// last recorded count is still current.
+	pending int
 }
 
 func newConduit(transport Transport) *Conduit {
@@ -44,13 +54,15 @@ func (c *Conduit) PreFrameReader() *bufio.Reader { return c.buffered }
 // when they are handed out.
 func (c *Conduit) Read(p []byte) (int, error) {
 	read, err := c.buffered.Read(p)
-	if read > 0 {
-		c.mu.Lock()
-		if c.decrypt != nil {
-			c.decrypt.XORKeyStream(p[:read], p[:read])
-		}
-		c.mu.Unlock()
+
+	// The lock is taken after the read, never around it, so a transport read
+	// that blocks forever cannot stop the coordinator from switching ciphers.
+	c.mu.Lock()
+	if read > 0 && c.decrypt != nil {
+		c.decrypt.XORKeyStream(p[:read], p[:read])
 	}
+	c.pending = c.buffered.Buffered()
+	c.mu.Unlock()
 
 	return read, err
 }
@@ -89,8 +101,8 @@ func (c *Conduit) EnableEncryption(decrypt, encrypt cipher.Stream) error {
 	if c.decrypt != nil || c.encrypt != nil {
 		return ErrEncryptionEnabled
 	}
-	if buffered := c.buffered.Buffered(); buffered > 0 {
-		return fmt.Errorf("%w: %d unread bytes", ErrEncryptionOverrun, buffered)
+	if c.pending > 0 {
+		return fmt.Errorf("%w: %d unread bytes", ErrEncryptionOverrun, c.pending)
 	}
 
 	c.decrypt = decrypt

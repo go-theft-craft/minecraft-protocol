@@ -108,10 +108,10 @@ func TestConduitRejectsSwitchWithBufferedCiphertext(t *testing.T) {
 		Interrupt: func() error { return nil },
 	})
 
-	// Force the buffer to fill, which is what a peer writing past the switch
-	// point causes in practice.
-	if _, err := conduit.buffered.Peek(1); err != nil {
-		t.Fatalf("peek: %v", err)
+	// Read less than the peer sent, which leaves the rest buffered. That is
+	// what a peer writing past the switch point causes in practice.
+	if _, err := conduit.Read(make([]byte, 5)); err != nil {
+		t.Fatalf("read: %v", err)
 	}
 
 	decrypt, encrypt := testCiphers(t, []byte("0123456789abcdef"))
