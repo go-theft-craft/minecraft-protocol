@@ -70,11 +70,14 @@ func TestBuildProducesDeterministicRendererReadyModel(t *testing.T) {
 	if field := findField(t, packet.Fields, "tag"); field.GoType != "java.NBT" {
 		t.Fatalf("NBT field type = %q", field.GoType)
 	}
-	if field := findField(t, packet.Fields, "item"); field.GoType != "java.Slot" {
-		t.Fatalf("slot field type = %q", field.GoType)
+	// A schema-defined type compiles to a generated struct, even when a
+	// hand-written codec of the same name exists elsewhere. That is the rule:
+	// only a name the schema declares native gets a codec.
+	if field := findField(t, packet.Fields, "item"); field.GoType != "PlayClientboundComplexItem" {
+		t.Fatalf("slot field type = %q, want the compiled struct", field.GoType)
 	}
-	if field := findField(t, packet.Fields, "metadata"); field.GoType != "java.EntityMetadata" {
-		t.Fatalf("metadata field type = %q", field.GoType)
+	if field := findField(t, packet.Fields, "metadata"); field.GoType != "[]PlayClientboundComplexMetadataItem" {
+		t.Fatalf("metadata field type = %q, want the compiled loop element", field.GoType)
 	}
 
 	assertValueOperation(t, findOperation(t, packet.Decode, "packet.Kind"), OpMapper, "ReadVarInt", "play.toClient.complex.kind")
@@ -133,8 +136,18 @@ func TestBuildProducesDeterministicRendererReadyModel(t *testing.T) {
 		t.Fatalf("bitflags operation = %#v", flags)
 	}
 	assertValueOperation(t, findOperation(t, packet.Decode, "packet.Tag"), OpValue, "ReadNBT", "play.toClient.complex.tag")
-	assertValueOperation(t, findOperation(t, packet.Decode, "packet.Item"), OpValue, "ReadSlot", "play.toClient.complex.item")
-	assertValueOperation(t, findOperation(t, packet.Decode, "packet.Metadata"), OpValue, "ReadEntityMetadata", "play.toClient.complex.metadata")
+	// A schema-defined slot is a container operation, not a codec call.
+	if item := findOperation(t, packet.Decode, "packet.Item"); item.Kind != OpContainer {
+		t.Fatalf("slot operation kind = %q, want %q", item.Kind, OpContainer)
+	}
+	// A terminated loop carries the schema's own terminator.
+	metadata := findOperation(t, packet.Decode, "packet.Metadata")
+	if metadata.Kind != OpTerminatedLoop {
+		t.Fatalf("metadata operation kind = %q, want %q", metadata.Kind, OpTerminatedLoop)
+	}
+	if metadata.Terminator != 127 {
+		t.Fatalf("metadata terminator = %d, want 127", metadata.Terminator)
+	}
 
 	customPayload := findPacket(t, direction.Packets, "custom_payload")
 	assertValueOperation(t, findOperation(t, customPayload.Decode, "packet.Data"), OpValue, "ReadPluginPayload", "play.toClient.custom_payload.data")
@@ -243,7 +256,7 @@ func TestBuildRejectsUnsupportedReachableNodeWithSourceContext(t *testing.T) {
 	if err == nil {
 		t.Fatal("Build() error = nil")
 	}
-	if got := err.Error(); !strings.Contains(got, "play.toClient.second.value") || !strings.Contains(got, `unsupported native type "mystery"`) {
+	if got := err.Error(); !strings.Contains(got, "play.toClient.second.value") || !strings.Contains(got, `no hand-written codec for native "mystery"`) {
 		t.Fatalf("Build() error = %q", got)
 	}
 }
@@ -371,6 +384,12 @@ func assertExplicitOperations(t *testing.T, operations []Operation) {
 				t.Fatalf("%s operation has no java.Buffer method: %#v", operation.Kind, operation)
 			}
 		case OpContainer, OpSwitch:
+		case OpTerminatedLoop:
+			// A terminated loop names its sentinel rather than a buffer
+			// method: the element decides what it reads.
+			if operation.Terminator == 0 {
+				t.Fatalf("terminated loop has no terminator: %#v", operation)
+			}
 		case OpVoid:
 			if operation.Method != "" {
 				t.Fatalf("void operation has method %q", operation.Method)
@@ -402,8 +421,23 @@ const modelFixture = `{
     "varint":"native", "u8":"native", "i8":"native", "i16":"native", "i32":"native", "bool":"native",
     "pstring":"native", "container":"native", "array":"native", "switch":"native", "option":"native",
     "buffer":"native", "mapper":"native", "bitfield":"native", "bitflags":"native", "restBuffer":"native",
-    "nbt":"native", "slot":"native", "entityMetadata":"native", "void":"native", "mystery":"native",
-    "string":["pstring",{"countType":"varint"}]
+    "nbt":"native", "optionalNbt":"native", "entityMetadataLoop":"native", "void":"native", "mystery":"native",
+    "string":["pstring",{"countType":"varint"}],
+    "slot":["container",[
+      {"name":"blockId","type":"i16"},
+      {"anon":true,"type":["switch",{"compareTo":"blockId","fields":{"-1":"void"},"default":["container",[
+        {"name":"itemCount","type":"i8"},
+        {"name":"nbtData","type":"optionalNbt"}
+      ]]}]}
+    ]],
+    "metadataItem":["switch",{"compareTo":"$compareTo","fields":{"0":"i8","1":"i16"}}],
+    "entityMetadata":["entityMetadataLoop",{"endVal":127,"type":["container",[
+      {"anon":true,"type":["bitfield",[
+        {"name":"type","size":3,"signed":false},
+        {"name":"key","size":5,"signed":false}
+      ]]},
+      {"name":"value","type":["metadataItem",{"compareTo":"type"}]}
+    ]]}]
   },
   "play": {
     "toClient": {

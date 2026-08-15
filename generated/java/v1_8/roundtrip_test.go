@@ -166,18 +166,52 @@ var explicitlyPinned = map[string]struct{}{
 	"update_entity_nbt":   {},
 }
 
-// pinnedMetadata is one metadata sequence with a value of three different
-// types and the protocol 47 terminator.
-func pinnedMetadata() java.EntityMetadata {
-	return java.EntityMetadata{
-		{Index: 0, Type: java.MetadataByte, Value: int8(5)},
-		{Index: 1, Type: java.MetadataShort, Value: int16(258)},
+// pinnedMetadataBytes is the metadata sequence every case below carries: a
+// byte-typed entry at index 0, a short-typed entry at index 1, and the
+// protocol 47 terminator. The header packs type<<5|key.
+var pinnedMetadataBytes = []byte{0x00, 0x05, 0x21, 0x01, 0x02, 0x7f}
+
+// The metadata element type is generated per packet until named types are
+// shared, so each packet needs the same two entries built from its own type.
+
+func entityMetadataPin() []PlayClientboundEntityMetadataMetadataItem {
+	return []PlayClientboundEntityMetadataMetadataItem{
+		{
+			AnonymousBitField1: PlayClientboundEntityMetadataMetadataItemAnonymousBitField1Bits{Type: 0, Key: 0},
+			Value:              PlayClientboundEntityMetadataMetadataItemValueSwitch{Case0: 5},
+		},
+		{
+			AnonymousBitField1: PlayClientboundEntityMetadataMetadataItemAnonymousBitField1Bits{Type: 1, Key: 1},
+			Value:              PlayClientboundEntityMetadataMetadataItemValueSwitch{Case1: 258},
+		},
 	}
 }
 
-// pinnedMetadataBytes is pinnedMetadata on the wire: header, value, header,
-// value, terminator.
-var pinnedMetadataBytes = []byte{0x00, 0x05, 0x21, 0x01, 0x02, 0x7f}
+func namedEntitySpawnMetadataPin() []PlayClientboundNamedEntitySpawnMetadataItem {
+	return []PlayClientboundNamedEntitySpawnMetadataItem{
+		{
+			AnonymousBitField1: PlayClientboundNamedEntitySpawnMetadataItemAnonymousBitField1Bits{Type: 0, Key: 0},
+			Value:              PlayClientboundNamedEntitySpawnMetadataItemValueSwitch{Case0: 5},
+		},
+		{
+			AnonymousBitField1: PlayClientboundNamedEntitySpawnMetadataItemAnonymousBitField1Bits{Type: 1, Key: 1},
+			Value:              PlayClientboundNamedEntitySpawnMetadataItemValueSwitch{Case1: 258},
+		},
+	}
+}
+
+func spawnEntityLivingMetadataPin() []PlayClientboundSpawnEntityLivingMetadataItem {
+	return []PlayClientboundSpawnEntityLivingMetadataItem{
+		{
+			AnonymousBitField1: PlayClientboundSpawnEntityLivingMetadataItemAnonymousBitField1Bits{Type: 0, Key: 0},
+			Value:              PlayClientboundSpawnEntityLivingMetadataItemValueSwitch{Case0: 5},
+		},
+		{
+			AnonymousBitField1: PlayClientboundSpawnEntityLivingMetadataItemAnonymousBitField1Bits{Type: 1, Key: 1},
+			Value:              PlayClientboundSpawnEntityLivingMetadataItemValueSwitch{Case1: 258},
+		},
+	}
+}
 
 func TestProtocol47PinsPacketsAnInputStreamCannotReach(t *testing.T) {
 	t.Parallel()
@@ -196,7 +230,7 @@ func TestProtocol47PinsPacketsAnInputStreamCannotReach(t *testing.T) {
 	}{
 		{
 			name:  "entity_metadata",
-			value: &PlayClientboundEntityMetadata{EntityID: 1, Metadata: pinnedMetadata()},
+			value: &PlayClientboundEntityMetadata{EntityID: 1, Metadata: entityMetadataPin()},
 			wire:  append([]byte{0x01}, pinnedMetadataBytes...),
 		},
 		{
@@ -210,7 +244,7 @@ func TestProtocol47PinsPacketsAnInputStreamCannotReach(t *testing.T) {
 				Yaw:         5,
 				Pitch:       6,
 				CurrentItem: 7,
-				Metadata:    pinnedMetadata(),
+				Metadata:    namedEntitySpawnMetadataPin(),
 			},
 			wire: append([]byte{
 				0x01,
@@ -238,7 +272,7 @@ func TestProtocol47PinsPacketsAnInputStreamCannotReach(t *testing.T) {
 				VelocityX: 9,
 				VelocityY: 10,
 				VelocityZ: 11,
-				Metadata:  pinnedMetadata(),
+				Metadata:  spawnEntityLivingMetadataPin(),
 			},
 			wire: append([]byte{
 				0x01,

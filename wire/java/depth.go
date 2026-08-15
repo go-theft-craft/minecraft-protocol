@@ -1,6 +1,9 @@
 package java
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 // EnterNested records entry into one level of nested decoding and rejects a
 // value nested past Limits.RecursionDepth.
@@ -54,4 +57,36 @@ func (b *Buffer) NestingDepth() int {
 	}
 
 	return b.depth
+}
+
+// ReadTerminator reports whether the next byte is the loop terminator,
+// consuming it only when it is.
+//
+// A terminated loop -- Java Edition's entity metadata is the only one in
+// protocol 47 -- ends at a sentinel byte rather than at a count, and that byte
+// occupies the same position as the first byte of an entry. The peek is what
+// lets the generated element decoder read that byte itself when the loop
+// continues, so the loop needs no knowledge of the element's layout.
+//
+// The terminator differs between protocol versions: 127 in protocol 47 and 255
+// in protocol 775. It is a parameter for that reason, taken from the schema
+// rather than compiled in.
+func (b *Buffer) ReadTerminator(path string, terminator uint8) (bool, error) {
+	if err := b.requireMode(readMode); err != nil {
+		return false, withPath(path, err)
+	}
+	if b.offset >= len(b.data) {
+		return false, withPath(path, io.ErrUnexpectedEOF)
+	}
+	if b.data[b.offset] != terminator {
+		return false, nil
+	}
+	b.offset++
+
+	return true, nil
+}
+
+// WriteTerminator writes the byte that ends a terminated loop.
+func (b *Buffer) WriteTerminator(path string, terminator uint8) error {
+	return b.WriteU8(path, terminator)
 }

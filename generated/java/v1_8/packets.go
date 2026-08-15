@@ -4,6 +4,81 @@ package v1_8
 
 import "github.com/go-theft-craft/minecraft-protocol/wire/java"
 
+type PlayClientboundEntityEquipmentItemAnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayClientboundEntityEquipmentItemAnonymousSwitch1Switch struct {
+	Default PlayClientboundEntityEquipmentItemAnonymousSwitch1SwitchDefault
+}
+
+type PlayClientboundEntityEquipmentItem struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayClientboundEntityEquipmentItemAnonymousSwitch1Switch
+}
+
+type PlayClientboundSpawnPositionLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayClientboundBedLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemAnonymousBitField1Bits struct {
+	Type uint8
+	Key  uint8
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase5AnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase5AnonymousSwitch1Switch struct {
+	Default PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase5AnonymousSwitch1SwitchDefault
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase5 struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase5AnonymousSwitch1Switch
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase6 struct {
+	X int32
+	Y int32
+	Z int32
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase7 struct {
+	Pitch float32
+	Yaw   float32
+	Roll  float32
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItemValueSwitch struct {
+	Case0 int8
+	Case1 int16
+	Case2 int32
+	Case3 float32
+	Case4 string
+	Case5 PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase5
+	Case6 PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase6
+	Case7 PlayClientboundNamedEntitySpawnMetadataItemValueSwitchCase7
+}
+
+type PlayClientboundNamedEntitySpawnMetadataItem struct {
+	AnonymousBitField1 PlayClientboundNamedEntitySpawnMetadataItemAnonymousBitField1Bits
+	Value              PlayClientboundNamedEntitySpawnMetadataItemValueSwitch
+}
+
 type PlayClientboundSpawnEntityObjectDataSwitchDefault struct {
 	VelocityX int16
 	VelocityY int16
@@ -12,6 +87,108 @@ type PlayClientboundSpawnEntityObjectDataSwitchDefault struct {
 
 type PlayClientboundSpawnEntityObjectDataSwitch struct {
 	Default PlayClientboundSpawnEntityObjectDataSwitchDefault
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemAnonymousBitField1Bits struct {
+	Type uint8
+	Key  uint8
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase5AnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase5AnonymousSwitch1Switch struct {
+	Default PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase5AnonymousSwitch1SwitchDefault
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase5 struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase5AnonymousSwitch1Switch
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase6 struct {
+	X int32
+	Y int32
+	Z int32
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase7 struct {
+	Pitch float32
+	Yaw   float32
+	Roll  float32
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItemValueSwitch struct {
+	Case0 int8
+	Case1 int16
+	Case2 int32
+	Case3 float32
+	Case4 string
+	Case5 PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase5
+	Case6 PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase6
+	Case7 PlayClientboundSpawnEntityLivingMetadataItemValueSwitchCase7
+}
+
+type PlayClientboundSpawnEntityLivingMetadataItem struct {
+	AnonymousBitField1 PlayClientboundSpawnEntityLivingMetadataItemAnonymousBitField1Bits
+	Value              PlayClientboundSpawnEntityLivingMetadataItemValueSwitch
+}
+
+type PlayClientboundSpawnEntityPaintingLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayClientboundEntityMetadataMetadataItemAnonymousBitField1Bits struct {
+	Type uint8
+	Key  uint8
+}
+
+type PlayClientboundEntityMetadataMetadataItemValueSwitchCase5AnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayClientboundEntityMetadataMetadataItemValueSwitchCase5AnonymousSwitch1Switch struct {
+	Default PlayClientboundEntityMetadataMetadataItemValueSwitchCase5AnonymousSwitch1SwitchDefault
+}
+
+type PlayClientboundEntityMetadataMetadataItemValueSwitchCase5 struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayClientboundEntityMetadataMetadataItemValueSwitchCase5AnonymousSwitch1Switch
+}
+
+type PlayClientboundEntityMetadataMetadataItemValueSwitchCase6 struct {
+	X int32
+	Y int32
+	Z int32
+}
+
+type PlayClientboundEntityMetadataMetadataItemValueSwitchCase7 struct {
+	Pitch float32
+	Yaw   float32
+	Roll  float32
+}
+
+type PlayClientboundEntityMetadataMetadataItemValueSwitch struct {
+	Case0 int8
+	Case1 int16
+	Case2 int32
+	Case3 float32
+	Case4 string
+	Case5 PlayClientboundEntityMetadataMetadataItemValueSwitchCase5
+	Case6 PlayClientboundEntityMetadataMetadataItemValueSwitchCase6
+	Case7 PlayClientboundEntityMetadataMetadataItemValueSwitchCase7
+}
+
+type PlayClientboundEntityMetadataMetadataItem struct {
+	AnonymousBitField1 PlayClientboundEntityMetadataMetadataItemAnonymousBitField1Bits
+	Value              PlayClientboundEntityMetadataMetadataItemValueSwitch
 }
 
 type PlayClientboundUpdateAttributesPropertiesItemModifiersItem struct {
@@ -32,6 +209,24 @@ type PlayClientboundMultiBlockChangeRecordsItem struct {
 	BlockID       int32
 }
 
+type PlayClientboundBlockChangeLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayClientboundBlockActionLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayClientboundBlockBreakAnimationLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
 type PlayClientboundMapChunkBulkMetaItem struct {
 	X      int32
 	Z      int32
@@ -44,6 +239,12 @@ type PlayClientboundExplosionAffectedBlockOffsetsItem struct {
 	Z int8
 }
 
+type PlayClientboundWorldEventLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
 type PlayClientboundWorldParticlesDataSwitch struct {
 	Case36 [2]int32
 	Case37 [1]int32
@@ -52,6 +253,42 @@ type PlayClientboundWorldParticlesDataSwitch struct {
 
 type PlayClientboundOpenWindowEntityIDSwitch struct {
 	EntityHorse int32
+}
+
+type PlayClientboundSetSlotItemAnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayClientboundSetSlotItemAnonymousSwitch1Switch struct {
+	Default PlayClientboundSetSlotItemAnonymousSwitch1SwitchDefault
+}
+
+type PlayClientboundSetSlotItem struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayClientboundSetSlotItemAnonymousSwitch1Switch
+}
+
+type PlayClientboundWindowItemsItemsItemAnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayClientboundWindowItemsItemsItemAnonymousSwitch1Switch struct {
+	Default PlayClientboundWindowItemsItemsItemAnonymousSwitch1SwitchDefault
+}
+
+type PlayClientboundWindowItemsItemsItem struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayClientboundWindowItemsItemsItemAnonymousSwitch1Switch
+}
+
+type PlayClientboundUpdateSignLocationBits struct {
+	X int32
+	Y int16
+	Z int32
 }
 
 type PlayClientboundMapIconsItem struct {
@@ -74,6 +311,18 @@ type PlayClientboundMapYSwitch struct {
 
 type PlayClientboundMapDataSwitch struct {
 	Default []byte
+}
+
+type PlayClientboundTileEntityDataLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayClientboundOpenSignEntityLocationBits struct {
+	X int32
+	Y int16
+	Z int32
 }
 
 type PlayClientboundStatisticsEntriesItem struct {
@@ -258,6 +507,75 @@ type PlayServerboundUseEntityZSwitch struct {
 	Case2 float32
 }
 
+type PlayServerboundBlockDigLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayServerboundBlockPlaceLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayServerboundBlockPlaceHeldItemAnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayServerboundBlockPlaceHeldItemAnonymousSwitch1Switch struct {
+	Default PlayServerboundBlockPlaceHeldItemAnonymousSwitch1SwitchDefault
+}
+
+type PlayServerboundBlockPlaceHeldItem struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayServerboundBlockPlaceHeldItemAnonymousSwitch1Switch
+}
+
+type PlayServerboundWindowClickItemAnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayServerboundWindowClickItemAnonymousSwitch1Switch struct {
+	Default PlayServerboundWindowClickItemAnonymousSwitch1SwitchDefault
+}
+
+type PlayServerboundWindowClickItem struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayServerboundWindowClickItemAnonymousSwitch1Switch
+}
+
+type PlayServerboundSetCreativeSlotItemAnonymousSwitch1SwitchDefault struct {
+	ItemCount  int8
+	ItemDamage int16
+	NBTData    *java.NBT
+}
+
+type PlayServerboundSetCreativeSlotItemAnonymousSwitch1Switch struct {
+	Default PlayServerboundSetCreativeSlotItemAnonymousSwitch1SwitchDefault
+}
+
+type PlayServerboundSetCreativeSlotItem struct {
+	BlockID          int16
+	AnonymousSwitch1 PlayServerboundSetCreativeSlotItemAnonymousSwitch1Switch
+}
+
+type PlayServerboundUpdateSignLocationBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
+type PlayServerboundTabCompleteBlockValueBits struct {
+	X int32
+	Y int16
+	Z int32
+}
+
 type HandshakingServerboundSetProtocol struct {
 	ProtocolVersion int32
 	ServerHost      string
@@ -364,13 +682,13 @@ func (PlayClientboundUpdateTime) PacketID() int32 { return 0x03 }
 type PlayClientboundEntityEquipment struct {
 	EntityID int32
 	Slot     int16
-	Item     java.Slot
+	Item     PlayClientboundEntityEquipmentItem
 }
 
 func (PlayClientboundEntityEquipment) PacketID() int32 { return 0x04 }
 
 type PlayClientboundSpawnPosition struct {
-	Location java.Position
+	Location PlayClientboundSpawnPositionLocationBits
 }
 
 func (PlayClientboundSpawnPosition) PacketID() int32 { return 0x05 }
@@ -411,7 +729,7 @@ func (PlayClientboundHeldItemSlot) PacketID() int32 { return 0x09 }
 
 type PlayClientboundBed struct {
 	EntityID int32
-	Location java.Position
+	Location PlayClientboundBedLocationBits
 }
 
 func (PlayClientboundBed) PacketID() int32 { return 0x0a }
@@ -432,7 +750,7 @@ type PlayClientboundNamedEntitySpawn struct {
 	Yaw         int8
 	Pitch       int8
 	CurrentItem int16
-	Metadata    java.EntityMetadata
+	Metadata    []PlayClientboundNamedEntitySpawnMetadataItem
 }
 
 func (PlayClientboundNamedEntitySpawn) PacketID() int32 { return 0x0c }
@@ -470,7 +788,7 @@ type PlayClientboundSpawnEntityLiving struct {
 	VelocityX int16
 	VelocityY int16
 	VelocityZ int16
-	Metadata  java.EntityMetadata
+	Metadata  []PlayClientboundSpawnEntityLivingMetadataItem
 }
 
 func (PlayClientboundSpawnEntityLiving) PacketID() int32 { return 0x0f }
@@ -478,7 +796,7 @@ func (PlayClientboundSpawnEntityLiving) PacketID() int32 { return 0x0f }
 type PlayClientboundSpawnEntityPainting struct {
 	EntityID  int32
 	Title     string
-	Location  java.Position
+	Location  PlayClientboundSpawnEntityPaintingLocationBits
 	Direction uint8
 }
 
@@ -582,7 +900,7 @@ func (PlayClientboundAttachEntity) PacketID() int32 { return 0x1b }
 
 type PlayClientboundEntityMetadata struct {
 	EntityID int32
-	Metadata java.EntityMetadata
+	Metadata []PlayClientboundEntityMetadataMetadataItem
 }
 
 func (PlayClientboundEntityMetadata) PacketID() int32 { return 0x1c }
@@ -638,14 +956,14 @@ type PlayClientboundMultiBlockChange struct {
 func (PlayClientboundMultiBlockChange) PacketID() int32 { return 0x22 }
 
 type PlayClientboundBlockChange struct {
-	Location java.Position
+	Location PlayClientboundBlockChangeLocationBits
 	Type     int32
 }
 
 func (PlayClientboundBlockChange) PacketID() int32 { return 0x23 }
 
 type PlayClientboundBlockAction struct {
-	Location java.Position
+	Location PlayClientboundBlockActionLocationBits
 	Byte1    uint8
 	Byte2    uint8
 	BlockID  int32
@@ -655,7 +973,7 @@ func (PlayClientboundBlockAction) PacketID() int32 { return 0x24 }
 
 type PlayClientboundBlockBreakAnimation struct {
 	EntityID     int32
-	Location     java.Position
+	Location     PlayClientboundBlockBreakAnimationLocationBits
 	DestroyStage int8
 }
 
@@ -684,7 +1002,7 @@ func (PlayClientboundExplosion) PacketID() int32 { return 0x27 }
 
 type PlayClientboundWorldEvent struct {
 	EffectID int32
-	Location java.Position
+	Location PlayClientboundWorldEventLocationBits
 	Data     int32
 	Global   bool
 }
@@ -754,14 +1072,14 @@ func (PlayClientboundCloseWindow) PacketID() int32 { return 0x2e }
 type PlayClientboundSetSlot struct {
 	WindowID int8
 	Slot     int16
-	Item     java.Slot
+	Item     PlayClientboundSetSlotItem
 }
 
 func (PlayClientboundSetSlot) PacketID() int32 { return 0x2f }
 
 type PlayClientboundWindowItems struct {
 	WindowID uint8
-	Items    []java.Slot
+	Items    []PlayClientboundWindowItemsItemsItem
 }
 
 func (PlayClientboundWindowItems) PacketID() int32 { return 0x30 }
@@ -783,7 +1101,7 @@ type PlayClientboundTransaction struct {
 func (PlayClientboundTransaction) PacketID() int32 { return 0x32 }
 
 type PlayClientboundUpdateSign struct {
-	Location java.Position
+	Location PlayClientboundUpdateSignLocationBits
 	Text1    string
 	Text2    string
 	Text3    string
@@ -806,7 +1124,7 @@ type PlayClientboundMap struct {
 func (PlayClientboundMap) PacketID() int32 { return 0x34 }
 
 type PlayClientboundTileEntityData struct {
-	Location java.Position
+	Location PlayClientboundTileEntityDataLocationBits
 	Action   uint8
 	NBTData  *java.NBT
 }
@@ -814,7 +1132,7 @@ type PlayClientboundTileEntityData struct {
 func (PlayClientboundTileEntityData) PacketID() int32 { return 0x35 }
 
 type PlayClientboundOpenSignEntity struct {
-	Location java.Position
+	Location PlayClientboundOpenSignEntityLocationBits
 }
 
 func (PlayClientboundOpenSignEntity) PacketID() int32 { return 0x36 }
@@ -1030,16 +1348,16 @@ func (PlayServerboundPositionLook) PacketID() int32 { return 0x06 }
 
 type PlayServerboundBlockDig struct {
 	Status   int32
-	Location java.Position
+	Location PlayServerboundBlockDigLocationBits
 	Face     int8
 }
 
 func (PlayServerboundBlockDig) PacketID() int32 { return 0x07 }
 
 type PlayServerboundBlockPlace struct {
-	Location  java.Position
+	Location  PlayServerboundBlockPlaceLocationBits
 	Direction int8
-	HeldItem  java.Slot
+	HeldItem  PlayServerboundBlockPlaceHeldItem
 	CursorX   int8
 	CursorY   int8
 	CursorZ   int8
@@ -1085,7 +1403,7 @@ type PlayServerboundWindowClick struct {
 	MouseButton int8
 	Action      int16
 	Mode        int8
-	Item        java.Slot
+	Item        PlayServerboundWindowClickItem
 }
 
 func (PlayServerboundWindowClick) PacketID() int32 { return 0x0e }
@@ -1100,7 +1418,7 @@ func (PlayServerboundTransaction) PacketID() int32 { return 0x0f }
 
 type PlayServerboundSetCreativeSlot struct {
 	Slot int16
-	Item java.Slot
+	Item PlayServerboundSetCreativeSlotItem
 }
 
 func (PlayServerboundSetCreativeSlot) PacketID() int32 { return 0x10 }
@@ -1113,7 +1431,7 @@ type PlayServerboundEnchantItem struct {
 func (PlayServerboundEnchantItem) PacketID() int32 { return 0x11 }
 
 type PlayServerboundUpdateSign struct {
-	Location java.Position
+	Location PlayServerboundUpdateSignLocationBits
 	Text1    string
 	Text2    string
 	Text3    string
@@ -1132,7 +1450,7 @@ func (PlayServerboundAbilities) PacketID() int32 { return 0x13 }
 
 type PlayServerboundTabComplete struct {
 	Text  string
-	Block *java.Position
+	Block *PlayServerboundTabCompleteBlockValueBits
 }
 
 func (PlayServerboundTabComplete) PacketID() int32 { return 0x14 }

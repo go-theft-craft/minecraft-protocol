@@ -309,6 +309,8 @@ func (r *operationRenderer) renderDecodeOperation(output *sourceWriter, operatio
 		return r.renderDecodeBitField(output, operation)
 	case OpBitFlags:
 		return r.renderDecodeBitFlags(output, operation)
+	case OpTerminatedLoop:
+		return r.renderDecodeTerminatedLoop(output, operation)
 	case OpVoid:
 		return nil
 	default:
@@ -334,6 +336,8 @@ func (r *operationRenderer) renderEncodeOperation(output *sourceWriter, operatio
 		return r.renderEncodeBitField(output, operation)
 	case OpBitFlags:
 		return r.renderEncodeBitFlags(output, operation)
+	case OpTerminatedLoop:
+		return r.renderEncodeTerminatedLoop(output, operation)
 	case OpVoid:
 		return nil
 	default:
@@ -477,6 +481,77 @@ func (r *operationRenderer) renderDecodeArray(output *sourceWriter, operation Op
 	}
 	output.indent--
 	output.line("}")
+	return nil
+}
+
+// renderDecodeTerminatedLoop emits a loop that grows until the sentinel byte
+// appears.
+//
+// The element is appended after it decodes, not before, so a failed element
+// cannot leave a half-filled entry in the slice. The collection limit is
+// checked before each element rather than after, so a peer cannot make the
+// decoder allocate past the bound and then be told about it.
+func (r *operationRenderer) renderDecodeTerminatedLoop(output *sourceWriter, operation Operation) error {
+	if !strings.HasPrefix(operation.GoType, "[]") {
+		return fmt.Errorf("terminated loop has Go type %q", operation.GoType)
+	}
+	elementType := strings.TrimPrefix(operation.GoType, "[]")
+
+	output.line("%s = make(%s, 0)", operation.Value, operation.GoType)
+	output.line("for {")
+	output.indent++
+	done := r.next("done")
+	output.line("%s, err := buffer.ReadTerminator(%s, %d)", done, strconv.Quote(operation.Path), operation.Terminator)
+	r.renderReturnError(output)
+	output.line("if %s {", done)
+	output.indent++
+	output.line("break")
+	output.indent--
+	output.line("}")
+	output.line(
+		"if err := buffer.ValidateCollection(%s, len(%s)+1); err != nil {",
+		strconv.Quote(operation.Path),
+		operation.Value,
+	)
+	output.indent++
+	output.line("return err")
+	output.indent--
+	output.line("}")
+	// The element is appended zeroed and then decoded in place, so the element
+	// operations address it the same way an array's do.
+	element := r.next("element")
+	output.line("var %s %s", element, elementType)
+	output.line("%s = append(%s, %s)", operation.Value, operation.Value, element)
+	output.line("%s := len(%s) - 1", operation.Index, operation.Value)
+	if err := r.renderDecodeOperations(output, operation.Operations); err != nil {
+		return err
+	}
+	output.indent--
+	output.line("}")
+
+	return nil
+}
+
+// renderEncodeTerminatedLoop writes every element and then the sentinel.
+func (r *operationRenderer) renderEncodeTerminatedLoop(output *sourceWriter, operation Operation) error {
+	output.line("if err := buffer.ValidateCollection(%s, len(%s)); err != nil {", strconv.Quote(operation.Path), operation.Value)
+	output.indent++
+	output.line("return err")
+	output.indent--
+	output.line("}")
+	output.line("for %s := range %s {", operation.Index, operation.Value)
+	output.indent++
+	if err := r.renderEncodeOperations(output, operation.Operations); err != nil {
+		return err
+	}
+	output.indent--
+	output.line("}")
+	output.line("if err := buffer.WriteTerminator(%s, %d); err != nil {", strconv.Quote(operation.Path), operation.Terminator)
+	output.indent++
+	output.line("return err")
+	output.indent--
+	output.line("}")
+
 	return nil
 }
 

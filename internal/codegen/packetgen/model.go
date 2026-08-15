@@ -162,6 +162,8 @@ const (
 	OpBitField OperationKind = "bitfield"
 	// OpBitFlags reads or writes an explicitly described flag integer.
 	OpBitFlags OperationKind = "bitflags"
+	// OpTerminatedLoop repeats an element until a sentinel byte appears.
+	OpTerminatedLoop OperationKind = "terminated_loop"
 	// OpVoid performs no wire I/O.
 	OpVoid OperationKind = "void"
 )
@@ -179,11 +181,15 @@ type Operation struct {
 	Mapper      string
 	Index       string
 	Count       Count
-	Compare     FieldReference
-	Operations  []Operation
-	Cases       []OperationCase
-	HasDefault  bool
-	Default     OperationCase
+	// Terminator is the sentinel byte that ends an OpTerminatedLoop. It comes
+	// from the schema, because protocol 47 ends metadata at 127 and protocol
+	// 775 ends it at 255.
+	Terminator uint8
+	Compare    FieldReference
+	Operations []Operation
+	Cases      []OperationCase
+	HasDefault bool
+	Default    OperationCase
 }
 
 // OperationCase is one ordered switch branch and its explicit operations.
@@ -267,6 +273,9 @@ type builder struct {
 	packet      *Packet
 	packetName  string
 	packetPath  string
+	// natives is the set of names this schema declares native. A hand-written
+	// codec backs a name only when it appears here; see native.go.
+	natives map[string]struct{}
 }
 
 type nameAllocator struct {
@@ -276,6 +285,27 @@ type nameAllocator struct {
 type scope struct {
 	parent   *scope
 	bindings map[string]FieldReference
+	// parameters binds an alias parameter name to the field reference the
+	// invocation supplied for it, so a `$name` inside the alias target
+	// resolves against the scope that invoked it.
+	parameters map[string]string
+}
+
+// parameter resolves an alias parameter through the scope chain and returns
+// the scope that bound it.
+//
+// The binding scope matters as much as the value. An argument names a field of
+// the container that invoked the alias, not a field of the alias target, so the
+// substituted reference has to be resolved one level out from where the binding
+// was made.
+func (s *scope) parameter(name string) (string, *scope, bool) {
+	for current := s; current != nil; current = current.parent {
+		if source, ok := current.parameters[name]; ok {
+			return source, current, true
+		}
+	}
+
+	return "", nil, false
 }
 
 type compiledValue struct {
@@ -300,10 +330,15 @@ func Build(schema *protodef.Schema, options Options) (*Model, error) {
 	if schema == nil {
 		return nil, fmt.Errorf("packetgen: nil ProtoDef schema")
 	}
+	natives := nativeNames(schema)
+	if err := checkNativeCodecs(schema, natives); err != nil {
+		return nil, fmt.Errorf("packetgen: %w", err)
+	}
 	b := &builder{
 		model:       &Model{PackageName: options.PackageName},
 		typeNames:   newNameAllocator(),
 		mapperNames: newNameAllocator(),
+		natives:     natives,
 	}
 	for _, sourceState := range schema.States {
 		state := State{SourceName: sourceState.Name, GoName: exportedName(sourceState.Name)}
@@ -455,7 +490,11 @@ func (b *builder) compileNode(
 	if node == nil {
 		return compiledValue{}, modelError(path, "nil type node")
 	}
-	if rule, ok := specialScalarRule(node.Name, b.packetName, fieldName); ok {
+	rule, ok, err := nativeRule(b.natives, node, b.packetName, fieldName, path)
+	if err != nil {
+		return compiledValue{}, err
+	}
+	if ok {
 		if rule.read == "" {
 			return compiledValue{
 				goType: "struct{}",
@@ -470,10 +509,30 @@ func (b *builder) compileNode(
 	switch node.Kind {
 	case protodef.KindAlias:
 		if len(node.Arguments) != 0 {
-			return compiledValue{}, modelError(path, "unsupported parameterized alias %q", node.Name)
+			// A parameterized alias binds its arguments into a scope that
+			// still sees the invoking container's fields, because the target
+			// resolves `$name` against what the caller passed while the rest
+			// of its references still mean what they meant here.
+			bound := &scope{parent: current, bindings: map[string]FieldReference{}, parameters: map[string]string{}}
+			for _, argument := range node.Arguments {
+				if argument.String == "" {
+					return compiledValue{}, modelError(
+						path,
+						"%w: alias %q argument %q is not a field reference",
+						ErrUnknownNativeArgument,
+						node.Name,
+						argument.Name,
+					)
+				}
+				bound.parameters[argument.Name] = argument.String
+			}
+			return b.compileNode(node.Target, desiredName, path, value, bound, fieldName)
 		}
 		return b.compileNode(node.Target, desiredName, path, value, current, fieldName)
 	case protodef.KindPrimitive, protodef.KindNative:
+		if node.Name == "entityMetadataLoop" {
+			return b.compileTerminatedLoop(node, desiredName, path, value, current)
+		}
 		return compiledValue{}, modelError(path, "unsupported native type %q", node.Name)
 	case protodef.KindContainer:
 		return b.compileContainer(node, desiredName, path, value, current)
@@ -530,7 +589,7 @@ func (b *builder) compileArray(
 	}
 	index := fmt.Sprintf("index%d", b.arrayIndex)
 	b.arrayIndex++
-	elementValue := fmt.Sprintf("(%s)[%s]", value, index)
+	elementValue := indexed(value, index)
 	element, err := b.compileNode(node.Element, desiredName+"Item", path+"[]", elementValue, current, "")
 	if err != nil {
 		return compiledValue{}, err
@@ -554,6 +613,75 @@ func (b *builder) compileArray(
 		encode: Operation{
 			Kind: OpArray, Method: encodeMethod, Value: value, GoType: goType, Path: path,
 			Index: index, Count: count, Operations: []Operation{element.encode},
+		},
+	}, nil
+}
+
+// compileTerminatedLoop compiles a native loop that ends at a sentinel byte
+// rather than at a count.
+//
+// The terminator and the element type both come from the invocation's
+// arguments. Reading them from the schema rather than hardcoding them is the
+// point: the same native in protocol 775 carries a different terminator, and
+// a compiled-in 127 there would read past the end of the packet.
+func (b *builder) compileTerminatedLoop(
+	node *protodef.TypeNode,
+	desiredName string,
+	path string,
+	value string,
+	current *scope,
+) (compiledValue, error) {
+	var (
+		terminator  uint8
+		haveEnd     bool
+		elementNode *protodef.TypeNode
+	)
+	for _, argument := range node.Arguments {
+		switch argument.Name {
+		case "endVal":
+			parsed, err := strconv.ParseUint(argument.Number, 10, 8)
+			if err != nil {
+				return compiledValue{}, modelError(path, "%w: endVal %q is not a byte", ErrUnknownNativeArgument, argument.Number)
+			}
+			terminator = uint8(parsed)
+			haveEnd = true
+		case "type":
+			elementNode = argument.Type
+		default:
+			return compiledValue{}, modelError(
+				path,
+				"%w: native %q does not accept argument %q",
+				ErrUnknownNativeArgument,
+				node.Name,
+				argument.Name,
+			)
+		}
+	}
+	if !haveEnd {
+		return compiledValue{}, modelError(path, "%w: native %q needs endVal", ErrUnknownNativeArgument, node.Name)
+	}
+	if elementNode == nil {
+		return compiledValue{}, modelError(path, "%w: native %q needs an element type", ErrUnknownNativeArgument, node.Name)
+	}
+
+	index := fmt.Sprintf("index%d", b.arrayIndex)
+	b.arrayIndex++
+	elementValue := indexed(value, index)
+	element, err := b.compileNode(elementNode, desiredName+"Item", path+"[]", elementValue, current, "")
+	if err != nil {
+		return compiledValue{}, err
+	}
+	goType := "[]" + element.goType
+
+	return compiledValue{
+		goType: goType,
+		decode: Operation{
+			Kind: OpTerminatedLoop, Value: value, GoType: goType, Path: path,
+			Index: index, Terminator: terminator, Operations: []Operation{element.decode},
+		},
+		encode: Operation{
+			Kind: OpTerminatedLoop, Value: value, GoType: goType, Path: path,
+			Index: index, Terminator: terminator, Operations: []Operation{element.encode},
 		},
 	}, nil
 }
@@ -882,39 +1010,6 @@ var basicScalarRules = map[string]scalarRule{
 	"bool":    {goType: "bool", read: "ReadBool", write: "WriteBool"},
 }
 
-func specialScalarRule(name, packetName, fieldName string) (scalarRule, bool) {
-	if rule, ok := basicScalarRules[name]; ok {
-		return rule, true
-	}
-	switch name {
-	case "UUID":
-		return scalarRule{goType: "java.UUID", read: "ReadUUID", write: "WriteUUID"}, true
-	case "string", "pstring":
-		return scalarRule{goType: "string", read: "ReadString", write: "WriteString"}, true
-	case "ByteArray":
-		return scalarRule{goType: "[]byte", read: "ReadByteArray", write: "WriteByteArray"}, true
-	case "restBuffer":
-		if packetName == "custom_payload" && fieldName == "data" {
-			return scalarRule{goType: "[]byte", read: "ReadPluginPayload", write: "WritePluginPayload"}, true
-		}
-		return scalarRule{goType: "[]byte", read: "ReadRestBuffer", write: "WriteRestBuffer"}, true
-	case "nbt":
-		return scalarRule{goType: "java.NBT", read: "ReadNBT", write: "WriteNBT"}, true
-	case "optionalNbt":
-		return scalarRule{goType: "*java.NBT", read: "ReadOptionalNBT", write: "WriteOptionalNBT"}, true
-	case "slot":
-		return scalarRule{goType: "java.Slot", read: "ReadSlot", write: "WriteSlot"}, true
-	case "entityMetadata", "entityMetadataLoop":
-		return scalarRule{goType: "java.EntityMetadata", read: "ReadEntityMetadata", write: "WriteEntityMetadata"}, true
-	case "position":
-		return scalarRule{goType: "java.Position", read: "ReadPosition", write: "WritePosition"}, true
-	case "void":
-		return scalarRule{}, true
-	default:
-		return scalarRule{}, false
-	}
-}
-
 func unsignedRuleForBits(bits int) (scalarRule, bool) {
 	for _, name := range []string{"u8", "u16", "u32", "u64"} {
 		rule := basicScalarRules[name]
@@ -926,8 +1021,13 @@ func unsignedRuleForBits(bits int) (scalarRule, bool) {
 }
 
 func resolveReference(current *scope, source string) (FieldReference, error) {
-	if strings.HasPrefix(source, "$") {
-		return FieldReference{}, fmt.Errorf("parameter reference is not bound")
+	if parameter, found := strings.CutPrefix(source, "$"); found {
+		bound, owner, ok := current.parameter(parameter)
+		if !ok {
+			return FieldReference{}, fmt.Errorf("parameter %q is not bound", parameter)
+		}
+		source = bound
+		current = owner.parent
 	}
 	for strings.HasPrefix(source, "../") {
 		if current == nil || current.parent == nil {
@@ -1136,8 +1236,49 @@ func selector(value, field string) string {
 	return value + "." + field
 }
 
+// dereference builds the expression for the value behind an option pointer.
+//
+// The whole dereference is parenthesized because the result is a prefix that
+// callers append selectors to. Without the outer parentheses, a struct behind
+// an option renders as *(p).Field, which Go parses as *((p).Field) and does not
+// compile. That only shows up once an option holds a compiled struct rather
+// than a scalar, which is why it surfaced when `position` stopped being one.
 func dereference(value string) string {
-	return "*(" + value + ")"
+	return "(*(" + value + "))"
+}
+
+// indexed builds an element expression, adding parentheses only when the value
+// is not already a parenthesized expression. Wrapping unconditionally is
+// correct but produces ((*(x)))[i] for an option holding a collection, which
+// is noise in every generated line that touches one.
+func indexed(value, index string) string {
+	if enclosed(value) {
+		return value + "[" + index + "]"
+	}
+
+	return "(" + value + ")[" + index + "]"
+}
+
+// enclosed reports whether value is wrapped in one balanced pair of outer
+// parentheses, so appending a selector or an index to it is safe.
+func enclosed(value string) bool {
+	if len(value) < 2 || value[0] != '(' || value[len(value)-1] != ')' {
+		return false
+	}
+	depth := 0
+	for position, character := range value {
+		switch character {
+		case '(':
+			depth++
+		case ')':
+			depth--
+		}
+		if depth == 0 && position < len(value)-1 {
+			return false
+		}
+	}
+
+	return depth == 0
 }
 
 func lowerFirst(value string) string {
@@ -1176,6 +1317,12 @@ func isIntegerType(goType string) bool {
 	return ok && rule.bits != 0
 }
 
+// modelError attaches the JSON path to a generation failure.
+//
+// It wraps rather than formats, so a caller can match a sentinel with
+// errors.Is and still read the path in the message. A generation error is
+// consumed by tests and by whoever is debugging a schema, and both want the
+// path; only the tests want the sentinel.
 func modelError(path, format string, arguments ...any) error {
-	return fmt.Errorf("packetgen: %s: %s", path, fmt.Sprintf(format, arguments...))
+	return fmt.Errorf("packetgen: %s: %w", path, fmt.Errorf(format, arguments...))
 }
