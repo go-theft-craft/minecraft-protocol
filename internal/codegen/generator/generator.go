@@ -84,6 +84,7 @@ var generatedFileNames = []string{
 var preservedGeneratedTestNames = []string{
 	"codec_test.go",
 	"data_test.go",
+	"login_role_test.go",
 	"transition_test.go",
 }
 
@@ -331,6 +332,42 @@ func framedPacketSchema(schema *protodef.Schema) *protodef.Schema {
 
 func isFramedPacket(state, direction, name string, id int) bool {
 	return state != "handshaking" || direction != "toServer" || name != "legacy_server_list_ping" || id != 0xfe
+}
+
+// loginRoleFor reports the part a packet plays in a login sequence, as the
+// unqualified name of a protocol.LoginRole constant, or "" for a packet with
+// no part.
+//
+// The mapping lives here rather than in the schema because the schema
+// describes wire layout and says nothing about sequence. It is keyed by
+// upstream state, direction, and packet name, so a later protocol whose
+// packets keep these names inherits the tagging, and one whose packets do not
+// simply reports no role until this function learns its names.
+func loginRoleFor(state, direction, name string) string {
+	if state != "login" {
+		return ""
+	}
+
+	switch direction {
+	case "toClient":
+		switch name {
+		case "encryption_begin":
+			return "RoleEncryptionRequest"
+		case "success":
+			return "RoleLoginSuccess"
+		case "compress":
+			return "RoleSetCompression"
+		}
+	case "toServer":
+		switch name {
+		case "login_start":
+			return "RoleLoginStart"
+		case "encryption_begin":
+			return "RoleEncryptionResponse"
+		}
+	}
+
+	return ""
 }
 
 func addPacketValueKeys(descriptor []byte, model *packetgen.Model) ([]byte, error) {
@@ -771,6 +808,9 @@ type packetTmpl struct {
 	ID     int
 	Fields []packetFieldTmpl
 	Framed bool
+	// LoginRole is the unqualified name of the protocol.LoginRole constant
+	// this packet plays, or "" when it plays no part in a login.
+	LoginRole string
 }
 
 type packetFieldTmpl struct {
@@ -1016,10 +1056,11 @@ func extractPackets(types map[string]json.RawMessage, phaseName, direction strin
 			return nil, err
 		}
 		packets = append(packets, packetTmpl{
-			Name:   name,
-			ID:     id,
-			Fields: packetFields,
-			Framed: isFramedPacket(phaseName, direction, name, id),
+			Name:      name,
+			ID:        id,
+			Fields:    packetFields,
+			Framed:    isFramedPacket(phaseName, direction, name, id),
+			LoginRole: loginRoleFor(phaseName, direction, name),
 		})
 	}
 	for name := range mappings {

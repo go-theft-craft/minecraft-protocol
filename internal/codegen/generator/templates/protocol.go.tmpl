@@ -378,6 +378,25 @@ func (session *protocolSession) Disconnect(reason string) (protocol.Packet, bool
 	}
 }
 
+// loginRoles tags the packets that play a part in a login. A packet with no
+// part is absent rather than mapped to an empty role, so a lookup miss and a
+// packet outside the login sequence are the same answer.
+var loginRoles = map[packetKey]protocol.LoginRole{
+{{ range .Data.Phases }}{{ $state := .Name }}{{ range .ToClient }}{{ if .LoginRole }}	{State: protocol.State({{ printf "%q" $state }}), Direction: protocol.DirectionClientbound, ID: {{ .ID }}}: protocol.{{ .LoginRole }},
+{{ end }}{{ end }}{{ range .ToServer }}{{ if .LoginRole }}	{State: protocol.State({{ printf "%q" $state }}), Direction: protocol.DirectionServerbound, ID: {{ .ID }}}: protocol.{{ .LoginRole }},
+{{ end }}{{ end }}{{ end }}
+}
+
+// LoginRole implements protocol.LoginRoles. The table is built once at
+// package initialization, so a lookup allocates nothing.
+func (*protocolSession) LoginRole(state protocol.State, direction protocol.Direction, id int32) (protocol.LoginRole, bool) {
+	role, ok := loginRoles[packetKey{State: state, Direction: direction, ID: id}]
+
+	return role, ok
+}
+
+var _ protocol.LoginRoles = (*protocolSession)(nil)
+
 var packetNames = map[packetKey]string{
 {{ range .Data.Phases }}{{ $state := .Name }}{{ range .ToClient }}{{ if .Framed }}	{State: protocol.State({{ printf "%q" $state }}), Direction: protocol.DirectionClientbound, ID: {{ .ID }}}: {{ printf "%q" .Name }},
 {{ end }}{{ end }}{{ range .ToServer }}{{ if .Framed }}	{State: protocol.State({{ printf "%q" $state }}), Direction: protocol.DirectionServerbound, ID: {{ .ID }}}: {{ printf "%q" .Name }},
