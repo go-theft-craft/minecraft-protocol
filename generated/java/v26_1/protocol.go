@@ -464,6 +464,40 @@ var loginRoles = map[packetKey]protocol.LoginRole{
 	{State: protocol.State("configuration"), Direction: protocol.DirectionServerbound, ID: 7}:  protocol.RoleKnownPacks,
 }
 
+// packetIDs is packetNames read the other way, for resolving a name at
+// registration time. Both are built once at package initialization.
+var packetIDs = func() map[packetNameKey]int32 {
+	ids := make(map[packetNameKey]int32, len(packetNames))
+	for key, name := range packetNames {
+		ids[packetNameKey{State: key.State, Direction: key.Direction, Name: name}] = key.ID
+	}
+
+	return ids
+}()
+
+// packetNameKey identifies a packet the way a caller names one.
+type packetNameKey struct {
+	State     protocol.State
+	Direction protocol.Direction
+	Name      string
+}
+
+// PacketID implements protocol.PacketDescriptor.
+func (protocolDescriptor) PacketID(state protocol.State, direction protocol.Direction, name string) (int32, bool) {
+	id, ok := packetIDs[packetNameKey{State: state, Direction: direction, Name: name}]
+
+	return id, ok
+}
+
+// PacketName implements protocol.PacketDescriptor.
+func (protocolDescriptor) PacketName(state protocol.State, direction protocol.Direction, id int32) (string, bool) {
+	name, ok := packetNames[packetKey{State: state, Direction: direction, ID: id}]
+
+	return name, ok
+}
+
+var _ protocol.PacketDescriptor = protocolDescriptor{}
+
 // LoginRole implements protocol.LoginRoles. The table is built once at
 // package initialization, so a lookup allocates nothing.
 func (*protocolSession) LoginRole(state protocol.State, direction protocol.Direction, id int32) (protocol.LoginRole, bool) {

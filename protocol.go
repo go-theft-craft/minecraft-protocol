@@ -62,3 +62,22 @@ type Protocol interface {
 	Version() Version
 	NewSession(Role, Limits) (Session, error)
 }
+
+// PacketDescriptor resolves packet names and IDs for one protocol, without
+// creating a session and without loading game data.
+//
+// A router registers handlers by name and dispatches by ID, so it needs the
+// mapping before a connection exists. Reading it from a session would mean
+// creating one to answer a question about the protocol rather than about the
+// connection, and reading it from the game-data set would mean linking every
+// registry a version publishes in order to look up a name.
+//
+// It is an optional interface, so a protocol that cannot name its packets
+// stays usable by ID alone.
+type PacketDescriptor interface {
+	// PacketID resolves a packet name. It reports false for a name the
+	// protocol does not define in that state and direction.
+	PacketID(state State, direction Direction, name string) (int32, bool)
+	// PacketName is the reverse, for reporting.
+	PacketName(state State, direction Direction, id int32) (string, bool)
+}
