@@ -161,6 +161,27 @@ type SensitivePackets interface {
 	Sensitive(Packet) bool
 }
 
+// SensitiveFrames reports frames whose raw bytes must be withheld, decided
+// before the frame is decoded.
+//
+// It exists because a raw record is emitted ahead of decoding, so that a
+// capture keeps the bytes of a frame that turns out to be undecodable. That
+// ordering means SensitivePackets cannot answer for a raw record: by the time
+// there is a packet to ask about, the bytes have already reached the sink. A
+// capture written that way holds the key exchange in the clear under a header
+// claiming redaction was enforced.
+//
+// The session is asked rather than the stream because the session is the only
+// thing that knows where the packet ID is: the ID's encoding, and any
+// compression envelope in front of it, are its own. An implementation is
+// expected to answer cheaply for the states that can carry nothing sensitive,
+// which is all of them but login.
+//
+// A session that does not implement it has no sensitive frames.
+type SensitiveFrames interface {
+	SensitiveFrame(direction Direction, framePayload []byte) bool
+}
+
 // TransitionContext describes the packet that produced a proposed transition.
 type TransitionContext struct {
 	// Packet is the decoded inbound packet or the accepted outbound packet.

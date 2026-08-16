@@ -1,11 +1,13 @@
 package login_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,9 +26,17 @@ type modernScript struct {
 	configurationRun bool
 	knownPacks       bool
 	stall            bool
+	// observedSecret receives the shared secret the server decrypted, so a
+	// test can prove the client's own observations never carried it.
+	observedSecret func([]byte)
 }
 
-func startModernStream(t *testing.T, conn net.Conn, role protocol.Role) *protocol.Stream {
+func startModernStream(
+	t *testing.T,
+	conn net.Conn,
+	role protocol.Role,
+	options ...protocol.StreamOption,
+) *protocol.Stream {
 	t.Helper()
 
 	limits, err := protocol.NewLimits()
@@ -41,7 +51,7 @@ func startModernStream(t *testing.T, conn net.Conn, role protocol.Role) *protoco
 		Reader:    conn,
 		Writer:    conn,
 		Interrupt: conn.Close,
-	})
+	}, options...)
 	if err != nil {
 		t.Fatalf("stream: %v", err)
 	}
@@ -56,12 +66,12 @@ func startModernStream(t *testing.T, conn net.Conn, role protocol.Role) *protoco
 	return stream
 }
 
-func modernLoginPair(t *testing.T) (*protocol.Stream, *protocol.Stream) {
+func modernLoginPair(t *testing.T, clientOptions ...protocol.StreamOption) (*protocol.Stream, *protocol.Stream) {
 	t.Helper()
 
 	clientConn, serverConn := net.Pipe()
 
-	return startModernStream(t, clientConn, protocol.RoleClient),
+	return startModernStream(t, clientConn, protocol.RoleClient, clientOptions...),
 		startModernStream(t, serverConn, protocol.RoleServer)
 }
 
@@ -106,7 +116,7 @@ func serveModernLogin(t *testing.T, stream *protocol.Stream, script modernScript
 		return
 	}
 
-	if script.encrypt && !serveModernEncryption(t, stream) {
+	if script.encrypt && !serveModernEncryption(t, stream, script) {
 		return
 	}
 
@@ -189,7 +199,7 @@ func serveModernKnownPacks(t *testing.T, stream *protocol.Stream) bool {
 	return true
 }
 
-func serveModernEncryption(t *testing.T, stream *protocol.Stream) bool {
+func serveModernEncryption(t *testing.T, stream *protocol.Stream, script modernScript) bool {
 	t.Helper()
 
 	ctx := t.Context()
@@ -236,6 +246,9 @@ func serveModernEncryption(t *testing.T, stream *protocol.Stream) bool {
 		t.Errorf("adopt session key: %v", err)
 
 		return false
+	}
+	if script.observedSecret != nil {
+		script.observedSecret(secret.Reveal())
 	}
 	if err := stream.Control(ctx, java.EncryptionControl{Secret: secret}); err != nil {
 		t.Errorf("enable server encryption: %v", err)
@@ -371,5 +384,106 @@ func TestNegotiateHonoursCancellationOnProtocol775(t *testing.T) {
 
 	if _, err := negotiator.Negotiate(ctx, client); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("error = %v, want context.DeadlineExceeded", err)
+	}
+}
+
+// keySafetySink keeps every observation a stream produced, so a test can check
+// what a capture would have held.
+type keySafetySink struct {
+	mutex   sync.Mutex
+	records []protocol.Observation
+}
+
+func (s *keySafetySink) Observe(_ context.Context, observation protocol.Observation) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.records = append(s.records, observation)
+
+	return nil
+}
+
+func (s *keySafetySink) all() []protocol.Observation {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return append([]protocol.Observation(nil), s.records...)
+}
+
+// TestObservationsWithholdTheKeyExchangeOnProtocol775 checks the property the
+// redaction machinery exists for, against a real key rather than a marker.
+//
+// The raw record is written before its frame is decoded, so redaction there
+// cannot come from the decoded packet. A stream that got this wrong would
+// still pass every packet-level redaction test while writing the shared secret
+// to disk in the frame beside it.
+func TestObservationsWithholdTheKeyExchangeOnProtocol775(t *testing.T) {
+	var (
+		secretMutex sync.Mutex
+		secret      []byte
+	)
+
+	sink := &keySafetySink{}
+	client, server := modernLoginPair(t, protocol.WithObservationSink(sink))
+
+	go serveModernLogin(t, server, modernScript{
+		encrypt: true,
+		observedSecret: func(material []byte) {
+			secretMutex.Lock()
+			defer secretMutex.Unlock()
+
+			secret = append([]byte(nil), material...)
+		},
+	})
+
+	negotiator, err := login.NewNegotiator(offlineTester(t))
+	if err != nil {
+		t.Fatalf("NewNegotiator: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	if _, err := negotiator.Negotiate(ctx, client); err != nil {
+		t.Fatalf("Negotiate: %v", err)
+	}
+
+	secretMutex.Lock()
+	material := secret
+	secretMutex.Unlock()
+
+	if len(material) == 0 {
+		t.Fatal("the server never decrypted a shared secret, so this proves nothing")
+	}
+
+	var redacted int
+	for _, record := range sink.all() {
+		if bytes.Contains(record.Bytes, material) {
+			t.Fatalf(
+				"the session key reached the sink in a %q record at sequence %d",
+				record.Stage,
+				record.Sequence,
+			)
+		}
+		if record.Redacted {
+			redacted++
+
+			if len(record.Bytes) != 0 {
+				t.Errorf("record %d is marked redacted but carries %d bytes", record.Sequence, len(record.Bytes))
+			}
+			// The secret record is the exception, and deliberately: its
+			// material is never read unless disclosure was asked for, so
+			// there is no length to report without materializing the key.
+			if record.Stage != protocol.ObservationSecret && record.OriginalLen == 0 {
+				t.Errorf("redacted record %d does not report the size it withheld", record.Sequence)
+			}
+		}
+	}
+
+	// Both halves of the exchange, each as a raw frame and as a packet, plus
+	// the secret record the control produces: the request inbound, the
+	// response outbound, twice over, and the switch itself.
+	if redacted < 5 {
+		t.Fatalf("only %d records were redacted, want the key exchange withheld in both stages", redacted)
 	}
 }

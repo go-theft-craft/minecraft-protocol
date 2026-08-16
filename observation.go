@@ -56,6 +56,16 @@ type Observation struct {
 	// than inferred from stream configuration, so a sink never has to guess
 	// whether it holds a real body or a placeholder.
 	Redacted bool
+	// OriginalLen is how many bytes the record describes, whether or not it
+	// carries them. A redacted record drops its payload before a sink sees
+	// it, and without this a capture could not report the size it withheld —
+	// which is the one thing about a withheld body that is safe to state.
+	//
+	// It is zero on a redacted ObservationSecret record, and that is not an
+	// omission: the material is never read at all unless disclosure was
+	// asked for, so there is no length to report without materializing the
+	// key in order to measure it.
+	OriginalLen int
 	// Secret is present on ObservationSecret records and names the kind of
 	// material the record describes.
 	Secret *SecretMetadata
@@ -141,8 +151,9 @@ func (s *Stream) observe(input observationInput) error {
 			Secret:    input.secret,
 			// Owned bytes: a borrowed frame view would change under the
 			// observer as soon as the stream reuses the buffer.
-			Bytes:    bytes.Clone(body),
-			Redacted: input.redacted,
+			Bytes:       bytes.Clone(body),
+			Redacted:    input.redacted,
+			OriginalLen: len(input.payload),
 		},
 		bytes: charge,
 	}
@@ -229,6 +240,19 @@ func (s *Stream) sensitive(packet Packet) bool {
 	marker, ok := s.session.(SensitivePackets)
 
 	return ok && marker.Sensitive(packet)
+}
+
+// sensitiveFrame reports whether the session withholds this frame's wire
+// bytes. It is the raw record's half of the same question, asked before the
+// frame is decoded.
+func (s *Stream) sensitiveFrame(direction Direction, framePayload []byte) bool {
+	if s.disclosureReason != "" {
+		return false
+	}
+
+	marker, ok := s.session.(SensitiveFrames)
+
+	return ok && marker.SensitiveFrame(direction, framePayload)
 }
 
 // packetMetadata copies the identifying fields of a packet.

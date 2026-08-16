@@ -269,6 +269,41 @@ func (session *protocolSession) Sensitive(packet protocol.Packet) bool {
 
 var _ protocol.SensitivePackets = (*protocolSession)(nil)
 
+// sensitiveFrames are the packets whose raw frames a capture withholds,
+// keyed the way a frame can be identified before it is decoded.
+var sensitiveFrames = map[packetKey]bool{
+	{State: StateLogin, Direction: protocol.DirectionClientbound, ID: LoginClientboundEncryptionBegin{}.PacketID()}: true,
+	{State: StateLogin, Direction: protocol.DirectionServerbound, ID: LoginServerboundEncryptionBegin{}.PacketID()}: true,
+}
+
+// SensitiveFrame implements protocol.SensitiveFrames. It answers for the raw
+// record, which is written before the frame is decoded, so that the wire bytes
+// of the key exchange are withheld along with the decoded body.
+//
+// Only the login state carries anything sensitive, and returning false there
+// is what keeps this cheap: no frame in any other state touches the
+// compression envelope, and login frames are few and small.
+func (session *protocolSession) SensitiveFrame(direction protocol.Direction, framePayload []byte) bool {
+	if session.state != StateLogin {
+		return false
+	}
+
+	body, err := java.DecodeCompression(framePayload, session.compression, session.limits)
+	if err != nil {
+		// A login frame that cannot be read cannot be shown to be harmless.
+		// Losing the bytes of a malformed frame is the smaller failure.
+		return true
+	}
+	raw, err := java.SplitPacketBody(body)
+	if err != nil {
+		return true
+	}
+
+	return sensitiveFrames[packetKey{State: StateLogin, Direction: direction, ID: raw.ID}]
+}
+
+var _ protocol.SensitiveFrames = (*protocolSession)(nil)
+
 // ProposeTransition reports the state or pipeline change a packet implies.
 //
 // It matches concrete generated types rather than packet names, so a packet

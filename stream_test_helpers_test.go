@@ -282,6 +282,19 @@ func (s *testSession) Sensitive(packet Packet) bool {
 	return s.sensitivePackets[packet.ID]
 }
 
+// SensitiveFrame implements protocol.SensitiveFrames. This session's frame
+// payload is the packet ID followed by the body, so the ID is the first byte.
+func (s *testSession) SensitiveFrame(_ Direction, framePayload []byte) bool {
+	if len(framePayload) == 0 {
+		return false
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.sensitivePackets[int32(framePayload[0])]
+}
+
 // markSensitive registers a packet ID as carrying secret material.
 func (s *testSession) markSensitive(id int32) {
 	s.mu.Lock()

@@ -4,6 +4,15 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Fixed
+
+- Raw frame observations no longer carry the bytes of a packet whose decoded
+  body is redacted. The raw record is written before the frame is decoded, so
+  the packet-level check could not answer for it, and a capture taken with the
+  default settings would have held the login key exchange in the clear beside
+  a record marked redacted. `protocol.SensitiveFrames` is the session-side
+  answer, decided from the frame's own packet ID.
+
 ### Added
 
 - Java Edition 26.1, protocol 775. `generated/java/v26_1` carries 256 framed
@@ -26,6 +35,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   live check against a real Java 26.1 server. The check has been run against
   Paper 26.1.2 build 74: the largest raw frame was 12,564 bytes and the largest
   decoded body 32,316 bytes, against limits of 2 MiB and 8 MiB.
+- `protocol.Observation.OriginalLen`, the size a record describes whether or
+  not it carries the bytes, so a redacted record can state what it withheld.
 - `protocol.RoleKnownPacks`, the data-pack negotiation a modern configuration
   opens with. A 26.1 server sends no registry data and never finishes
   configuration until the client answers it, so `login.Negotiator` answers it

@@ -282,7 +282,9 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 	frameID := s.frameCounter
 
 	// The raw record is emitted before decoding, so a capture keeps the exact
-	// bytes even when the frame turns out to be undecodable.
+	// bytes even when the frame turns out to be undecodable. Redaction is
+	// therefore decided from the frame rather than from a packet that does
+	// not exist yet.
 	if err := s.observe(observationInput{
 		direction: s.session.Inbound(),
 		stage:     ObservationRawFrame,
@@ -290,6 +292,7 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 		before:    before,
 		after:     before,
 		payload:   frame.WireBytes(),
+		redacted:  s.sensitiveFrame(s.session.Inbound(), frame.Payload()),
 	}); err != nil {
 		return nil, err
 	}
@@ -424,6 +427,8 @@ func (s *Stream) observeOutbound(
 	packet Packet,
 	payload []byte,
 ) error {
+	// Outbound has the packet in hand, so the raw record asks the same
+	// question the packet record does rather than re-reading the frame.
 	if err := s.observe(observationInput{
 		direction: s.session.Outbound(),
 		stage:     ObservationRawFrame,
@@ -431,6 +436,7 @@ func (s *Stream) observeOutbound(
 		before:    before,
 		after:     before,
 		payload:   frame.WireBytes(),
+		redacted:  s.sensitive(packet),
 	}); err != nil {
 		return err
 	}

@@ -383,12 +383,94 @@ func TestObservationsRedactSensitivePacketsByDefault(t *testing.T) {
 		t.Fatalf("a redacted record must carry no body, got %d bytes", len(packetRecord.Bytes))
 	}
 
+	// The raw record carries the same bytes the packet record withholds. A
+	// capture that redacted one and not the other would hold the key in the
+	// clear under a header claiming redaction was enforced.
+	rawRecord := findRecord(t, records, ObservationRawFrame)
+	if !rawRecord.Redacted {
+		t.Fatal("the raw frame of a sensitive packet must be redacted too")
+	}
+	if len(rawRecord.Bytes) != 0 {
+		t.Fatalf("a redacted raw record must carry no bytes, got %d", len(rawRecord.Bytes))
+	}
+	if rawRecord.OriginalLen == 0 {
+		t.Fatal("a redacted record must report the size it withheld")
+	}
+}
+
+// TestInboundRawFrameOfASensitivePacketIsRedacted is the direction the frame
+// check exists for. The outbound raw record is written with the packet in
+// hand; the inbound one is emitted before the frame is decoded, so nothing but
+// the frame itself can say whether it is sensitive.
+func TestInboundRawFrameOfASensitivePacketIsRedacted(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, WithObservationSink(sink))
+	harness.session.markSensitive(sensitivePacketID)
+
+	harness.reader.deliver(testFrameBytes(byte(sensitivePacketID), 0xde, 0xad, 0xbe, 0xef))
+	readWithTimeout(t, harness.stream)
+
+	records := sink.waitFor(t, 2)
+
+	rawRecord := findRecord(t, records, ObservationRawFrame)
+	if !rawRecord.Redacted {
+		t.Fatal("an inbound sensitive frame reached the sink unredacted")
+	}
+	if len(rawRecord.Bytes) != 0 {
+		t.Fatalf("a redacted raw record must carry no bytes, got %d", len(rawRecord.Bytes))
+	}
+	if rawRecord.OriginalLen == 0 {
+		t.Fatal("a redacted record must report the size it withheld")
+	}
+}
+
+// TestInboundRawFrameOfAnOrdinaryPacketIsKept is the other half: the check
+// must not withhold every frame it cannot cheaply classify.
+func TestInboundRawFrameOfAnOrdinaryPacketIsKept(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, WithObservationSink(sink))
+	harness.session.markSensitive(sensitivePacketID)
+
+	harness.reader.deliver(testFrameBytes(byte(sensitivePacketID)+1, 0x01, 0x02))
+	readWithTimeout(t, harness.stream)
+
+	records := sink.waitFor(t, 2)
+
 	rawRecord := findRecord(t, records, ObservationRawFrame)
 	if rawRecord.Redacted {
-		t.Fatal("raw frame records are never redacted")
+		t.Fatal("an ordinary frame was redacted")
 	}
 	if len(rawRecord.Bytes) == 0 {
 		t.Fatal("a raw frame record must carry the exact wire bytes")
+	}
+}
+
+func TestInboundRawFrameIsDisclosedWhenAsked(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	harness := startRuntime(
+		t, 8,
+		WithObservationSink(sink),
+		WithSecretDisclosure("interoperability debugging"),
+	)
+	harness.session.markSensitive(sensitivePacketID)
+
+	harness.reader.deliver(testFrameBytes(byte(sensitivePacketID), 0xde, 0xad))
+	readWithTimeout(t, harness.stream)
+
+	records := sink.waitFor(t, 2)
+
+	rawRecord := findRecord(t, records, ObservationRawFrame)
+	if rawRecord.Redacted {
+		t.Fatal("disclosure must clear the redacted flag on the raw record")
+	}
+	if len(rawRecord.Bytes) == 0 {
+		t.Fatal("disclosure must carry the real wire bytes")
 	}
 }
 
@@ -403,6 +485,14 @@ func TestObservationsDiscloseSensitivePacketsWhenAsked(t *testing.T) {
 	}
 	if len(packetRecord.Bytes) == 0 {
 		t.Fatal("disclosure must carry the real body")
+	}
+
+	rawRecord := findRecord(t, records, ObservationRawFrame)
+	if rawRecord.Redacted {
+		t.Fatal("disclosure must clear the redacted flag on the raw record")
+	}
+	if len(rawRecord.Bytes) == 0 {
+		t.Fatal("disclosure must carry the real wire bytes")
 	}
 }
 
