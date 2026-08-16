@@ -10,6 +10,7 @@ import (
 	protocol "github.com/go-theft-craft/minecraft-protocol"
 	capturepkg "github.com/go-theft-craft/minecraft-protocol/capture"
 	"github.com/go-theft-craft/minecraft-protocol/login"
+	"github.com/go-theft-craft/minecraft-protocol/protocols"
 )
 
 const captureUsage = `mcproto capture records a connection to a capture file.
@@ -39,6 +40,7 @@ func runCapture(ctx context.Context, args []string, stdout, stderr io.Writer) er
 	stopAt := flags.String("stop-at", "", "stop the sequence at login or configuration instead of play")
 	overwrite := flags.Bool("overwrite", false, "replace an existing capture file")
 	disclose := flags.String("disclose", "", "record secret material, for the stated reason")
+	playFor := flags.Duration("play-for", 0, "after reaching play, keep reading for this long")
 	note := flags.String("note", "", "free text stored in the capture header")
 
 	options.timeout = 30 * time.Second
@@ -104,7 +106,7 @@ func runCapture(ctx context.Context, args []string, stdout, stderr io.Writer) er
 	}
 
 	if err := captureLogin(
-		ctx, descriptor, options, host, port, *username, *stopAt, streamOptions,
+		ctx, descriptor, options, host, port, *username, *stopAt, *playFor, streamOptions,
 	); err != nil {
 		return err
 	}
@@ -129,6 +131,7 @@ func captureLogin(
 	port uint16,
 	username string,
 	stopAt string,
+	playFor time.Duration,
 	streamOptions []protocol.StreamOption,
 ) error {
 	authenticator, err := login.NewOffline(username)
@@ -175,5 +178,44 @@ func captureLogin(
 		return peerf("login to %s: %w", options.address, err)
 	}
 
+	if playFor > 0 {
+		readPlay(ctx, stream, descriptor, playFor)
+	}
+
 	return stream.Close()
+}
+
+// readPlay keeps reading after the login so the capture holds play traffic.
+//
+// A capture that stops at the moment play begins holds a connection that never
+// played, which is exactly the part a consumer of the capture most wants: the
+// join packet, the registries already applied, and the world the server sent.
+// Reading stops at the deadline or at the first read failure, and neither is
+// an error: what was read is in the capture either way.
+func readPlay(
+	ctx context.Context,
+	stream *protocol.Stream,
+	descriptor protocol.Protocol,
+	playFor time.Duration,
+) {
+	ctx, cancel := context.WithTimeout(ctx, playFor)
+	defer cancel()
+
+	for {
+		packet, err := stream.Read(ctx)
+		if err != nil {
+			return
+		}
+
+		// Answer the two packets that gate progress. A server sends no world
+		// data until its teleport is confirmed, so a capture taken without
+		// this holds a login and an empty world.
+		reply, needed := protocols.PlayReply(descriptor, packet)
+		if !needed {
+			continue
+		}
+		if err := stream.Write(ctx, reply); err != nil {
+			return
+		}
+	}
 }

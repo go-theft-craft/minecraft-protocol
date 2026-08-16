@@ -6,6 +6,12 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ### Fixed
 
+- Network NBT no longer requires a compound root. The plain-text form of a text
+  component is a bare `TAG_String`, and a real server sends it that way — Paper
+  26.1 sends its MOTD in `server_data` as a root string. The old rule rejected
+  that packet, and would have rejected every chat message, kick reason, and
+  title whose component was plain text. Found by capturing ten seconds of play
+  against a live server, which the reader could not get past.
 - Raw frame observations no longer carry the bytes of a packet whose decoded
   body is redacted. The raw record is written before the frame is decoded, so
   the packet-level check could not answer for it, and a capture taken with the
@@ -60,6 +66,10 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   deliberately want every version.
 - `protocol.PacketFactory`, which builds an empty packet value for one identity
   so a tool can decode text into it.
+- `mcproto serve`, a verification harness that replays a captured server at a
+  real client and decodes everything the client sends back, and
+  `mcproto capture --play-for`, which keeps reading after the login so a
+  capture holds play traffic rather than stopping where play begins.
 - `mcproto version`, `packet`, `status`, `login`, `capture`, `inspect`, and
   `replay`, with documented exit codes: 3 for a failure that belongs to the
   peer, 4 for a check that ran and did not match.

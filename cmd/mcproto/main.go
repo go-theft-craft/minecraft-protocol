@@ -100,6 +100,7 @@ Commands:
   capture   Record a connection to a capture file
   inspect   Print the records of a capture
   replay    Replay a capture, offline or to a peer
+  serve     Replay a captured server at a real client, and decode what it sends
 
 Exit codes:
   0  success
@@ -146,6 +147,8 @@ func run(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.
 		err = runInspect(args[1:], stdout)
 	case "replay":
 		err = runReplay(ctx, args[1:], stdout)
+	case "serve":
+		err = runServe(ctx, args[1:], stdout, stderr)
 	case "-h", "--help", "help":
 		_, _ = fmt.Fprint(stdout, rootUsage)
 

@@ -14,7 +14,7 @@ import (
 // everyCommand is the list the help and exit-code tests walk. A command added
 // without a line here is a command with no help test.
 var everyCommand = []string{
-	"version", "data", "packet", "status", "login", "capture", "inspect", "replay",
+	"version", "data", "packet", "status", "login", "capture", "inspect", "replay", "serve",
 }
 
 func TestNoArgumentsPrintsTheCommandListAndExitsUsage(t *testing.T) {

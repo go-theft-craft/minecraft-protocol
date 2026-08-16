@@ -65,11 +65,74 @@ func TestAnonymousNBTRejectsANamedRoot(t *testing.T) {
 	}
 }
 
-func TestAnonymousNBTRejectsANonCompoundRoot(t *testing.T) {
+// TestAnonymousNBTAcceptsABareStringRoot is the form a real server sends.
+//
+// The plain-text form of a text component is a bare TAG_String, not a
+// compound. Paper 26.1 sends its MOTD that way in `server_data`, and a reader
+// that required a compound rejected the packet — and would have rejected every
+// chat message, kick reason, and title whose component was plain text. The
+// bytes here are the ones a real 26.1 server sent.
+func TestAnonymousNBTAcceptsABareStringRoot(t *testing.T) {
 	limits := bufferLimits(t)
 
-	if _, err := NewNetworkNBT([]byte{0x01, 0x00}, limits); err == nil {
-		t.Fatal("a TAG_Byte root was accepted")
+	// TAG_String, length 13, "m4 live check".
+	bareString := []byte{
+		0x08,
+		0x00, 0x0D,
+		'm', '4', ' ', 'l', 'i', 'v', 'e', ' ', 'c', 'h', 'e', 'c', 'k',
+	}
+
+	value, err := NewNetworkNBT(bareString, limits)
+	if err != nil {
+		t.Fatalf("NewNetworkNBT: %v", err)
+	}
+	if got := value.Bytes(); !bytes.Equal(got, bareString) {
+		t.Errorf("stored % x, want % x", got, bareString)
+	}
+
+	reader, err := NewReadBuffer(bareString, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reader.ReadAnonymousNBT("motd"); err != nil {
+		t.Fatalf("ReadAnonymousNBT: %v", err)
+	}
+	if reader.Remaining() != 0 {
+		t.Errorf("%d bytes left unread", reader.Remaining())
+	}
+}
+
+// TestAnonymousNBTAcceptsEveryScalarRoot covers the rest of the tags a
+// component or a query response can arrive as, rather than fixing only the one
+// a live server happened to send.
+func TestAnonymousNBTAcceptsEveryScalarRoot(t *testing.T) {
+	limits := bufferLimits(t)
+
+	roots := map[string][]byte{
+		"byte":   {TagByte, 0x01},
+		"short":  {TagShort, 0x00, 0x01},
+		"int":    {TagInt, 0x00, 0x00, 0x00, 0x01},
+		"long":   {TagLong, 0, 0, 0, 0, 0, 0, 0, 1},
+		"float":  {TagFloat, 0x3F, 0x80, 0x00, 0x00},
+		"double": {TagDouble, 0x3F, 0xF0, 0, 0, 0, 0, 0, 0},
+		"string": {TagString, 0x00, 0x01, 'x'},
+	}
+
+	for name, encoded := range roots {
+		if _, err := NewNetworkNBT(encoded, limits); err != nil {
+			t.Errorf("a %s root was rejected: %v", name, err)
+		}
+	}
+}
+
+// TestAnonymousNBTRejectsAnEndRoot keeps the one tag that must not be a value.
+// TAG_End is how the optional form says "absent", so a value that is TAG_End
+// is a value claiming not to exist.
+func TestAnonymousNBTRejectsAnEndRoot(t *testing.T) {
+	limits := bufferLimits(t)
+
+	if _, err := NewNetworkNBT([]byte{TagEnd}, limits); err == nil {
+		t.Fatal("a TAG_End root was accepted as a value")
 	} else if !errors.Is(err, ErrInvalidNBT) {
 		t.Errorf("error = %v, want invalid NBT", err)
 	}

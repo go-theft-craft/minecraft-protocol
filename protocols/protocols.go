@@ -103,3 +103,150 @@ func Handshake(
 		return protocol.Packet{}, fmt.Errorf("no handshake known for protocol %q", descriptor.ID())
 	}
 }
+
+// HandshakeFields are the fields of the packet that opens a connection.
+type HandshakeFields struct {
+	ProtocolVersion int32
+	ServerHost      string
+	ServerPort      uint16
+	NextState       int32
+}
+
+// ReadHandshake reads the fields of a handshake packet.
+//
+// It lives beside Handshake for the same reason: the handshake is the one
+// packet that has to be understood before anything version-specific can be,
+// because it is what says which version the peer intends to speak.
+func ReadHandshake(packet protocol.Packet) (HandshakeFields, bool) {
+	switch value := packet.Value.(type) {
+	case *v1_8.HandshakingServerboundSetProtocol:
+		return HandshakeFields{
+			ProtocolVersion: value.ProtocolVersion,
+			ServerHost:      value.ServerHost,
+			ServerPort:      value.ServerPort,
+			NextState:       value.NextState,
+		}, true
+	case *v26_1.HandshakingServerboundSetProtocol:
+		return HandshakeFields{
+			ProtocolVersion: value.ProtocolVersion,
+			ServerHost:      value.ServerHost,
+			ServerPort:      value.ServerPort,
+			NextState:       value.NextState,
+		}, true
+	default:
+		return HandshakeFields{}, false
+	}
+}
+
+// StatusResponse builds a status response carrying one JSON document.
+func StatusResponse(descriptor protocol.Protocol, document string) (protocol.Packet, error) {
+	switch descriptor.ID() {
+	case v1_8.Protocol().ID():
+		value := &v1_8.StatusClientboundServerInfo{Response: document}
+
+		return protocol.Packet{
+			State:     v1_8.StateStatus,
+			Direction: protocol.DirectionClientbound,
+			ID:        value.PacketID(),
+			Name:      "server_info",
+			Value:     value,
+		}, nil
+
+	case v26_1.Protocol().ID():
+		value := &v26_1.StatusClientboundServerInfo{Response: document}
+
+		return protocol.Packet{
+			State:     v26_1.StateStatus,
+			Direction: protocol.DirectionClientbound,
+			ID:        value.PacketID(),
+			Name:      "server_info",
+			Value:     value,
+		}, nil
+
+	default:
+		return protocol.Packet{}, fmt.Errorf("no status response known for protocol %q", descriptor.ID())
+	}
+}
+
+// PlayReply is the answer one packet requires from a client that wants the
+// connection to keep going.
+//
+// A client that reads and never answers is not a client a server keeps talking
+// to: it stops sending world data until a teleport is confirmed, and
+// eventually disconnects a peer that ignores keepalives. A capture taken by
+// such a client holds a connection that stalled, which is not the connection
+// anybody wanted to record.
+//
+// This covers the two answers that gate progress and nothing else. It is not a
+// client: it does not move, look, or interact.
+func PlayReply(_ protocol.Protocol, packet protocol.Packet) (protocol.Packet, bool) {
+	switch value := packet.Value.(type) {
+	case *v1_8.PlayClientboundKeepAlive:
+		reply := &v1_8.PlayServerboundKeepAlive{KeepAliveID: value.KeepAliveID}
+
+		return serverbound(v1_8.StatePlay, reply.PacketID(), "keep_alive", reply), true
+
+	case *v26_1.PlayClientboundKeepAlive:
+		reply := &v26_1.PlayServerboundKeepAlive{KeepAliveID: value.KeepAliveID}
+
+		return serverbound(v26_1.StatePlay, reply.PacketID(), "keep_alive", reply), true
+
+	case *v26_1.PlayClientboundPosition:
+		// Protocol 775 places a player with a teleport that carries an ID, and
+		// a server sends no world data until the ID comes back.
+		reply := &v26_1.PlayServerboundTeleportConfirm{TeleportID: value.TeleportID}
+
+		return serverbound(v26_1.StatePlay, reply.PacketID(), "teleport_confirm", reply), true
+
+	case *v26_1.ConfigurationClientboundKeepAlive:
+		reply := &v26_1.ConfigurationServerboundKeepAlive{KeepAliveID: value.KeepAliveID}
+
+		return serverbound(v26_1.StateConfiguration, reply.PacketID(), "keep_alive", reply), true
+
+	default:
+		return protocol.Packet{}, false
+	}
+}
+
+func serverbound(state protocol.State, id int32, name string, value any) protocol.Packet {
+	return protocol.Packet{
+		State:     state,
+		Direction: protocol.DirectionServerbound,
+		ID:        id,
+		Name:      name,
+		Value:     value,
+	}
+}
+
+// KeepAlive builds the clientbound keepalive a server sends to hold a
+// connection open.
+//
+// A client disconnects itself when a server goes quiet, so anything that wants
+// to keep a real client connected past the end of what it has to say needs
+// this.
+func KeepAlive(descriptor protocol.Protocol, id int64) (protocol.Packet, error) {
+	switch descriptor.ID() {
+	case v1_8.Protocol().ID():
+		value := &v1_8.PlayClientboundKeepAlive{KeepAliveID: int32(id)}
+
+		return clientbound(v1_8.StatePlay, value.PacketID(), "keep_alive", value), nil
+
+	case v26_1.Protocol().ID():
+		value := &v26_1.PlayClientboundKeepAlive{KeepAliveID: id}
+
+		return clientbound(v26_1.StatePlay, value.PacketID(), "keep_alive", value), nil
+
+	default:
+		return protocol.Packet{}, fmt.Errorf("no keepalive known for protocol %q", descriptor.ID())
+	}
+}
+
+func clientbound(state protocol.State, id int32, name string, value any) protocol.Packet {
+	return protocol.Packet{
+		State:     state,
+		Direction: protocol.DirectionClientbound,
+		ID:        id,
+		Name:      name,
+		Value:     value,
+	}
+}

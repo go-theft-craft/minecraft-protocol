@@ -26,6 +26,12 @@ func runCLI(t *testing.T, args ...string) (int, string, string) {
 func runCLIWithInput(t *testing.T, stdin string, args ...string) (int, string, string) {
 	t.Helper()
 
+	return runCLIContextInput(context.Background(), t, stdin, args...)
+}
+
+func runCLIContextInput(ctx context.Context, t *testing.T, stdin string, args ...string) (int, string, string) {
+	t.Helper()
+
 	dir := t.TempDir()
 	outFile, err := os.Create(filepath.Join(dir, "stdout"))
 	if err != nil {
@@ -36,7 +42,7 @@ func runCLIWithInput(t *testing.T, stdin string, args ...string) (int, string, s
 		t.Fatal(err)
 	}
 
-	code := run(context.Background(), args, strings.NewReader(stdin), outFile, errFile)
+	code := run(ctx, args, strings.NewReader(stdin), outFile, errFile)
 
 	if err := outFile.Close(); err != nil {
 		t.Fatal(err)

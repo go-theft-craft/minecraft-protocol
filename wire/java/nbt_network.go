@@ -9,7 +9,7 @@ import (
 )
 
 // NetworkNBT is one validated NBT value in the modern network form, where the
-// root compound carries no name.
+// root tag carries no name.
 //
 // It is a distinct type from NBT on purpose. The two encodings differ by
 // exactly the root name, so a value of one written where the other is expected
@@ -111,9 +111,17 @@ func (b *Buffer) WriteAnonOptionalNBT(path string, value *NetworkNBT) error {
 // validateNetworkNBT walks one anonymous-root value and returns its length.
 //
 // It shares every payload rule with the named form and diverges only at the
-// root, which is a tag byte followed straight by its payload. A named-root
-// value fed to it does not silently pass: the name's length prefix reads as a
-// TAG_End, ending the compound early and leaving the rest as trailing bytes.
+// root, which is a tag byte followed straight by its payload.
+//
+// The root may be any tag, not only a compound. A text component is the reason:
+// the plain-text form of one is a bare TAG_String, and a real server sends it
+// that way — Paper 26.1 sends its MOTD in `server_data` as a root string.
+// Requiring a compound rejected that packet, and would have rejected every
+// chat message, kick reason, and title whose component was plain text.
+//
+// TAG_End is refused. It is the marker for an absent value, which the optional
+// form consumes before this is reached, so a TAG_End here is a value that says
+// it is not there.
 func validateNetworkNBT(data []byte, limits protocol.Limits) (int, error) {
 	cursor := nbtCursor{data: data, limits: limits}
 
@@ -121,8 +129,8 @@ func validateNetworkNBT(data []byte, limits protocol.Limits) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if tag != TagCompound {
-		return 0, fmt.Errorf("%w: network root tag ID %d is not a compound", ErrInvalidNBT, tag)
+	if tag == TagEnd {
+		return 0, fmt.Errorf("%w: network NBT root is TAG_End", ErrInvalidNBT)
 	}
 	if err := cursor.readPayload(tag, 1); err != nil {
 		return 0, err
@@ -136,8 +144,8 @@ func validateNetworkNBT(data []byte, limits protocol.Limits) (int, error) {
 // A modern text component is NBT rather than JSON. This writes the compound
 // form, {"text": ...}, rather than the bare string tag that also denotes
 // literal text: the compound is what every version of the component codec
-// accepts, and it is what this package's own reader accepts, which requires a
-// compound root.
+// accepts. Both forms read back — a real server sends the bare string — and
+// this writes the one that is accepted everywhere.
 //
 // It exists because a generated disconnect has a reason and needs a component
 // to put it in, and building one by hand at every call site is how encodings
