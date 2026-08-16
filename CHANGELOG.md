@@ -4,6 +4,23 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-16
+
+This release publishes Java Edition 26.1 and protocol 775, the routing,
+capture, replay, and history packages, and the `mcproto` command set. Both
+halves have been measured against real traffic: a Paper 26.1.2 server and a
+vanilla Java 26.1 client.
+
+### Changed
+
+- `protocol.Observation` gained `Elapsed`, `OriginalLen`, and `Rejected`.
+  Keyed construction is unaffected; a caller building one with an unkeyed
+  composite literal must switch to keyed fields.
+- `protocol.Session` implementations may now implement
+  `protocol.SensitiveFrames`, `protocol.PacketDescriptor`, and
+  `protocol.PacketFactory`. All three are optional: a session that implements
+  none behaves as before.
+
 ### Fixed
 
 - Network NBT no longer requires a compound root. The plain-text form of a text
