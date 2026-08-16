@@ -6,10 +6,10 @@ The roadmap records dependency order, not release dates. Completed work remains 
 flowchart LR
     P0["P0: repository foundation<br/>in progress"]
     P1["P1: extract Java 1.8<br/>wire, data, and generator<br/>complete"]
-    P2["P2: generate Java 26.1<br/>and all PrismarineJS data"]
+    P2["P2: generate Java 26.1<br/>and all PrismarineJS data<br/>complete"]
     P3a["P3a: managed stream<br/>and compression<br/>complete"]
     P3b["P3b: encryption and<br/>login lifecycle<br/>complete"]
-    P3c["P3c: router, capture,<br/>replay, and mcproto CLI"]
+    P3c["P3c: router, capture,<br/>replay, and mcproto CLI<br/>complete"]
     P4["P4: migrate server<br/>and proxy consumers"]
     P5["P5: stable v1 contracts"]
     PX["Later: Bedrock family"]
@@ -43,7 +43,7 @@ Status: complete.
 
 ## P2: current Java data
 
-Status: complete, except for verification against a live server.
+Status: complete.
 
 - Generated protocol 775 for the Java 26.1 data family: 256 framed packets
   across five states, with a checked-in coverage report.
@@ -104,13 +104,25 @@ Status: complete.
 
 ## P3c: routing, capture, replay, and CLI
 
-Depends on the protocol 775 datasets from P2.
+Status: complete.
 
-- Add packet routing and ordered middleware outside framing.
-- Add bounded in-memory history and durable capture sinks on top of the
-  observation points P3a already publishes.
-- Add deterministic replay with explicit timing modes.
-- Add the non-interactive `mcproto` command.
+- Added `router` and `middleware`, defined over one-method interfaces so that
+  neither imports the stream. The one file that names a stream is the adapter.
+- Added the capture format — a JSON header, then CRC-checked, length-prefixed
+  binary records with an inline string table — a durable file sink, sink
+  composition, and a replay digest.
+- Added `history.Ring`, bounded by record count and by bytes, and documented as
+  the one sink allowed to lose data.
+- Added deterministic replay with explicit timing modes, offline through a
+  session or connected to a peer, reporting a digest, drift, and any divergence
+  between the recorded connection and what this code proposes.
+- Added the non-interactive `mcproto` command set with documented exit codes,
+  and verified it end to end against a real Paper 26.1.2 server: capture a
+  login, inspect it, replay it, and compare the digest.
+- Fixed a defect in released code that this work exposed: the raw frame of a
+  packet whose decoded body was redacted carried the same bytes unredacted, so
+  a capture taken with the documented defaults would have held the login key
+  exchange in the clear beneath a header claiming redaction was enforced.
 
 ## P4: shared consumers
 

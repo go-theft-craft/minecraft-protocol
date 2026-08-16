@@ -47,6 +47,22 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 - `middleware` and `router`: ordered send and receive chains, and a dispatch
   table registered by packet name or ID. Neither imports the stream — the one
   file that names it is `router/adapter.go`.
+- `capture`: a versioned capture format, a durable file sink, sink composition,
+  and a replay digest. A capture is a JSON header followed by CRC-checked,
+  length-prefixed binary records with an inline string table, written straight
+  from the observation path so a killed process leaves a readable file.
+- `history.Ring`: bounded in-memory observations, the one sink allowed to lose
+  data.
+- `replay`: deterministic replay of a capture, offline through a session or
+  connected to a peer, with timing modes and a reported digest, drift, and any
+  divergence between the recorded connection and what this code proposes.
+- `protocols`: resolves a protocol ID to a protocol, for consumers that
+  deliberately want every version.
+- `protocol.PacketFactory`, which builds an empty packet value for one identity
+  so a tool can decode text into it.
+- `mcproto version`, `packet`, `status`, `login`, `capture`, `inspect`, and
+  `replay`, with documented exit codes: 3 for a failure that belongs to the
+  peer, 4 for a check that ran and did not match.
 - `protocol.Observation.OriginalLen`, the size a record describes whether or
   not it carries the bytes, so a redacted record can state what it withheld.
 - `protocol.RoleKnownPacks`, the data-pack negotiation a modern configuration

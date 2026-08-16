@@ -346,6 +346,123 @@ decoded body. Delivery is lossless and bounded by the shared budget, so a slow
 sink applies backpressure and a failing sink terminates the stream. Mutable
 generated packet values are deliberately not exposed to observers.
 
+Bodies that carry secret material are withheld. Redaction is decided per record
+and covers both the decoded body and the raw frame it arrived in — the raw
+record is written before the frame is decoded, so the session answers a
+frame-level question about the packet ID at the front of it. `Observation.
+OriginalLen` reports the size a withheld body had, which is the one thing about
+it that is safe to state. `protocol.WithSecretDisclosure` turns redaction off
+for a stated reason.
+
+## Routing and middleware
+
+`router` dispatches decoded packets to handlers registered by packet name or by
+ID, and `middleware` composes ordered wrappers around sending and handling.
+Neither imports the stream: they are written against one-method `Sender`,
+`Handler`, and `Receiver` interfaces, so a test drives them over a slice.
+
+```go
+dispatcher, err := router.New(v26_1.Protocol())
+if err != nil {
+	return err
+}
+err = dispatcher.Handle(v26_1.StatePlay, protocol.DirectionClientbound, "keep_alive", handler)
+
+adapter, err := router.FromStream(stream)
+if err != nil {
+	return err
+}
+err = dispatcher.Run(ctx, adapter)          // loop until the stream ends
+err = dispatcher.Dispatch(ctx, onePacket)   // or drive it a packet at a time
+```
+
+Handlers on one key run in registration order and the first error stops the
+rest. An unregistered packet is skipped without error — a connection carries
+packets a consumer did not ask for — and a fallback handler receives exactly
+those. Registration by name resolves through the protocol at registration time,
+so a misspelled name fails where the mistake is rather than as silence at
+dispatch. Handler panics are not recovered.
+
+## Capture, history, and replay
+
+A capture is a durable record of one connection: a JSON header, then
+length-prefixed, CRC-checked binary records with an inline string table. It is
+written straight from the observation path, so a process killed mid-capture
+leaves a file readable up to its last complete record.
+
+**A capture holds session content and is not encrypted.** Everything the peers
+exchanged is in it — chat, positions, plugin messages. Secret material is
+withheld unless the writer was explicitly constructed to disclose it, and a
+disclosing capture records in its own header that it did and why.
+
+```go
+sink, err := capture.NewFileSink("session.mcpcap", capture.Header{
+	Protocol:          v26_1.Protocol().ID(),
+	Role:              "client",
+	FrameBytes:        limits.FrameBytes(),
+	DecompressedBytes: limits.DecompressedBytes(),
+})
+if err != nil {
+	return err
+}
+defer sink.Close()   // writes the trailer, flushes, and syncs
+
+stream, err := protocol.NewStream(session, transport, protocol.WithObservationSink(sink))
+```
+
+`history.NewRing` is the in-memory counterpart, bounded by record count and by
+bytes. It is the one sink allowed to lose data: a capture with holes looks
+complete and is not, but a ring exists so somebody can ask what just happened,
+and forgetting the distant past is what makes that possible in bounded memory.
+`capture.MultiSink` composes the two.
+
+`replay` drives a capture back through a decoder or a peer. Offline it decodes
+every recorded frame again and produces a digest to compare against the one the
+capture recorded; where this code proposes a different state than the capture
+recorded, the capture wins and the disagreement is returned as a divergence.
+
+### A worked example
+
+Capture a login against a local server, look at it, and check that it still
+decodes the same way:
+
+```console
+$ mcproto capture --address 127.0.0.1:25565 --output login.mcpcap \
+    --username tester --offline
+path        login.mcpcap
+protocol    java/26.1
+redaction   enforced
+
+$ mcproto inspect --input login.mcpcap --filter 'kind=packet bytes>1024'
+    58 14.695ms packet    clientbound configuration 0x0007 registry_data      4945
+    60 15.853ms packet    clientbound configuration 0x0007 registry_data     31715
+    76 17.952ms packet    clientbound configuration 0x000d tags              32316
+
+$ mcproto replay --input login.mcpcap --verify
+input       login.mcpcap
+protocol    java/26.1
+records     77
+digest      fee4542d4861e5b27bda9ee8893620032107c91fb49331b87ba697cddad1d4f2
+recorded    fee4542d4861e5b27bda9ee8893620032107c91fb49331b87ba697cddad1d4f2
+drift       0s
+```
+
+`replay --verify` exits 4 when the digests differ, which is what makes it
+usable as a check rather than a report.
+
+### Exit codes
+
+`mcproto` reports through its exit code so a script never has to read a
+message:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Success |
+| 1 | The command failed at what it was asked |
+| 2 | The command was asked wrongly; nothing was attempted |
+| 3 | The peer or the network failed |
+| 4 | A check ran and did not match |
+
 ## Resource budgets
 
 `MaxBufferedBytes` bounds everything a stream keeps in memory. It defaults to
@@ -430,6 +547,17 @@ raw dataset set and the coverage report are generated for Java 26.1 only, with
 `-raw` and `-coverage`: the bytes are megabytes, every binary importing the
 package carries them, and Java 1.8's package is consumed by services that read
 only the typed registries.
+
+### Command tests and the capture fuzz target
+
+`task test:cli` runs the black-box `mcproto` tests. They call the command's
+entry point directly rather than building a binary, so the exit codes are
+covered rather than inferred.
+
+`task test:fuzz` smokes the capture reader against arbitrary bytes for thirty
+seconds. A capture is read off a disk that may hold a truncated write or a
+corrupt sector, so every input has to produce an error rather than a panic or
+an unbounded allocation.
 
 ### Differential verification against ProtoDef
 
