@@ -120,9 +120,19 @@ type Header struct {
 type Trailer struct {
 	Records      uint64
 	LastSequence uint64
-	// Digest is the replay digest over every replayable record. It is empty
-	// in a capture written before digests existed.
+	// Digest is the replay digest over every replayable record.
 	Digest string
+	// DigestAlgorithm is the rule the digest was computed under. A capture
+	// written under a different rule is reported rather than compared: an
+	// unequal digest computed differently says nothing about whether the
+	// bytes changed, which is the only question a digest is asked.
+	DigestAlgorithm int
+}
+
+// Comparable reports whether this trailer's digest can be compared with one
+// this package computes.
+func (t Trailer) Comparable() bool {
+	return t.Digest != "" && t.DigestAlgorithm == DigestVersion
 }
 
 // Record is one decoded capture entry.

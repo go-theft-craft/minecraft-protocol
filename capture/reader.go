@@ -368,8 +368,17 @@ func (r *Reader) decodeTrailer(c *cursor) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
+	algorithm, err := c.uint32()
+	if err != nil {
+		return Record{}, err
+	}
 
-	r.trailer = Trailer{Records: records, LastSequence: last, Digest: digest}
+	r.trailer = Trailer{
+		Records:         records,
+		LastSequence:    last,
+		Digest:          digest,
+		DigestAlgorithm: int(algorithm),
+	}
 
 	return Record{Kind: KindTrailer}, nil
 }

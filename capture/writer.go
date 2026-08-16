@@ -256,6 +256,7 @@ func (w *Writer) Close() error {
 	body = binary.BigEndian.AppendUint64(body, w.records)
 	body = binary.BigEndian.AppendUint64(body, w.last)
 	body = w.appendString(body, w.digest.Sum())
+	body = binary.BigEndian.AppendUint32(body, uint32(DigestVersion))
 	w.body = body
 
 	return w.writeRecord(body)
