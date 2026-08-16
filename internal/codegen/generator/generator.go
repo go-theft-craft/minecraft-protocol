@@ -549,6 +549,14 @@ func loginRoleFor(state, direction, name string) string {
 		if name == "finish_configuration" {
 			return "RoleConfigurationFinished"
 		}
+		// Both halves again, for the same reason: the server offers its pack
+		// list and the client answers with the packs it already has. A server
+		// sends no registry data and never finishes configuration until it
+		// has the answer, which is what makes this part of the sequence
+		// rather than content a driver may pass through.
+		if name == "select_known_packs" {
+			return "RoleKnownPacks"
+		}
 	}
 
 	return ""

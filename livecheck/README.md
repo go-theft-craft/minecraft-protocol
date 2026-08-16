@@ -76,3 +76,25 @@ The check runs with the default limits. A failure there is a result: it says
 the defaults are wrong for a real server, and the fix is to raise the limit the
 measurement touched — rounded up to the next power of two — and to record which
 packet forced it. Do not raise a limit the measurement did not touch.
+
+## What it measured
+
+Run on 2026-08-16 against Paper 26.1.2 build 74, offline mode, default world,
+default view distance, on loopback.
+
+| Measurement | Value | Limit | Headroom |
+| --- | --- | --- | --- |
+| Largest raw frame | 12,564 bytes (a compressed `configuration/tags` frame) | 2 MiB | 167x |
+| Largest decoded body | 32,316 bytes (`configuration/tags`) | 8 MiB | 259x |
+| Packets observed | 41 | | |
+
+Both defaults hold with room to spare through login. The measurement covers the
+sequence this check drives — handshake, login, configuration, and the first
+play packet — and says nothing about play itself, where chunk data is the
+largest thing a server sends and no check here has measured it yet.
+
+The first run of this check did not reach play. It found that the negotiator
+never answered `select_known_packs`, and a real server sends no registry data
+until it is answered, so the connection stalled in configuration while looking
+healthy. Every scripted test passed throughout, because no script sent the
+packet. That is the case for keeping this check.

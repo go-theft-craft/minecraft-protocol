@@ -417,14 +417,16 @@ func (session *protocolSession) Disconnect(reason string) (protocol.Packet, bool
 // part is absent rather than mapped to an empty role, so a lookup miss and a
 // packet outside the login sequence are the same answer.
 var loginRoles = map[packetKey]protocol.LoginRole{
-	{State: protocol.State("login"), Direction: protocol.DirectionClientbound, ID: 1}:         protocol.RoleEncryptionRequest,
-	{State: protocol.State("login"), Direction: protocol.DirectionClientbound, ID: 2}:         protocol.RoleLoginSuccess,
-	{State: protocol.State("login"), Direction: protocol.DirectionClientbound, ID: 3}:         protocol.RoleSetCompression,
-	{State: protocol.State("login"), Direction: protocol.DirectionServerbound, ID: 0}:         protocol.RoleLoginStart,
-	{State: protocol.State("login"), Direction: protocol.DirectionServerbound, ID: 1}:         protocol.RoleEncryptionResponse,
-	{State: protocol.State("login"), Direction: protocol.DirectionServerbound, ID: 3}:         protocol.RoleLoginAcknowledged,
-	{State: protocol.State("configuration"), Direction: protocol.DirectionClientbound, ID: 3}: protocol.RoleConfigurationFinished,
-	{State: protocol.State("configuration"), Direction: protocol.DirectionServerbound, ID: 3}: protocol.RoleConfigurationFinished,
+	{State: protocol.State("login"), Direction: protocol.DirectionClientbound, ID: 1}:          protocol.RoleEncryptionRequest,
+	{State: protocol.State("login"), Direction: protocol.DirectionClientbound, ID: 2}:          protocol.RoleLoginSuccess,
+	{State: protocol.State("login"), Direction: protocol.DirectionClientbound, ID: 3}:          protocol.RoleSetCompression,
+	{State: protocol.State("login"), Direction: protocol.DirectionServerbound, ID: 0}:          protocol.RoleLoginStart,
+	{State: protocol.State("login"), Direction: protocol.DirectionServerbound, ID: 1}:          protocol.RoleEncryptionResponse,
+	{State: protocol.State("login"), Direction: protocol.DirectionServerbound, ID: 3}:          protocol.RoleLoginAcknowledged,
+	{State: protocol.State("configuration"), Direction: protocol.DirectionClientbound, ID: 3}:  protocol.RoleConfigurationFinished,
+	{State: protocol.State("configuration"), Direction: protocol.DirectionClientbound, ID: 14}: protocol.RoleKnownPacks,
+	{State: protocol.State("configuration"), Direction: protocol.DirectionServerbound, ID: 3}:  protocol.RoleConfigurationFinished,
+	{State: protocol.State("configuration"), Direction: protocol.DirectionServerbound, ID: 7}:  protocol.RoleKnownPacks,
 }
 
 // LoginRole implements protocol.LoginRoles. The table is built once at

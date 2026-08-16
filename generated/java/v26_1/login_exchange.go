@@ -92,6 +92,18 @@ func (loginExchange) Answer(role protocol.LoginRole) (protocol.Packet, bool) {
 			State: StateLogin, Direction: protocol.DirectionServerbound,
 			ID: value.PacketID(), Value: value,
 		}, true
+	case protocol.RoleKnownPacks:
+		// An empty list is the honest answer, and the useful one. It says the
+		// client holds none of the packs the server offered, so the server
+		// sends every registry entry rather than assuming this client can
+		// fill the gaps from data it shipped with — which a headless client
+		// has no copy of.
+		value := &ConfigurationServerboundSelectKnownPacks{}
+
+		return protocol.Packet{
+			State: StateConfiguration, Direction: protocol.DirectionServerbound,
+			ID: value.PacketID(), Value: value,
+		}, true
 	case protocol.RoleConfigurationFinished:
 		value := &ConfigurationServerboundFinishConfiguration{}
 

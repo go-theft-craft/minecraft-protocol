@@ -230,6 +230,23 @@ func (n *Negotiator) Negotiate(ctx context.Context, stream *protocol.Stream) (Pr
 				return confirmed, nil
 			}
 
+		case protocol.RoleKnownPacks:
+			// A server stops here until it is answered: no registry data and
+			// no finish handshake arrive until the client states which packs
+			// it already holds. Ignoring it looks like a healthy connection
+			// that simply never reaches play, which is what a real 26.1
+			// server does to a driver that skips this step.
+			answer, has := exchange.Answer(protocol.RoleKnownPacks)
+			if !has {
+				return Profile{}, fmt.Errorf(
+					"%w: the protocol negotiates known packs but supplies no answer",
+					ErrUnexpectedLoginPacket,
+				)
+			}
+			if err := stream.Write(ctx, answer); err != nil {
+				return Profile{}, fmt.Errorf("write known packs: %w", err)
+			}
+
 		case protocol.RoleConfigurationFinished:
 			answer, has := exchange.Answer(protocol.RoleConfigurationFinished)
 			if !has {

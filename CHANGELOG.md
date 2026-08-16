@@ -23,7 +23,14 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 - `mcdata-gen -raw` and `-coverage`, and the `generate:v1_8`,
   `generate:v26_1`, `test:protodef`, and `check:live` tasks.
 - A codec-level differential suite against pinned Node ProtoDef, and an opt-in
-  live check against a real Java 26.1 server. The live check has not been run.
+  live check against a real Java 26.1 server. The check has been run against
+  Paper 26.1.2 build 74: the largest raw frame was 12,564 bytes and the largest
+  decoded body 32,316 bytes, against limits of 2 MiB and 8 MiB.
+- `protocol.RoleKnownPacks`, the data-pack negotiation a modern configuration
+  opens with. A 26.1 server sends no registry data and never finishes
+  configuration until the client answers it, so `login.Negotiator` answers it
+  with an empty pack list — which is also what makes the server send every
+  registry entry rather than assume the client shipped with a copy.
 - Java 1.8 physics constants: block slipperiness, the trigonometry table, and
   entity motion constants for the player, dropped item, and arrow families,
   reachable through `data.Set.Physics`.

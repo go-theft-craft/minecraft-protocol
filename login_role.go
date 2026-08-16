@@ -27,6 +27,14 @@ const (
 	// accept a login success, which is what moves a modern connection out of
 	// login. Protocol 47 has no such packet: success moves it directly.
 	RoleLoginAcknowledged LoginRole = "login_acknowledged"
+	// RoleKnownPacks tags both halves of the data-pack negotiation a modern
+	// configuration opens with: the server lists the packs it would send
+	// registry data for, and the client states which of them it already has.
+	//
+	// It is part of the sequence rather than content a caller may ignore,
+	// because a server sends no registry data and never finishes
+	// configuration until the answer arrives. Protocol 47 has no such step.
+	RoleKnownPacks LoginRole = "known_packs"
 	// RoleConfigurationFinished tags both halves of the handshake that ends
 	// configuration: the server states it is done, the client answers, and
 	// the answer is what moves both sides to play.

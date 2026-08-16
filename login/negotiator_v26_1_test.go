@@ -22,6 +22,7 @@ type modernScript struct {
 	compress         bool
 	disconnect       string
 	configurationRun bool
+	knownPacks       bool
 	stall            bool
 }
 
@@ -143,12 +144,49 @@ func serveModernLogin(t *testing.T, stream *protocol.Stream, script modernScript
 		}
 	}
 
+	if script.knownPacks && !serveModernKnownPacks(t, stream) {
+		return
+	}
+
 	if !writeModernPacket(t, stream, v26_1.StateConfiguration, &v26_1.ConfigurationClientboundFinishConfiguration{}) {
 		return
 	}
 	if _, err := stream.Read(ctx); err != nil {
 		return
 	}
+}
+
+// serveModernKnownPacks plays the pack negotiation the way a real server does
+// it: nothing else is sent until the client's answer arrives.
+//
+// A live 26.1 server stopped here against a negotiator that treated the offer
+// as configuration content to pass through, and the connection looked healthy
+// while never reaching play. The scripted server withholds the finish
+// handshake for the same reason, so the same omission fails here.
+func serveModernKnownPacks(t *testing.T, stream *protocol.Stream) bool {
+	t.Helper()
+
+	if !writeModernPacket(t, stream, v26_1.StateConfiguration, &v26_1.ConfigurationClientboundSelectKnownPacks{
+		Packs: []v26_1.ConfigurationClientboundSelectKnownPacksPacksItem{
+			{Namespace: "minecraft", ID: "core", Version: "26.1"},
+		},
+	}) {
+		return false
+	}
+
+	packet, err := stream.Read(t.Context())
+	if err != nil {
+		t.Errorf("read the known-packs answer: %v", err)
+
+		return false
+	}
+	if _, ok := packet.Value.(*v26_1.ConfigurationServerboundSelectKnownPacks); !ok {
+		t.Errorf("answered known packs with %T, want *v26_1.ConfigurationServerboundSelectKnownPacks", packet.Value)
+
+		return false
+	}
+
+	return true
 }
 
 func serveModernEncryption(t *testing.T, stream *protocol.Stream) bool {
@@ -219,6 +257,7 @@ func TestNegotiateReachesPlayOnProtocol775(t *testing.T) {
 		{name: "offline", script: modernScript{configurationRun: true}},
 		{name: "encrypted", script: modernScript{encrypt: true, configurationRun: true}},
 		{name: "compressed mid-login", script: modernScript{compress: true}},
+		{name: "known packs", script: modernScript{configurationRun: true, knownPacks: true}},
 	}
 
 	for _, test := range tests {
@@ -231,7 +270,14 @@ func TestNegotiateReachesPlayOnProtocol775(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewNegotiator: %v", err)
 			}
-			profile, err := negotiator.Negotiate(t.Context(), client)
+			// Bounded, because the failure this table guards against is a
+			// step the negotiator never answers: without a deadline the
+			// regression is a hang until the package timeout rather than a
+			// named failure on the subtest that caused it.
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+
+			profile, err := negotiator.Negotiate(ctx, client)
 			if err != nil {
 				t.Fatalf("Negotiate: %v", err)
 			}
