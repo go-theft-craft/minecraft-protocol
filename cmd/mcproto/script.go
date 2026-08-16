@@ -12,10 +12,22 @@ import (
 // scriptStep is one thing the recorded connection did.
 type scriptStep struct {
 	direction protocol.Direction
-	name      string
+	// state and id identify the packet. They are what a serverbound step is
+	// matched on, rather than the name: a packet record carries a name only
+	// when the session that recorded it had one, and an endpoint's own writes
+	// are frequently nameless.
+	state protocol.State
+	id    int32
+	name  string
 	// packet is present on clientbound steps: it is the server's packet,
 	// decoded from the recorded frame and ready to be written again.
 	packet protocol.Packet
+}
+
+// matches reports whether a packet from the live client is the one this step
+// is waiting for.
+func (s scriptStep) matches(packet protocol.Packet) bool {
+	return packet.State == s.state && packet.ID == s.id
 }
 
 // script walks a capture as a pair of instructions: what the server said, and
@@ -96,18 +108,22 @@ func (s *script) next() (scriptStep, error) {
 			continue
 		}
 
-		name, err := s.nameOf(record)
-		if err != nil {
-			return scriptStep{}, err
-		}
+		identity := s.identify(record)
 
 		if record.Direction != s.session.Inbound() {
-			// The client's half. The harness reads it live instead.
-			if name == "set_protocol" {
+			// The client's half. The harness reads it live instead. The
+			// handshake is skipped: the client has already sent its own, and
+			// waiting for a second one would wait forever.
+			if identity.state == handshakingState {
 				continue
 			}
 
-			return scriptStep{direction: record.Direction, name: name}, nil
+			return scriptStep{
+				direction: record.Direction,
+				state:     identity.state,
+				id:        identity.id,
+				name:      identity.name,
+			}, nil
 		}
 
 		packet, err := s.decode(record)
@@ -115,7 +131,13 @@ func (s *script) next() (scriptStep, error) {
 			return scriptStep{}, err
 		}
 
-		return scriptStep{direction: record.Direction, name: name, packet: packet}, nil
+		return scriptStep{
+			direction: record.Direction,
+			state:     identity.state,
+			id:        identity.id,
+			name:      identity.name,
+			packet:    packet,
+		}, nil
 	}
 }
 
@@ -132,24 +154,39 @@ func (s *script) nextRecord() (capturepkg.Record, error) {
 	return s.reader.Next()
 }
 
-// nameOf looks one record ahead for the packet record that names this frame.
-// A raw frame with no packet record after it is one the capturing session
-// could not decode, and it has no name to give.
-func (s *script) nameOf(raw capturepkg.Record) (string, error) {
+// packetIdentity is what the packet record beside a raw frame says about it.
+type packetIdentity struct {
+	state protocol.State
+	id    int32
+	name  string
+}
+
+// identify looks one record ahead for the packet record that describes this
+// frame. A raw frame with no packet record after it is one the capturing
+// session could not decode, and it describes itself only by the state it
+// arrived in.
+func (s *script) identify(raw capturepkg.Record) packetIdentity {
 	record, err := s.reader.Next()
 	if err != nil {
-		return "", nil //nolint:nilerr // the frame is still usable without a name
+		return packetIdentity{state: raw.State}
 	}
 	if record.Kind == capturepkg.KindPacket && record.Frame == raw.Frame {
 		s.alignTo(record.State)
 
-		return record.Name, nil
+		// A packet record's state is the one after its own transition, and a
+		// serverbound packet is matched against a client that has not sent it
+		// yet — so the state to match on is the one it was sent in.
+		return packetIdentity{state: record.BeforeState, id: record.PacketID, name: record.Name}
 	}
 
 	s.pending = &record
 
-	return "", nil
+	return packetIdentity{state: raw.State}
 }
+
+// handshakingState is the one state named here. Both protocols call it this,
+// and the handshake is the one packet a script must not wait for twice.
+const handshakingState = protocol.State("handshaking")
 
 // decode turns one recorded frame back into a packet.
 func (s *script) decode(record capturepkg.Record) (protocol.Packet, error) {
@@ -191,4 +228,14 @@ func (s *script) alignTo(state protocol.State) {
 		return
 	}
 	s.session.ApplyTransition(protocol.Transition{Control: protocol.StateControl{State: state}})
+}
+
+// describe names a step for a message, falling back to its ID when the
+// capture had no name for it.
+func (s scriptStep) describe() string {
+	if s.name != "" {
+		return string(s.state) + "/" + s.name
+	}
+
+	return fmt.Sprintf("%s/%#x", s.state, s.id)
 }

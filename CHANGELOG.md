@@ -67,7 +67,10 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 - `protocol.PacketFactory`, which builds an empty packet value for one identity
   so a tool can decode text into it.
 - `mcproto serve`, a verification harness that replays a captured server at a
-  real client and decodes everything the client sends back, and
+  real client and decodes everything the client sends back. A real Java 26.1
+  client was driven through it on 2026-08-16: 3,612 packets, none of which
+  failed to decode. The record is in
+  `docs/verification/2026-08-16-vanilla-client-check.md`. Also
   `mcproto capture --play-for`, which keeps reading after the login so a
   capture holds play traffic rather than stopping where play begins.
 - `mcproto version`, `packet`, `status`, `login`, `capture`, `inspect`, and

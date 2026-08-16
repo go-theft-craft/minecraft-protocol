@@ -8,7 +8,9 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	protocol "github.com/go-theft-craft/minecraft-protocol"
@@ -60,6 +62,7 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 	idle := flags.Duration("idle", 60*time.Second, "give up after this long with nothing from the client")
 	step := flags.Duration("step-timeout", 5*time.Second, "how long to wait at each point the script expects the client to speak")
 	keepListening := flags.Bool("keep-listening", false, "serve more than one client, until interrupted")
+	dryRun := flags.Bool("dry-run", false, "print what the script would send and wait for, then exit")
 
 	if err := parseFlags(flags, args, serveUsage); err != nil {
 		return err
@@ -79,6 +82,10 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 		return usagef("script names protocol %q, which this build does not speak", header.Protocol)
 	}
 
+	if *dryRun {
+		return describeScript(*script, descriptor, stdout)
+	}
+
 	listener, err := net.Listen("tcp", *address)
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", *address, err)
@@ -94,6 +101,7 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 		_ = listener.Close()
 	}()
 
+	var sessions int
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -104,7 +112,10 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 			return fmt.Errorf("accept: %w", err)
 		}
 
-		served, err := serveOne(ctx, conn, descriptor, *script, *output, *idle, *step, stdout, stderr)
+		sessions++
+		served, err := serveOne(
+			ctx, conn, descriptor, *script, outputFor(*output, sessions), *idle, *step, stdout, stderr,
+		)
 		_ = conn.Close()
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "mcproto: session ended: %v\n", err)
@@ -113,6 +124,60 @@ func runServe(ctx context.Context, args []string, stdout, stderr io.Writer) erro
 			return nil
 		}
 	}
+}
+
+// describeScript prints the script without serving it.
+//
+// A script is a recording of one connection being used to drive another, and
+// the two differ: what a script waits for is the question worth being able to
+// answer without a client in front of you.
+func describeScript(path string, descriptor protocol.Protocol, stdout io.Writer) error {
+	script, err := openScript(path, descriptor)
+	if err != nil {
+		return err
+	}
+	defer script.close()
+
+	var sent, awaited int
+	for {
+		instruction, err := script.next()
+		if errors.Is(err, capturepkg.ErrEndOfCapture) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if instruction.direction == protocol.DirectionClientbound {
+			sent++
+			_, _ = fmt.Fprintf(stdout, "send\t%s\n", instruction.describe())
+
+			continue
+		}
+		awaited++
+		_, _ = fmt.Fprintf(stdout, "await\t%s\n", instruction.describe())
+	}
+
+	_, _ = fmt.Fprintf(stdout, "total\tsend %d\tawait %d\n", sent, awaited)
+
+	return nil
+}
+
+// outputFor numbers a capture per session.
+//
+// A client pings the server list before it joins and again when it leaves, and
+// each of those is a session. One path for all of them means the recording of
+// the session somebody cared about is overwritten by the ping that followed
+// it — which is exactly what happened the first time this was used.
+func outputFor(path string, session int) string {
+	if path == "" || session <= 1 {
+		return path
+	}
+
+	extension := filepath.Ext(path)
+	stem := strings.TrimSuffix(path, extension)
+
+	return fmt.Sprintf("%s-%d%s", stem, session, extension)
 }
 
 func readScriptHeader(path string) (capturepkg.Header, error) {
@@ -312,16 +377,21 @@ func serveStatus(
 
 	// The ping that follows is echoed back unchanged. Reading it and writing
 	// it back is what makes the client show a latency rather than a question
-	// mark.
+	// mark. The reply is built rather than the request turned around: a
+	// packet carries the direction it was decoded for, and a serverbound
+	// value written clientbound is a different packet.
 	ping, err := stream.Read(ctx)
 	if err != nil {
 		// A client that closes after the response is normal: it has what it
 		// came for.
 		return nil
 	}
-	ping.Direction = protocol.DirectionClientbound
+	reply, ok := protocols.PingResponse(descriptor, ping)
+	if !ok {
+		return nil
+	}
 
-	return stream.Write(ctx, ping)
+	return stream.Write(ctx, reply)
 }
 
 // servePlayback walks the script, writing the server's half and reading the
@@ -362,40 +432,10 @@ func servePlayback(
 			continue
 		}
 
-		// The script says the client speaks here, so read one packet and see
-		// what this code makes of it.
-		//
-		// Waiting is bounded and running out is not fatal. A real client is
-		// not the client that was recorded: it sends its settings and its
-		// brand where the recorded one did not, and it may skip something the
-		// recorded one sent. Blocking forever on a packet nobody promised
-		// would turn a difference into a hang.
-		packet, err := readFromClient(ctx, stream, step)
-		if err != nil {
-			if ctx.Err() != nil {
-				return summary, err
-			}
-			if errors.Is(err, context.DeadlineExceeded) {
-				summary.mismatches = append(summary.mismatches, fmt.Sprintf(
-					"script expected %s and the client sent nothing", instruction.name,
-				))
-
-				continue
-			}
-			summary.failures = append(summary.failures, fmt.Sprintf("expected %s: %v", instruction.name, err))
-			_, _ = fmt.Fprintf(stderr, "mcproto: DECODE FAILURE: %v\n", err)
-
+		// The script says the client speaks here, so wait until it does.
+		if err := awaitFromClient(ctx, stream, instruction, step, &summary, stderr); err != nil {
 			return summary, err
 		}
-		summary.read++
-		summary.byName[packetLabel(packet)]++
-
-		if instruction.name != "" && packet.Name != instruction.name {
-			summary.mismatches = append(summary.mismatches, fmt.Sprintf(
-				"script expected %s, client sent %s", instruction.name, packetLabel(packet),
-			))
-		}
-		_, _ = fmt.Fprintf(stderr, "mcproto: client sent %s\n", packetLabel(packet))
 	}
 
 	// The script has run out. Everything the client keeps sending is still
@@ -413,6 +453,70 @@ func servePlayback(
 	drainClient(ctx, stream, idle, &summary, stderr)
 
 	return summary, nil
+}
+
+// awaitFromClient reads until the client sends the packet the script is
+// waiting for, decoding and counting everything that arrives on the way.
+//
+// It is not a strict pairing, and it must not be. A real client is not the
+// client that was recorded: a vanilla one sends its brand and its settings in
+// configuration where a headless one sends neither. Consuming those in the
+// slots reserved for the packets that actually advance the connection is what
+// left the session in configuration while the script moved on to play — the
+// packets arrived, and the harness was looking at the wrong ones.
+//
+// Waiting is bounded, and running out is a mismatch rather than a failure: the
+// script describes one connection and the client is having another.
+func awaitFromClient(
+	ctx context.Context,
+	stream *protocol.Stream,
+	want scriptStep,
+	step time.Duration,
+	summary *serveSummary,
+	stderr io.Writer,
+) error {
+	deadline := time.Now().Add(step)
+
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			summary.mismatches = append(summary.mismatches, fmt.Sprintf(
+				"script expected %s and the client did not send it", want.describe(),
+			))
+
+			return nil
+		}
+
+		packet, err := readFromClient(ctx, stream, remaining)
+		if err != nil {
+			if ctx.Err() != nil {
+				return err
+			}
+			if errors.Is(err, context.DeadlineExceeded) {
+				summary.mismatches = append(summary.mismatches, fmt.Sprintf(
+					"script expected %s and the client did not send it", want.describe(),
+				))
+
+				return nil
+			}
+			if isSessionEnd(ctx, err) {
+				return err
+			}
+
+			summary.failures = append(summary.failures, fmt.Sprintf("waiting for %s: %v", want.describe(), err))
+			_, _ = fmt.Fprintf(stderr, "mcproto: DECODE FAILURE: %v\n", err)
+
+			return err
+		}
+
+		summary.read++
+		summary.byName[packetLabel(packet)]++
+		_, _ = fmt.Fprintf(stderr, "mcproto: client sent %s\n", packetLabel(packet))
+
+		if want.matches(packet) {
+			return nil
+		}
+	}
 }
 
 func writeScripted(ctx context.Context, stream *protocol.Stream, step scriptStep, idle time.Duration) error {

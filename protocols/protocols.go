@@ -250,3 +250,26 @@ func clientbound(state protocol.State, id int32, name string, value any) protoco
 		Value:     value,
 	}
 }
+
+// PingResponse echoes a status ping back to a client.
+//
+// The client measures its latency from the round trip, so the value it sent
+// has to come back unchanged rather than be regenerated.
+func PingResponse(descriptor protocol.Protocol, packet protocol.Packet) (protocol.Packet, bool) {
+	switch value := packet.Value.(type) {
+	case *v1_8.StatusServerboundPing:
+		reply := &v1_8.StatusClientboundPing{Time: value.Time}
+
+		return clientbound(v1_8.StateStatus, reply.PacketID(), "ping", reply), true
+
+	case *v26_1.StatusServerboundPing:
+		reply := &v26_1.StatusClientboundPing{Time: value.Time}
+
+		return clientbound(v26_1.StateStatus, reply.PacketID(), "ping", reply), true
+
+	default:
+		_ = descriptor
+
+		return protocol.Packet{}, false
+	}
+}

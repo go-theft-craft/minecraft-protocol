@@ -332,3 +332,59 @@ func freeAddress(t *testing.T) string {
 
 	return address
 }
+
+// TestEachSessionGetsItsOwnCapture covers the way the first real run of this
+// harness lost its recording: a client pings the server list when it leaves,
+// that ping is another session, and one output path meant the ping overwrote
+// the session somebody had just spent ten minutes producing.
+func TestEachSessionGetsItsOwnCapture(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		path    string
+		session int
+		want    string
+	}{
+		{path: "", session: 1, want: ""},
+		{path: "", session: 4, want: ""},
+		{path: "session.mcpcap", session: 1, want: "session.mcpcap"},
+		{path: "session.mcpcap", session: 2, want: "session-2.mcpcap"},
+		{path: "/tmp/a/session.mcpcap", session: 3, want: "/tmp/a/session-3.mcpcap"},
+		{path: "noextension", session: 2, want: "noextension-2"},
+	}
+
+	for _, test := range cases {
+		if got := outputFor(test.path, test.session); got != test.want {
+			t.Errorf("outputFor(%q, %d) = %q, want %q", test.path, test.session, got, test.want)
+		}
+	}
+}
+
+// TestAScriptStepMatchesOnIdentityRatherThanName is the bug that dropped a
+// real client twice: a capture records a name only when the session that wrote
+// it had one, and an endpoint's own writes are nameless. Matching on the name
+// meant every nameless step matched whatever arrived first, so the client's
+// brand and settings were consumed in the slots waiting for the packets that
+// move a connection to play.
+func TestAScriptStepMatchesOnIdentityRatherThanName(t *testing.T) {
+	t.Parallel()
+
+	// A nameless step: the recorded client's known-packs answer.
+	step := scriptStep{state: protocol.State("configuration"), id: 0x07}
+
+	brand := protocol.Packet{State: protocol.State("configuration"), ID: 0x02, Name: "custom_payload"}
+	if step.matches(brand) {
+		t.Fatal("a nameless step matched a packet it was not waiting for")
+	}
+
+	answer := protocol.Packet{State: protocol.State("configuration"), ID: 0x07}
+	if !step.matches(answer) {
+		t.Fatal("the step did not match the packet it was waiting for")
+	}
+
+	// The same ID in another state is another packet.
+	elsewhere := protocol.Packet{State: protocol.State("play"), ID: 0x07}
+	if step.matches(elsewhere) {
+		t.Fatal("a step matched the same ID in a different state")
+	}
+}
