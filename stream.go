@@ -52,6 +52,9 @@ type Stream struct {
 	observations chan observationRecord
 	// observationsDone tells the dispatcher to drain and finish.
 	observationsDone chan struct{}
+	// readDone closes when the read pump stops, which after a half-close is
+	// how the stream learns the peer has finished with the connection.
+	readDone chan struct{}
 
 	// sequence and frameCounter are touched only by the coordinator.
 	sequence     uint64
@@ -75,6 +78,12 @@ type Stream struct {
 	processing chan struct{}
 
 	started atomic.Bool
+
+	// graceful records that a disconnect was sent, and lingering that the
+	// stream is waiting for the peer to finish reading it. While lingering, a
+	// read failure is the peer leaving rather than a fault.
+	graceful  atomic.Bool
+	lingering atomic.Bool
 
 	stopOnce sync.Once
 	stopping chan struct{}
@@ -179,6 +188,7 @@ func NewStream(session Session, transport Transport, options ...StreamOption) (*
 		snapshotRequests: make(chan chan Snapshot),
 		observations:     make(chan observationRecord, limits.QueueItems()),
 		observationsDone: make(chan struct{}),
+		readDone:         make(chan struct{}),
 	}
 	stream.processing <- struct{}{}
 

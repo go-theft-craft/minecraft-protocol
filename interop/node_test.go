@@ -153,6 +153,23 @@ func (r *runner) await(t *testing.T, name string) runnerEvent {
 				return event
 			}
 		case <-r.done:
+			// Exiting does not unsay what was already said. The runner
+			// reports an event and then ends, which leaves both cases ready
+			// at once, and a select picks between ready cases at random — so
+			// the queue is drained before the exit is treated as terminal.
+			select {
+			case event := <-r.lines:
+				if event.Event == "error" {
+					t.Fatalf("node runner failed: %s", event.Message)
+				}
+				if event.Event == name {
+					return event
+				}
+
+				continue
+			default:
+			}
+
 			r.mu.Lock()
 			transcript := append([]runnerEvent(nil), r.events...)
 			r.mu.Unlock()

@@ -114,6 +114,9 @@ func (s *Stream) run(ctx context.Context) {
 	close(s.observationsDone)
 	dispatcher.Wait()
 
+	// A polite disconnect is only polite if it arrives.
+	s.linger(ctx)
+
 	// Stopping unblocks the pumps. Their transport calls are unblocked by the
 	// interrupt function that stop invokes.
 	s.stop()
@@ -123,6 +126,8 @@ func (s *Stream) run(ctx context.Context) {
 // readPump turns transport bytes into complete frames. It owns the processing
 // slot from before framing until the coordinator takes the frame.
 func (s *Stream) readPump(ctx context.Context) {
+	defer close(s.readDone)
+
 	reader := s.conduit
 
 	claimed, err := runPreFrame(ctx, s.preFrame, s.conduit.PreFrameReader(), s.conduit)
@@ -173,6 +178,12 @@ func (s *Stream) reportReadFailure(err error) {
 	default:
 	}
 
+	// While lingering the stream has already said goodbye and is waiting for
+	// the peer to go. The peer going is the point, not a fault.
+	if s.lingering.Load() {
+		return
+	}
+
 	if errors.Is(err, io.EOF) {
 		s.fail(fmt.Errorf("peer closed the connection: %w", err))
 	} else {
@@ -199,6 +210,38 @@ func (s *Stream) writePump() {
 	}
 }
 
+// handOff gives an already-decoded packet to the reader on the way out.
+//
+// A decoded packet has already arrived: the peer sent it, this stream read it,
+// and dropping it because the connection ended a moment later loses precisely
+// the packet that explains the ending. A disconnect is the usual one — a peer
+// says why it is leaving and then leaves, and the leaving must not erase the
+// reason. Read drains what is queued before it reports termination, so a
+// packet that reaches the queue is still readable afterwards.
+//
+// Only a packet whose queue capacity was granted is delivered; handing over an
+// unreserved one would leave the budget short. The send never blocks, because
+// the reader may be gone too.
+func (s *Stream) handOff(pending *pendingInbound) {
+	if pending == nil {
+		return
+	}
+
+	select {
+	case <-pending.waiter.done():
+		if pending.waiter.failure() != nil {
+			return
+		}
+	default:
+		return
+	}
+
+	select {
+	case s.inboundPackets <- pending.item:
+	default:
+	}
+}
+
 // coordinate is the single goroutine that touches the session. Every decode,
 // encode, transition, and control happens here, in one order.
 func (s *Stream) coordinate(ctx context.Context) {
@@ -219,6 +262,8 @@ func (s *Stream) coordinate(ctx context.Context) {
 
 		select {
 		case <-s.stopping:
+			s.handOff(pending)
+
 			return
 
 		case frame := <-frames:
@@ -238,10 +283,24 @@ func (s *Stream) coordinate(ctx context.Context) {
 
 				return
 			}
+			// Delivery is attempted before the stop is noticed. Both
+			// channels are frequently ready at once, and a select picks
+			// between ready cases at random — which loses a packet that has
+			// already arrived, one time in two.
+			select {
+			case s.inboundPackets <- pending.item:
+				pending = nil
+
+				continue
+			default:
+			}
+
 			select {
 			case s.inboundPackets <- pending.item:
 				pending = nil
 			case <-s.stopping:
+				s.handOff(pending)
+
 				return
 			}
 
@@ -487,6 +546,7 @@ func (s *Stream) finishShutdown(ctx context.Context, request *shutdownRequest) {
 	if err != nil {
 		s.fail(err)
 	} else {
+		s.graceful.Store(true)
 		s.succeed()
 	}
 
