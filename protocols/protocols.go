@@ -13,6 +13,8 @@
 package protocols
 
 import (
+	"fmt"
+
 	protocol "github.com/go-theft-craft/minecraft-protocol"
 	v1_8 "github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8"
 	v26_1 "github.com/go-theft-craft/minecraft-protocol/generated/java/v26_1"
@@ -50,3 +52,54 @@ func Resolve(id string) (protocol.Protocol, bool) {
 // states no version, and it changes when a newer version is added — which is
 // why nothing that must keep working across releases should rely on it.
 func Default() protocol.Protocol { return v26_1.Protocol() }
+
+// Handshake builds the packet that opens a connection.
+//
+// It lives here because it is the one packet a version-neutral tool must build
+// itself: the handshake is what selects the state where per-version exchanges
+// take over, so nothing else can have built it yet. This package already knows
+// every version, so it can do it with the generated types rather than by
+// reflecting over field names that happen to match.
+func Handshake(
+	descriptor protocol.Protocol,
+	host string,
+	port uint16,
+	nextState int32,
+) (protocol.Packet, error) {
+	switch descriptor.ID() {
+	case v1_8.Protocol().ID():
+		value := &v1_8.HandshakingServerboundSetProtocol{
+			ProtocolVersion: descriptor.Version().Protocol,
+			ServerHost:      host,
+			ServerPort:      port,
+			NextState:       nextState,
+		}
+
+		return protocol.Packet{
+			State:     v1_8.StateHandshaking,
+			Direction: protocol.DirectionServerbound,
+			ID:        value.PacketID(),
+			Name:      "set_protocol",
+			Value:     value,
+		}, nil
+
+	case v26_1.Protocol().ID():
+		value := &v26_1.HandshakingServerboundSetProtocol{
+			ProtocolVersion: descriptor.Version().Protocol,
+			ServerHost:      host,
+			ServerPort:      port,
+			NextState:       nextState,
+		}
+
+		return protocol.Packet{
+			State:     v26_1.StateHandshaking,
+			Direction: protocol.DirectionServerbound,
+			ID:        value.PacketID(),
+			Name:      "set_protocol",
+			Value:     value,
+		}, nil
+
+	default:
+		return protocol.Packet{}, fmt.Errorf("no handshake known for protocol %q", descriptor.ID())
+	}
+}

@@ -9,10 +9,21 @@ import (
 	"testing"
 )
 
-// capture runs the CLI with args, returning its exit code, stdout, and stderr.
+// runCLI runs the CLI with args, returning its exit code, stdout, and stderr.
 // It drives the same entry point main does, so exit codes are covered rather
 // than inferred.
-func capture(t *testing.T, args ...string) (int, string, string) {
+//
+// It is not called "capture": that is the name of a package this command
+// imports, and a package-level identifier may not shadow one.
+func runCLI(t *testing.T, args ...string) (int, string, string) {
+	t.Helper()
+
+	return runCLIWithInput(t, "", args...)
+}
+
+// runCLIWithInput is runCLI with something on stdin, for the commands that
+// read a packet body or a JSON object from a pipe.
+func runCLIWithInput(t *testing.T, stdin string, args ...string) (int, string, string) {
 	t.Helper()
 
 	dir := t.TempDir()
@@ -25,7 +36,7 @@ func capture(t *testing.T, args ...string) (int, string, string) {
 		t.Fatal(err)
 	}
 
-	code := run(context.Background(), args, outFile, errFile)
+	code := run(context.Background(), args, strings.NewReader(stdin), outFile, errFile)
 
 	if err := outFile.Close(); err != nil {
 		t.Fatal(err)
@@ -47,7 +58,7 @@ func capture(t *testing.T, args ...string) (int, string, string) {
 }
 
 func TestHelpSucceedsOnStdout(t *testing.T) {
-	code, stdout, _ := capture(t, "--help")
+	code, stdout, _ := runCLI(t, "--help")
 	if code != exitSuccess {
 		t.Errorf("exit = %d, want %d", code, exitSuccess)
 	}
@@ -55,7 +66,7 @@ func TestHelpSucceedsOnStdout(t *testing.T) {
 		t.Errorf("stdout = %q, want the root usage", stdout)
 	}
 
-	code, stdout, _ = capture(t, "data", "--help")
+	code, stdout, _ = runCLI(t, "data", "--help")
 	if code != exitSuccess {
 		t.Errorf("data --help exit = %d, want %d", code, exitSuccess)
 	}
@@ -80,7 +91,7 @@ func TestUsageErrorsExitTwo(t *testing.T) {
 
 	for _, args := range cases {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			code, _, stderr := capture(t, args...)
+			code, _, stderr := runCLI(t, args...)
 			if code != exitUsage {
 				t.Errorf("exit = %d, want %d (stderr: %s)", code, exitUsage, stderr)
 			}
@@ -89,7 +100,7 @@ func TestUsageErrorsExitTwo(t *testing.T) {
 }
 
 func TestValidateFailureExitsOne(t *testing.T) {
-	code, _, stderr := capture(t, "data", "validate", "--source", filepath.Join(t.TempDir(), "absent"))
+	code, _, stderr := runCLI(t, "data", "validate", "--source", filepath.Join(t.TempDir(), "absent"))
 	if code != exitFailure {
 		t.Errorf("exit = %d, want %d", code, exitFailure)
 	}
@@ -99,7 +110,7 @@ func TestValidateFailureExitsOne(t *testing.T) {
 }
 
 func TestValidateReportsTheCheckedInTree(t *testing.T) {
-	code, stdout, stderr := capture(t, "data", "validate", "--source", "../../source/java/1.8", "--format", "json")
+	code, stdout, stderr := runCLI(t, "data", "validate", "--source", "../../source/java/1.8", "--format", "json")
 	if code != exitSuccess {
 		t.Fatalf("exit = %d, want %d (stderr: %s)", code, exitSuccess, stderr)
 	}
@@ -143,7 +154,7 @@ func TestValidateRejectsATamperedTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	code, _, stderr := capture(t, "data", "validate", "--source", source)
+	code, _, stderr := runCLI(t, "data", "validate", "--source", source)
 	if code != exitFailure {
 		t.Errorf("exit = %d, want %d", code, exitFailure)
 	}

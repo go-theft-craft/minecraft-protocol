@@ -491,6 +491,18 @@ func (protocolDescriptor) PacketName(state protocol.State, direction protocol.Di
 
 var _ protocol.PacketDescriptor = protocolDescriptor{}
 
+// NewPacketValue implements protocol.PacketFactory.
+func (protocolDescriptor) NewPacketValue(state protocol.State, direction protocol.Direction, id int32) (any, bool) {
+	value, known := newPacket(state, direction, id)
+	if !known {
+		return nil, false
+	}
+
+	return value, true
+}
+
+var _ protocol.PacketFactory = protocolDescriptor{}
+
 // LoginRole implements protocol.LoginRoles. The table is built once at
 // package initialization, so a lookup allocates nothing.
 func (*protocolSession) LoginRole(state protocol.State, direction protocol.Direction, id int32) (protocol.LoginRole, bool) {

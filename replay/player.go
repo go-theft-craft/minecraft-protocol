@@ -376,6 +376,17 @@ func (p *Player) apply(ctx context.Context, record capture.Record) error {
 // compression envelope has already been stripped from would be decoding
 // something that never crossed the wire.
 func (p *Player) decode(record capture.Record) error {
+	p.prime(record)
+
+	// A packet record carries the state after its own transition, and it is
+	// the capture's authoritative statement about where the connection went.
+	// A raw record is stamped before the transition commits, so it says where
+	// the connection was, not where the packet took it.
+	if record.Kind == capture.KindPacket {
+		p.reconcile(record)
+
+		return nil
+	}
 	if record.Kind != capture.KindRawFrame {
 		return nil
 	}
@@ -385,7 +396,14 @@ func (p *Player) decode(record capture.Record) error {
 		return nil
 	}
 
-	p.prime(record)
+	// A capture holds both directions, and a session decodes only its own
+	// inbound one. The other direction's frames are the recording endpoint's
+	// own writes: this session cannot decode them, and it does not need to,
+	// because their packet records still carry where they took the
+	// connection.
+	if record.Direction != p.session.Inbound() {
+		return nil
+	}
 
 	frame, err := p.session.Framer().ReadFrame(bytes.NewReader(record.Payload))
 	if err != nil {
@@ -407,8 +425,7 @@ func (p *Player) decode(record capture.Record) error {
 // started against a connection already in play, begins wherever it begins, and
 // a replay that insisted on starting at handshaking would fail to decode its
 // first frame. Only the first record primes: after that the recorded
-// transitions carry the session, and forcing a state per record would hide
-// exactly the divergence this replay exists to find.
+// transitions carry the session.
 func (p *Player) prime(record capture.Record) {
 	if p.primed {
 		return
@@ -423,39 +440,59 @@ func (p *Player) prime(record capture.Record) {
 	})
 }
 
-// follow applies the transition this packet implies and reports where the
-// session disagreed with the capture.
+// follow applies the transition the decoded packet implies.
 //
-// The session's own proposal is applied rather than the recorded state alone,
+// The session's own proposal is applied rather than the recorded state,
 // because a state is not the whole of a transition: compression is installed
 // by one, and a replay that ignored it would fail to read the very next frame.
-// Where the resulting state differs from the recorded one, the capture wins
-// and the disagreement is reported.
+// Where it disagrees with the capture, reconcile says so and the capture wins.
 func (p *Player) follow(record capture.Record, packet protocol.Packet) error {
 	transition, proposed, err := p.session.ProposeTransition(packet)
 	if err != nil {
 		return fmt.Errorf("%w: sequence %d: transition: %w", ErrReplayFailed, record.Sequence, err)
 	}
-	if proposed {
-		if err := p.session.ValidateTransition(transition); err != nil {
-			return fmt.Errorf("%w: sequence %d: transition: %w", ErrReplayFailed, record.Sequence, err)
-		}
-		p.session.ApplyTransition(transition)
-	}
-
-	if record.State == "" {
+	if !proposed {
 		return nil
 	}
-	if current := p.session.Snapshot().State; current != record.State {
+	if err := p.session.ValidateTransition(transition); err != nil {
+		return fmt.Errorf("%w: sequence %d: transition: %w", ErrReplayFailed, record.Sequence, err)
+	}
+	p.session.ApplyTransition(transition)
+
+	return nil
+}
+
+// reconcile compares where the session now thinks the connection is against
+// where the capture recorded it, and takes the capture's answer.
+//
+// The disagreement is the regression signal this destination exists to
+// produce: a codec change that moves a connection somewhere else shows up here
+// as a named divergence rather than as a decode failure several packets later.
+// The capture wins because it is the recording of what really happened.
+func (p *Player) reconcile(record capture.Record) {
+	if record.State == "" {
+		return
+	}
+
+	current := p.session.Snapshot().State
+	if current == record.State {
+		return
+	}
+
+	// Only a packet this session could decode can have diverged. For the
+	// other direction the session was never asked, so following the capture
+	// is bookkeeping rather than a disagreement.
+	if record.Direction == p.session.Inbound() {
 		p.diverged = append(p.diverged, Divergence{
 			Sequence: record.Sequence,
 			Recorded: record.State,
 			Proposed: current,
 		})
-		p.session.ApplyTransition(protocol.Transition{Control: protocol.StateControl{State: record.State}})
 	}
 
-	return nil
+	p.session.ApplyTransition(protocol.Transition{
+		Control: protocol.StateControl{State: record.State},
+	})
 }
 
 // send writes one recorded frame to the peer.

@@ -80,6 +80,18 @@ tasks:
     cmds:
       - go test -tags livecheck -count=1 -v ./livecheck
 
+  test:cli:
+    desc: Run the black-box mcproto command tests
+    deps: [deps]
+    cmds:
+      - go test -race -count=1 ./cmd/mcproto
+
+  test:fuzz:
+    desc: Smoke the capture reader fuzz target
+    deps: [deps]
+    cmds:
+      - go test -run FuzzCaptureReader -fuzz FuzzCaptureReader -fuzztime 30s ./capture
+
   vuln:
     desc: Check dependencies for known vulnerabilities
     deps: [deps]

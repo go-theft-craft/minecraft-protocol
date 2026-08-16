@@ -63,6 +63,18 @@ type Protocol interface {
 	NewSession(Role, Limits) (Session, error)
 }
 
+// PacketFactory builds an empty value for one packet identity.
+//
+// It exists for tools that turn text into packets — a command that encodes a
+// JSON body, a fixture generator — which need a typed value to decode into
+// before a session can encode it. A session builds these too, but only while
+// decoding a frame, and a tool with no connection has no frame.
+type PacketFactory interface {
+	// NewPacketValue returns a zero value of the packet's generated type. It
+	// reports false for an identity the protocol does not define.
+	NewPacketValue(state State, direction Direction, id int32) (any, bool)
+}
+
 // PacketDescriptor resolves packet names and IDs for one protocol, without
 // creating a session and without loading game data.
 //
