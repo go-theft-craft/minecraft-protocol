@@ -52,8 +52,11 @@ Status: complete, except for verification against a live server.
 - Kept every dataset as the bytes upstream published, reachable through
   `v26_1.Raw()`.
 - Verified the codecs against pinned Node ProtoDef in both directions.
-- The opt-in live check against a real 26.1 server exists and has not been
-  run, so the resource limits still stand on the specification alone.
+- Ran the opt-in live check against Paper 26.1.2 build 74. It found that the
+  negotiator never answered `select_known_packs`, which stalls a real login in
+  configuration; that is fixed. The resource limits now stand on traffic
+  through login: 12,564 bytes largest raw frame against a 2 MiB limit, 32,316
+  bytes largest decoded body against 8 MiB. Play is not measured.
 
 ## P3a: managed stream and compression
 
