@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 )
 
 // ObservationStage names the point in the pipeline that produced a record.
@@ -16,6 +17,14 @@ const (
 	// ObservationPacket is recorded after decoding and after the packet's own
 	// transition has been committed.
 	ObservationPacket ObservationStage = "packet"
+	// ObservationRejected is recorded when a write the stream accepted never
+	// reached the transport. It is the one stage that describes the consumer
+	// rather than the connection: nothing crossed the wire, so a replay skips
+	// it and a digest excludes it.
+	//
+	// A write abandoned before it reached the coordinator produces no record,
+	// because nothing in the stream ever saw it.
+	ObservationRejected ObservationStage = "rejected"
 	// ObservationSecret is recorded when secret material is installed on the
 	// conduit. It carries the key only under WithSecretDisclosure; otherwise
 	// it marks the switch point and nothing more, so a capture always shows
@@ -43,6 +52,11 @@ type Observation struct {
 	Frame     uint64
 	Direction Direction
 	Stage     ObservationStage
+	// Elapsed is how long after the stream started this record was taken. It
+	// is stamped where the record is made rather than where it is delivered,
+	// so a sink that falls behind cannot rewrite the timing of a connection
+	// it was only watching.
+	Elapsed time.Duration
 	// Before and After are the session snapshots either side of this record's
 	// commit point. They are equal when the record changed nothing.
 	Before Snapshot
@@ -69,6 +83,19 @@ type Observation struct {
 	// Secret is present on ObservationSecret records and names the kind of
 	// material the record describes.
 	Secret *SecretMetadata
+	// Rejected is present on ObservationRejected records and says why the
+	// write stopped.
+	Rejected *RejectionMetadata
+}
+
+// RejectionMetadata says why a write never reached the transport.
+//
+// The reason is text rather than an error, because an observation is a record
+// rather than a control path: a sink writes it to a file or a log, and a
+// caller that needs to act on the failure already has the error returned from
+// Write.
+type RejectionMetadata struct {
+	Reason string
 }
 
 // SecretMetadata names the kind of secret material a record carries. A capture
@@ -118,6 +145,7 @@ type observationInput struct {
 	after     Snapshot
 	packet    *PacketMetadata
 	secret    *SecretMetadata
+	rejected  *RejectionMetadata
 	payload   []byte
 	redacted  bool
 }
@@ -128,6 +156,10 @@ func (s *Stream) observe(input observationInput) error {
 	if s.sink == nil {
 		return nil
 	}
+
+	// Stamped before the budget is charged. Charging can block on a slow
+	// sink, and a timestamp taken after it would describe the consumer.
+	elapsed := time.Since(s.start)
 
 	body := input.payload
 	if input.redacted {
@@ -143,12 +175,14 @@ func (s *Stream) observe(input observationInput) error {
 		observation: Observation{
 			Sequence:  s.sequence,
 			Frame:     input.frame,
+			Elapsed:   elapsed,
 			Direction: input.direction,
 			Stage:     input.stage,
 			Before:    input.before.Clone(),
 			After:     input.after.Clone(),
 			Packet:    input.packet,
 			Secret:    input.secret,
+			Rejected:  input.rejected,
 			// Owned bytes: a borrowed frame view would change under the
 			// observer as soon as the stream reuses the buffer.
 			Bytes:       bytes.Clone(body),

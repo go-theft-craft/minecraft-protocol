@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 )
 
 // recordingSink keeps every observation it receives.
@@ -535,5 +536,113 @@ func TestSecretDisclosureRequiresAReason(t *testing.T) {
 
 	if _, err := newTestStreamOrError(t, WithSecretDisclosure("")); !errors.Is(err, ErrInvalidStream) {
 		t.Fatalf("error = %v, want ErrInvalidStream", err)
+	}
+}
+
+func TestObservationElapsedIncreasesMonotonically(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, WithObservationSink(sink))
+
+	for id := byte(1); id <= 3; id++ {
+		harness.reader.deliver(testFrameBytes(id, id))
+		readWithTimeout(t, harness.stream)
+	}
+	records := sink.waitFor(t, 6)
+
+	if records[0].Elapsed < 0 {
+		t.Fatalf("the first record's Elapsed is %v, want a non-negative duration", records[0].Elapsed)
+	}
+	if records[0].Elapsed > time.Minute {
+		t.Fatalf("the first record's Elapsed is %v, want it measured from the stream's start", records[0].Elapsed)
+	}
+	for index := 1; index < len(records); index++ {
+		if records[index].Elapsed < records[index-1].Elapsed {
+			t.Fatalf(
+				"record %d has Elapsed %v, before record %d's %v",
+				index, records[index].Elapsed, index-1, records[index-1].Elapsed,
+			)
+		}
+	}
+}
+
+// TestObservationElapsedMeasuresTheStreamNotTheSink is the reason the stamp is
+// taken before the record queues. A sink that falls behind describes the
+// consumer, and a capture that folded the consumer's delay into its timing
+// would replay a connection that never happened.
+func TestObservationElapsedMeasuresTheStreamNotTheSink(t *testing.T) {
+	t.Parallel()
+
+	const stall = 200 * time.Millisecond
+
+	sink := newRecordingSink()
+	blocker := make(chan struct{})
+	sink.mu.Lock()
+	sink.block = blocker
+	sink.mu.Unlock()
+
+	harness := startRuntime(t, 64, WithObservationSink(sink))
+
+	harness.reader.deliver(testFrameBytes(1, 0x01))
+	readWithTimeout(t, harness.stream)
+	harness.reader.deliver(testFrameBytes(2, 0x02))
+	readWithTimeout(t, harness.stream)
+
+	time.Sleep(stall)
+	close(blocker)
+
+	records := sink.waitFor(t, 4)
+	for _, record := range records {
+		if record.Elapsed >= stall {
+			t.Fatalf(
+				"record %d has Elapsed %v, want the frame's own time rather than the sink's delay",
+				record.Sequence, record.Elapsed,
+			)
+		}
+	}
+}
+
+func TestARejectedWriteIsObserved(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, WithObservationSink(sink))
+
+	refusal := errors.New("nothing to encode")
+	harness.session.setEncodeErr(refusal)
+
+	if err := harness.stream.Write(context.Background(), Packet{ID: 5, Payload: []byte{0x01}}); !errors.Is(err, refusal) {
+		t.Fatalf("Write() error = %v, want the encode failure", err)
+	}
+
+	records := sink.waitFor(t, 1)
+	record := findRecord(t, records, ObservationRejected)
+
+	if record.Packet == nil || record.Packet.ID != 5 {
+		t.Fatalf("rejected record describes %+v, want the packet that was refused", record.Packet)
+	}
+	if record.Rejected == nil || record.Rejected.Reason == "" {
+		t.Fatal("a rejected record must say why the write never reached the transport")
+	}
+	if len(record.Bytes) != 0 {
+		t.Fatal("a rejected record carries no bytes: nothing was framed")
+	}
+}
+
+func TestASuccessfulWriteIsNotObservedAsRejected(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	harness := startRuntime(t, 8, WithObservationSink(sink))
+
+	if err := harness.stream.Write(context.Background(), Packet{ID: 5, Payload: []byte{0x01}}); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	for _, record := range sink.waitFor(t, 2) {
+		if record.Stage == ObservationRejected {
+			t.Fatal("a write that reached the transport was recorded as rejected")
+		}
 	}
 }

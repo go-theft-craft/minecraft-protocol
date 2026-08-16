@@ -35,6 +35,18 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   live check against a real Java 26.1 server. The check has been run against
   Paper 26.1.2 build 74: the largest raw frame was 12,564 bytes and the largest
   decoded body 32,316 bytes, against limits of 2 MiB and 8 MiB.
+- `protocol.Observation.Elapsed`, stamped where the record is made rather than
+  where it is delivered, so a sink that falls behind cannot rewrite the timing
+  of the connection it was watching.
+- `protocol.ObservationRejected`, the stage for a write the stream accepted and
+  then refused before any byte left the process. It is the one stage that
+  describes the consumer rather than the connection.
+- `protocol.PacketDescriptor`, which resolves packet names and IDs for a
+  protocol without creating a session or loading game data. The generated
+  descriptors implement it.
+- `middleware` and `router`: ordered send and receive chains, and a dispatch
+  table registered by packet name or ID. Neither imports the stream — the one
+  file that names it is `router/adapter.go`.
 - `protocol.Observation.OriginalLen`, the size a record describes whether or
   not it carries the bytes, so a redacted record can state what it withheld.
 - `protocol.RoleKnownPacks`, the data-pack negotiation a modern configuration

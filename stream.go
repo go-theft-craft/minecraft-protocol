@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Stream is an asynchronous managed connection. It owns one transport and one
@@ -55,6 +56,10 @@ type Stream struct {
 	// sequence and frameCounter are touched only by the coordinator.
 	sequence     uint64
 	frameCounter uint64
+	// start is when the stream began running, and is the origin every
+	// observation's Elapsed is measured from. It is set once, before any
+	// goroutine that reads it exists.
+	start time.Time
 
 	closing        atomic.Bool
 	shutdownOnce   sync.Once
@@ -237,6 +242,7 @@ func (s *Stream) Start(ctx context.Context) error {
 		return ErrStreamClosed
 	}
 
+	s.start = time.Now()
 	go s.supervise(ctx)
 
 	return nil

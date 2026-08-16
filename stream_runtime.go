@@ -352,6 +352,7 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 	payload, err := s.session.EncodeFrame(request.packet)
 	if err != nil {
 		// Nothing reached the transport, so the stream keeps running.
+		s.observeRejected(before, request.packet, err)
 		request.finish(err)
 
 		return true
@@ -362,6 +363,7 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 	// with after the bytes are already gone.
 	decision, err := s.resolveTransition(ctx, request.packet, false, before)
 	if err != nil {
+		s.observeRejected(before, request.packet, err)
 		request.finish(err)
 
 		return true
@@ -369,6 +371,7 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 
 	frame, err := s.framer.BuildFrame(payload)
 	if err != nil {
+		s.observeRejected(before, request.packet, err)
 		request.finish(err)
 
 		return true
@@ -376,6 +379,8 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 
 	if !request.begin() {
 		// The caller cancelled before any byte left the process.
+		s.observeRejected(before, request.packet, context.Canceled)
+
 		return true
 	}
 
@@ -417,6 +422,28 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 
 		return false
 	}
+}
+
+// observeRejected records a write the stream accepted and then refused.
+//
+// Without it a rejected write leaves no trace at all: observeOutbound runs
+// only after the transport has taken the frame, so a consumer looking for a
+// packet that never appeared would find a capture that simply does not
+// mention it.
+//
+// A failure to record is not reported. The write already failed, the caller
+// already has that error, and replacing it with a bookkeeping error would hide
+// the reason the packet did not go out.
+func (s *Stream) observeRejected(before Snapshot, packet Packet, reason error) {
+	_ = s.observe(observationInput{
+		direction: s.session.Outbound(),
+		stage:     ObservationRejected,
+		frame:     s.frameCounter,
+		before:    before,
+		after:     before,
+		packet:    packetMetadata(packet),
+		rejected:  &RejectionMetadata{Reason: reason.Error()},
+	})
 }
 
 // observeOutbound records one written frame and its packet.
