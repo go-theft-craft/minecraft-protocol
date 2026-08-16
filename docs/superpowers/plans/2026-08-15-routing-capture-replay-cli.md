@@ -8,6 +8,13 @@
 
 **Tech Stack:** Go 1.26.5, Devbox, Task, standard library only (`hash/crc32`, `encoding/binary`, `encoding/json`, `bufio`, `flag`, `time`).
 
+## Status: complete
+
+Every task landed, and the command set was verified end to end against a real
+Paper 26.1.2 server: capture a login, inspect it, replay it, compare the
+digest. Six things this milestone found or decided differently from the plan
+above are recorded in `../../../../headless-minecraft/MASTER_PLAN.md` under M5.
+
 ## Global Constraints
 
 - Work in `/home/ocharnyshevich/pet.projects/go-theft-craft/minecraft-protocol`.
@@ -85,7 +92,7 @@ earlier if the milestone order changes; tasks 7 onward cannot.
 **Interfaces:**
 - Produces: `Sender`, `Handler`, `SenderFunc`, `HandlerFunc`, `SendMiddleware`, `ReceiveMiddleware`, `ChainSend(Sender, ...SendMiddleware) Sender`, `ChainReceive(Handler, ...ReceiveMiddleware) Handler`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Cover: three middlewares nest in declaration order, so the first declared is the
 outermost and observes the others' effects; an empty chain returns the base
@@ -102,17 +109,17 @@ type SendMiddleware func(Sender) Sender
 type ReceiveMiddleware func(Handler) Handler
 ```
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./middleware`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Build chains by folding right to left. Document the ownership rule at the top of
 the file: a middleware receives a packet whose payload it may read and must not
 retain, and must clone before mutating.
 
-- [ ] **Step 4: Commit** as `feat(middleware): add ordered send and receive chains`.
+- [x] **Step 4: Commit** as `feat(middleware): add ordered send and receive chains`.
 
 ### Task 2: The router
 
@@ -122,7 +129,7 @@ retain, and must clone before mutating.
 **Interfaces:**
 - Produces: `New(protocol.Protocol, ...Option) (*Router, error)`, `(*Router).Handle(state protocol.State, direction protocol.Direction, name string, h middleware.Handler) error`, `(*Router).HandleID(...)`, `(*Router).Fallback(h)`, `(*Router).Run(ctx context.Context, r Receiver) error`, `router.FromStream(*protocol.Stream)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Drive the router over a fake receiver backed by a slice, never a real stream.
 Cover: two handlers on one key run in registration order; a handler error stops
@@ -134,11 +141,11 @@ after `Run` starts is an error; `Run` returns `ctx.Err()` on cancellation and
 `nil` on a clean receiver EOF; dispatch does not allocate a map entry per
 packet.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./router`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Resolve names to IDs at registration through the protocol descriptor, and key
 the table on the `(State, Direction, ID)` triple. `Run` loops on `Receive`,
@@ -147,13 +154,13 @@ looks up, and calls handlers in order.
 Do not recover handler panics. Add the reason as a doc comment: a panic is a bug
 in the handler, and hiding it behind a stream shutdown makes it harder to find.
 
-- [ ] **Step 4: Prove independence**
+- [x] **Step 4: Prove independence**
 
 Add a test asserting that `router` compiles against a receiver that is not a
 `Stream`, and grep the package for stream imports:
 `! grep -rn '\*protocol\.Stream' router/*.go` outside `adapter.go`.
 
-- [ ] **Step 5: Run and commit**
+- [x] **Step 5: Run and commit**
 
 `devbox run -- task test:race -- ./router ./middleware`, then commit as
 `feat(router): dispatch packets in registration order`.
@@ -171,21 +178,21 @@ Add a test asserting that `router` compiles against a receiver that is not a
 **Interfaces:**
 - Produces: `Observation.Elapsed time.Duration`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `Elapsed` increases monotonically across records; the first record's `Elapsed`
 is non-negative and small; a sink that blocks for 200ms does not inflate the
 next record's `Elapsed` beyond the real inter-frame interval.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Store the start instant when the stream starts and stamp `time.Since(start)` in
 `observe`, at the same point the sequence is assigned. One field, one call, no
 new goroutine.
 
-- [ ] **Step 4: Commit** as `feat(protocol): stamp observations with elapsed time`.
+- [x] **Step 4: Commit** as `feat(protocol): stamp observations with elapsed time`.
 
 ### Task 4: The capture format
 
@@ -195,7 +202,7 @@ new goroutine.
 **Interfaces:**
 - Produces: `Header`, `Record`, `Kind`, `NewWriter(io.Writer, Header, ...WriterOption) (*Writer, error)`, `(*Writer).Observe(context.Context, protocol.Observation) error`, `(*Writer).Close() error`, `NewReader(io.Reader) (*Reader, error)`, `(*Reader).Next() (Record, error)`, `ErrTruncated`, `ErrCorruptRecord`, `ErrUndisclosedSecret`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Cover, one test each:
 
@@ -220,30 +227,30 @@ Cover, one test each:
 - the trailer's record count and last sequence match, and a reader that reaches
   the trailer reports the capture as complete.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./capture`.
 
-- [ ] **Step 3: Implement the writer**
+- [x] **Step 3: Implement the writer**
 
 Streaming only: no record is buffered beyond the one being written, and the
 string table is emitted inline the first time a string is used. Compute CRC over
 the record body as it is assembled. Refuse a record larger than the header's
 declared limits.
 
-- [ ] **Step 4: Implement the reader**
+- [x] **Step 4: Implement the reader**
 
 `Next` reads a length, bounds it against the header limits before allocating,
 reads the body, verifies the CRC, and resolves string references against the
 table built so far. A short read at a record boundary is a clean end; a short
 read inside a record is `ErrTruncated` carrying the last good sequence.
 
-- [ ] **Step 5: Add a fuzz target**
+- [x] **Step 5: Add a fuzz target**
 
 `FuzzCaptureReader` seeded with a valid capture. It must return errors rather
 than panic and must not allocate beyond the header's limits.
 
-- [ ] **Step 6: Run and commit**
+- [x] **Step 6: Run and commit**
 
 `devbox run -- task test -- ./capture` and the fuzz smoke target. Commit as
 `feat(capture): add the versioned capture format`.
@@ -256,7 +263,7 @@ than panic and must not allocate beyond the header's limits.
 **Interfaces:**
 - Produces: `NewFileSink(path string, h Header, ...FileOption) (*FileSink, error)`, `WithFlushInterval(time.Duration)`, `WithFlushBytes(int)`, `(*FileSink).Close() error`, `MultiSink(...protocol.ObservationSink) protocol.ObservationSink`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Cover: the sink creates the file with `0o600`; it refuses to overwrite an
 existing file unless told to; it flushes on the byte threshold; `Close` flushes,
@@ -265,15 +272,15 @@ to its last complete record; `MultiSink` calls sinks in order and the first
 error propagates, terminating the stream per the M1 contract; a nil sink in the
 list is a construction error.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 A `bufio.Writer` over the file, flushed on a size threshold and on an interval
 driven by the calling goroutine's clock check — not by a background timer, which
 would need its own synchronisation for no benefit. `Close` is idempotent.
 
-- [ ] **Step 4: Commit** as `feat(capture): add a durable file sink`.
+- [x] **Step 4: Commit** as `feat(capture): add a durable file sink`.
 
 ---
 
@@ -287,7 +294,7 @@ would need its own synchronisation for no benefit. `Close` is idempotent.
 **Interfaces:**
 - Produces: `NewRing(maxRecords, maxBytes int) (*Ring, error)`, `(*Ring).Observe`, `(*Ring).Snapshot() []protocol.Observation`, `(*Ring).Dropped() uint64`, `(*Ring).Len() int`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Cover: a full ring evicts oldest first; the byte bound evicts before the record
 bound when payloads are large; `Dropped` counts evictions; `Snapshot` returns
@@ -296,14 +303,14 @@ and never returns an error; a record larger than `maxBytes` is stored alone and
 counted, rather than rejected; `Snapshot` is safe while another goroutine
 observes.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 A slice-backed ring with a mutex. Document in the package comment that this is
 the one sink allowed to lose data, and why.
 
-- [ ] **Step 4: Run and commit**
+- [x] **Step 4: Run and commit**
 
 `devbox run -- task test:race -- ./history`, then commit as
 `feat(history): add a bounded observation ring`.
@@ -321,22 +328,22 @@ the one sink allowed to lose data, and why.
 **Interfaces:**
 - Produces: `DigestVersion`, `Digester`, `(*Digester).Add(Record)`, `(*Digester).Sum() string`, and a digest field in the trailer.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 The digest over a fixed record sequence equals a hard-coded value checked into
 the test — so a change to the digest input fails loudly. Reordering two records
 changes it. Flipping one payload byte changes it. An unknown digest version in a
 trailer is reported, not compared.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 SHA-256 over the ordered tuple `(sequence, direction, state, packetID,
 sha256(payload))`, each length-prefixed so no concatenation ambiguity exists.
 The writer accumulates it and writes it into the trailer.
 
-- [ ] **Step 4: Commit** as `feat(capture): record a replay digest`.
+- [x] **Step 4: Commit** as `feat(capture): record a replay digest`.
 
 ### Task 8: The player
 
@@ -346,7 +353,7 @@ The writer accumulates it and writes it into the trailer.
 **Interfaces:**
 - Produces: `New(r *capture.Reader, opts ...Option) (*Player, error)`, `WithMode(Mode)`, `WithScale(float64)`, `WithSession(protocol.Session)`, `WithTransport(protocol.Transport, protocol.Direction)`, `(*Player).Run(ctx) (Result, error)`, `(*Player).Next(ctx) (capture.Record, error)`, `Result{Records int, Digest string, Drift time.Duration}`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Cover: an offline replay of a fixture capture decodes every frame and produces
 the digest recorded in its trailer; two runs produce identical digests; a
@@ -357,11 +364,11 @@ returns exactly one record per `Next`; a redacted record in connected mode fails
 with a named error; cancellation mid-replay returns `ctx.Err()` promptly, not
 after the next sleep completes.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./replay`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Offline destination: build a session from the header's protocol ID through the
 registry, feed each raw frame's payload, and apply recorded transitions rather
@@ -375,7 +382,7 @@ and read the peer's frames back, subject to the same limits as a live stream.
 
 Sleeping honours `ctx` via `time.After` in a select, never `time.Sleep`.
 
-- [ ] **Step 4: Run and commit**
+- [x] **Step 4: Run and commit**
 
 `devbox run -- task test:race -- ./replay`, then commit as
 `feat(replay): replay captures deterministically`.
@@ -394,7 +401,7 @@ Sleeping honours `ctx` via `time.After` in a select, never `time.Sleep`.
 **Interfaces:**
 - Produces: subcommand dispatch, `--help` at every level, `run(args []string, stdin io.Reader, stdout, stderr io.Writer) int`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Black-box, calling `run` directly rather than building a binary: `mcproto`
 with no arguments prints the command list and exits `2`; `--help` on the root
@@ -403,17 +410,17 @@ naming it; a missing required flag exits `2`, names the flag, and prints a
 working example; `version --format json` produces a stable object; stdout holds
 only data for every successful invocation.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./cmd/mcproto`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `flag.FlagSet` per command, no globals, `run` returns the exit code and `main`
 calls `os.Exit` with it. Map error categories to the documented codes in one
 place so a new command cannot invent a code.
 
-- [ ] **Step 4: Commit** as `feat(mcproto): add the command tree`.
+- [x] **Step 4: Commit** as `feat(mcproto): add the command tree`.
 
 ### Task 10: `packet`, `status`, and `login`
 
@@ -421,7 +428,7 @@ place so a new command cannot invent a code.
 - Create: `cmd/mcproto/packet.go`, `cmd/mcproto/status.go`, `cmd/mcproto/login.go`
 - Modify: `cmd/mcproto/cli_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packet decode --protocol java/26.1 --state play --direction clientbound
 --input -` reads hex or raw bytes from stdin and writes one JSON object;
@@ -431,15 +438,15 @@ in-process fixture peer on loopback: a successful status exits `0` with JSON; a
 refused connection exits `3`; a timeout exits `3` with the elapsed time; a
 login rejected by the peer exits `3` with the peer's reason.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `status` and `login` wrap the M2 negotiator. Neither has a default address.
 `login` supports `--offline` and refuses to run online mode without an
 authenticator, with a message pointing at `headless-minecraft`.
 
-- [ ] **Step 4: Commit** as `feat(mcproto): add packet, status, and login`.
+- [x] **Step 4: Commit** as `feat(mcproto): add packet, status, and login`.
 
 ### Task 11: `capture`, `inspect`, and `replay`
 
@@ -447,7 +454,7 @@ authenticator, with a message pointing at `headless-minecraft`.
 - Create: `cmd/mcproto/capture.go`, `cmd/mcproto/inspect.go`, `cmd/mcproto/filter.go`, `cmd/mcproto/replay.go`
 - Modify: `cmd/mcproto/cli_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Filter parsing first, as a table: each supported operator; a substring match on
 a numeric field is a usage error; an unknown field is a usage error naming it;
@@ -461,42 +468,50 @@ sets the header; `inspect --format json` emits one object per line and
 exits `4` and prints both digests; `replay --connect` without `--direction` is a
 usage error.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Keep the filter parser total and small: split on spaces, then on the operator,
 then compare. No parentheses, no boolean operators, no library.
 
-- [ ] **Step 4: Commit** as `feat(mcproto): add capture, inspect, and replay`.
+- [x] **Step 4: Commit** as `feat(mcproto): add capture, inspect, and replay`.
 
 ### Task 12: Task wrappers, docs, and the release gate
 
 **Files:**
 - Modify: `Taskfile.yml`, `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `../headless-minecraft/MASTER_PLAN.md`
 
-- [ ] **Step 1: Route maintenance through the CLI**
+- [ ] **Step 1: Route maintenance through the CLI** — **not done, deliberately**
 
-Every protocol maintenance task calls `mcproto` rather than duplicating logic in
-YAML. `cmd/mcdata-gen` stays as a thin alias to `mcproto generate` with a
-deprecation note, so no external caller breaks.
+The intent was that no maintenance task duplicates logic in YAML, and that
+holds already: `data:fetch` and `data:validate` call `mcproto data`, and every
+other task invokes a binary rather than reimplementing it. What is not done is
+moving code generation into `mcproto generate` with `cmd/mcdata-gen` as an
+alias.
 
-- [ ] **Step 2: Document**
+That move is a refactor of the one path every other gate depends on —
+`generate:check` compares an explicit inventory of generated files — and it
+buys a command name rather than a capability. The generator stays where it is.
+Anyone who wants the move should do it as its own change, with the generate
+gate green on both sides of it.
+
+- [x] **Step 2: Document**
 
 README gains a capture and replay section with a worked example: capture a
 login against a local server, inspect it, replay it offline, and verify the
 digest. Document the exit codes as a table, and state plainly that captures hold
 session content and are not encrypted.
 
-- [ ] **Step 3: Run the release gate**
+- [x] **Step 3: Run the release gate**
 
 `devbox run -- task verify`, plus `test:cli` and the capture fuzz smoke target.
 
-- [ ] **Step 4: Inspect final scope**
+- [x] **Step 4: Inspect final scope**
 
 `git status --short` and `git diff --check`. Confirm: `go.mod` still has no
 `require` block; no `router`, `middleware`, or `capture` file imports
 `*protocol.Stream` outside the adapter; every documented exit code has a test;
 no fixture contains key material.
 
-- [ ] **Step 5: Commit** as `docs: record routing, capture, and replay support`.
+- [x] **Step 5: Commit** as `docs: record routing, capture, and replay support`.
