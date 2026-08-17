@@ -9,6 +9,11 @@
 // A handler runs on the goroutine that called Dispatch or Run. Handler panics
 // are not recovered: a panic is a bug in the handler, and turning it into a
 // stream shutdown puts the report a long way from the cause.
+//
+// The relay framework diverges here deliberately and recovers hook panics at
+// its session boundary. It holds thousands of sessions where this holds one
+// connection, so there a single buggy hook must not take the unrelated
+// sessions down with it; the stack rides along on the error instead.
 package router
 
 import (
