@@ -150,7 +150,7 @@ application needs an isolated registry, such as a test or a plugin host.
 | Package | Version | Protocol | Notes |
 | --- | --- | --- | --- |
 | `generated/java/v1_8` | Java 1.8.9 | 47 | Physics constants and block movement measured from a Mojang jar |
-| `generated/java/v26_1` | Java 26.1 | 775 | Configuration state, raw datasets, checked-in packet coverage report |
+| `generated/java/v26_1` | Java 26.1 | 775 | Block movement measured from a Mojang jar, configuration state, raw datasets, checked-in packet coverage report |
 | `generated/java/current` | follows the newest | — | An alias, not a compatibility promise |
 
 `current` follows whichever version is newest here and will move when a newer
@@ -213,9 +213,14 @@ Two datasets come from a different source than the rest of the bundle.
 `physics.json` holds block slipperiness and the trigonometry table measured from
 a verified Mojang server jar, plus entity motion constants transcribed from a
 local research workspace. `blockMovement.json` holds whether each block stops
-something walking into it, read from the same jar's own materials — upstream
-publishes what a block is called and what it drops, and never says whether an
-entity can occupy its cell. Their digests and provenance live in the
+something walking into it, read from the game's own answer — upstream publishes
+what a block is called and what it drops, and never says whether an entity can
+occupy its cell. Both versions carry one, and they are not keyed alike: 1.8.9
+hangs the fact off a block's material, so every state of a block answers
+together, and 26.1.2 computes it per state from that state's own collision
+shape, so its measurement is keyed by state range. The document declares which
+encoding it holds, and the generator refuses one it has not been taught to
+read. Their digests and provenance live in the
 `extracted` block of the same manifest. Regenerating them requires a JDK and
 the `mcreference dump` and `mcreference blocks` commands; verifying the
 checked-in output needs neither.
@@ -223,7 +228,10 @@ checked-in output needs neither.
 `Set.BlockMovement` answers that measurement, and it is nil for a version
 nobody has measured. Nil is not "nothing blocks movement": a caller that reads
 an absent measurement as open ground walks into walls it cannot see, so an
-unknown block is a block to refuse.
+unknown block is a block to refuse. The same reasoning applies within a
+version: `ByState` reports whether it knows, and `ByID` declines to answer for
+a block whose states disagree with each other rather than rounding to whichever
+answer most of them give.
 
 Use the generated Java 1.8 data directly:
 
