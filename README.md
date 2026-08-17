@@ -149,7 +149,7 @@ application needs an isolated registry, such as a test or a plugin host.
 
 | Package | Version | Protocol | Notes |
 | --- | --- | --- | --- |
-| `generated/java/v1_8` | Java 1.8.9 | 47 | Physics constants measured from a Mojang jar |
+| `generated/java/v1_8` | Java 1.8.9 | 47 | Physics constants and block movement measured from a Mojang jar |
 | `generated/java/v26_1` | Java 26.1 | 775 | Configuration state, raw datasets, checked-in packet coverage report |
 | `generated/java/current` | follows the newest | — | An alias, not a compatibility promise |
 
@@ -209,12 +209,21 @@ and packet values from that fixed input set. See
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for attribution and license
 details.
 
-Physics constants come from a different source than the rest of the bundle.
+Two datasets come from a different source than the rest of the bundle.
 `physics.json` holds block slipperiness and the trigonometry table measured from
 a verified Mojang server jar, plus entity motion constants transcribed from a
-local research workspace. Its digest and provenance live in the `extracted`
-block of the same manifest. Regenerating it requires a JDK and the
-`mcreference dump` command; verifying the checked-in output needs neither.
+local research workspace. `blockMovement.json` holds whether each block stops
+something walking into it, read from the same jar's own materials — upstream
+publishes what a block is called and what it drops, and never says whether an
+entity can occupy its cell. Their digests and provenance live in the
+`extracted` block of the same manifest. Regenerating them requires a JDK and
+the `mcreference dump` and `mcreference blocks` commands; verifying the
+checked-in output needs neither.
+
+`Set.BlockMovement` answers that measurement, and it is nil for a version
+nobody has measured. Nil is not "nothing blocks movement": a caller that reads
+an absent measurement as open ground walks into walls it cannot see, so an
+unknown block is a block to refuse.
 
 Use the generated Java 1.8 data directly:
 

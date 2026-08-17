@@ -1,0 +1,998 @@
+{
+  "version": "1.8.9",
+  "side": "server",
+  "jarSha256": "c18e4245073aaff580eb7359902f0251436568b1647a9e443a924cdb73fa8312",
+  "stateEncoding": "id\u003c\u003c4|meta",
+  "blocks": [
+    {
+      "id": 0,
+      "name": "minecraft:air",
+      "blocksMovement": false
+    },
+    {
+      "id": 1,
+      "name": "minecraft:stone",
+      "blocksMovement": true
+    },
+    {
+      "id": 2,
+      "name": "minecraft:grass",
+      "blocksMovement": true
+    },
+    {
+      "id": 3,
+      "name": "minecraft:dirt",
+      "blocksMovement": true
+    },
+    {
+      "id": 4,
+      "name": "minecraft:cobblestone",
+      "blocksMovement": true
+    },
+    {
+      "id": 5,
+      "name": "minecraft:planks",
+      "blocksMovement": true
+    },
+    {
+      "id": 6,
+      "name": "minecraft:sapling",
+      "blocksMovement": false
+    },
+    {
+      "id": 7,
+      "name": "minecraft:bedrock",
+      "blocksMovement": true
+    },
+    {
+      "id": 8,
+      "name": "minecraft:flowing_water",
+      "blocksMovement": false
+    },
+    {
+      "id": 9,
+      "name": "minecraft:water",
+      "blocksMovement": false
+    },
+    {
+      "id": 10,
+      "name": "minecraft:flowing_lava",
+      "blocksMovement": false
+    },
+    {
+      "id": 11,
+      "name": "minecraft:lava",
+      "blocksMovement": false
+    },
+    {
+      "id": 12,
+      "name": "minecraft:sand",
+      "blocksMovement": true
+    },
+    {
+      "id": 13,
+      "name": "minecraft:gravel",
+      "blocksMovement": true
+    },
+    {
+      "id": 14,
+      "name": "minecraft:gold_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 15,
+      "name": "minecraft:iron_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 16,
+      "name": "minecraft:coal_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 17,
+      "name": "minecraft:log",
+      "blocksMovement": true
+    },
+    {
+      "id": 18,
+      "name": "minecraft:leaves",
+      "blocksMovement": true
+    },
+    {
+      "id": 19,
+      "name": "minecraft:sponge",
+      "blocksMovement": true
+    },
+    {
+      "id": 20,
+      "name": "minecraft:glass",
+      "blocksMovement": true
+    },
+    {
+      "id": 21,
+      "name": "minecraft:lapis_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 22,
+      "name": "minecraft:lapis_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 23,
+      "name": "minecraft:dispenser",
+      "blocksMovement": true
+    },
+    {
+      "id": 24,
+      "name": "minecraft:sandstone",
+      "blocksMovement": true
+    },
+    {
+      "id": 25,
+      "name": "minecraft:noteblock",
+      "blocksMovement": true
+    },
+    {
+      "id": 26,
+      "name": "minecraft:bed",
+      "blocksMovement": true
+    },
+    {
+      "id": 27,
+      "name": "minecraft:golden_rail",
+      "blocksMovement": false
+    },
+    {
+      "id": 28,
+      "name": "minecraft:detector_rail",
+      "blocksMovement": false
+    },
+    {
+      "id": 29,
+      "name": "minecraft:sticky_piston",
+      "blocksMovement": true
+    },
+    {
+      "id": 30,
+      "name": "minecraft:web",
+      "blocksMovement": false
+    },
+    {
+      "id": 31,
+      "name": "minecraft:tallgrass",
+      "blocksMovement": false
+    },
+    {
+      "id": 32,
+      "name": "minecraft:deadbush",
+      "blocksMovement": false
+    },
+    {
+      "id": 33,
+      "name": "minecraft:piston",
+      "blocksMovement": true
+    },
+    {
+      "id": 34,
+      "name": "minecraft:piston_head",
+      "blocksMovement": true
+    },
+    {
+      "id": 35,
+      "name": "minecraft:wool",
+      "blocksMovement": true
+    },
+    {
+      "id": 36,
+      "name": "minecraft:piston_extension",
+      "blocksMovement": true
+    },
+    {
+      "id": 37,
+      "name": "minecraft:yellow_flower",
+      "blocksMovement": false
+    },
+    {
+      "id": 38,
+      "name": "minecraft:red_flower",
+      "blocksMovement": false
+    },
+    {
+      "id": 39,
+      "name": "minecraft:brown_mushroom",
+      "blocksMovement": false
+    },
+    {
+      "id": 40,
+      "name": "minecraft:red_mushroom",
+      "blocksMovement": false
+    },
+    {
+      "id": 41,
+      "name": "minecraft:gold_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 42,
+      "name": "minecraft:iron_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 43,
+      "name": "minecraft:double_stone_slab",
+      "blocksMovement": true
+    },
+    {
+      "id": 44,
+      "name": "minecraft:stone_slab",
+      "blocksMovement": true
+    },
+    {
+      "id": 45,
+      "name": "minecraft:brick_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 46,
+      "name": "minecraft:tnt",
+      "blocksMovement": true
+    },
+    {
+      "id": 47,
+      "name": "minecraft:bookshelf",
+      "blocksMovement": true
+    },
+    {
+      "id": 48,
+      "name": "minecraft:mossy_cobblestone",
+      "blocksMovement": true
+    },
+    {
+      "id": 49,
+      "name": "minecraft:obsidian",
+      "blocksMovement": true
+    },
+    {
+      "id": 50,
+      "name": "minecraft:torch",
+      "blocksMovement": false
+    },
+    {
+      "id": 51,
+      "name": "minecraft:fire",
+      "blocksMovement": false
+    },
+    {
+      "id": 52,
+      "name": "minecraft:mob_spawner",
+      "blocksMovement": true
+    },
+    {
+      "id": 53,
+      "name": "minecraft:oak_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 54,
+      "name": "minecraft:chest",
+      "blocksMovement": true
+    },
+    {
+      "id": 55,
+      "name": "minecraft:redstone_wire",
+      "blocksMovement": false
+    },
+    {
+      "id": 56,
+      "name": "minecraft:diamond_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 57,
+      "name": "minecraft:diamond_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 58,
+      "name": "minecraft:crafting_table",
+      "blocksMovement": true
+    },
+    {
+      "id": 59,
+      "name": "minecraft:wheat",
+      "blocksMovement": false
+    },
+    {
+      "id": 60,
+      "name": "minecraft:farmland",
+      "blocksMovement": true
+    },
+    {
+      "id": 61,
+      "name": "minecraft:furnace",
+      "blocksMovement": true
+    },
+    {
+      "id": 62,
+      "name": "minecraft:lit_furnace",
+      "blocksMovement": true
+    },
+    {
+      "id": 63,
+      "name": "minecraft:standing_sign",
+      "blocksMovement": true
+    },
+    {
+      "id": 64,
+      "name": "minecraft:wooden_door",
+      "blocksMovement": true
+    },
+    {
+      "id": 65,
+      "name": "minecraft:ladder",
+      "blocksMovement": false
+    },
+    {
+      "id": 66,
+      "name": "minecraft:rail",
+      "blocksMovement": false
+    },
+    {
+      "id": 67,
+      "name": "minecraft:stone_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 68,
+      "name": "minecraft:wall_sign",
+      "blocksMovement": true
+    },
+    {
+      "id": 69,
+      "name": "minecraft:lever",
+      "blocksMovement": false
+    },
+    {
+      "id": 70,
+      "name": "minecraft:stone_pressure_plate",
+      "blocksMovement": true
+    },
+    {
+      "id": 71,
+      "name": "minecraft:iron_door",
+      "blocksMovement": true
+    },
+    {
+      "id": 72,
+      "name": "minecraft:wooden_pressure_plate",
+      "blocksMovement": true
+    },
+    {
+      "id": 73,
+      "name": "minecraft:redstone_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 74,
+      "name": "minecraft:lit_redstone_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 75,
+      "name": "minecraft:unlit_redstone_torch",
+      "blocksMovement": false
+    },
+    {
+      "id": 76,
+      "name": "minecraft:redstone_torch",
+      "blocksMovement": false
+    },
+    {
+      "id": 77,
+      "name": "minecraft:stone_button",
+      "blocksMovement": false
+    },
+    {
+      "id": 78,
+      "name": "minecraft:snow_layer",
+      "blocksMovement": false
+    },
+    {
+      "id": 79,
+      "name": "minecraft:ice",
+      "blocksMovement": true
+    },
+    {
+      "id": 80,
+      "name": "minecraft:snow",
+      "blocksMovement": true
+    },
+    {
+      "id": 81,
+      "name": "minecraft:cactus",
+      "blocksMovement": true
+    },
+    {
+      "id": 82,
+      "name": "minecraft:clay",
+      "blocksMovement": true
+    },
+    {
+      "id": 83,
+      "name": "minecraft:reeds",
+      "blocksMovement": false
+    },
+    {
+      "id": 84,
+      "name": "minecraft:jukebox",
+      "blocksMovement": true
+    },
+    {
+      "id": 85,
+      "name": "minecraft:fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 86,
+      "name": "minecraft:pumpkin",
+      "blocksMovement": true
+    },
+    {
+      "id": 87,
+      "name": "minecraft:netherrack",
+      "blocksMovement": true
+    },
+    {
+      "id": 88,
+      "name": "minecraft:soul_sand",
+      "blocksMovement": true
+    },
+    {
+      "id": 89,
+      "name": "minecraft:glowstone",
+      "blocksMovement": true
+    },
+    {
+      "id": 90,
+      "name": "minecraft:portal",
+      "blocksMovement": false
+    },
+    {
+      "id": 91,
+      "name": "minecraft:lit_pumpkin",
+      "blocksMovement": true
+    },
+    {
+      "id": 92,
+      "name": "minecraft:cake",
+      "blocksMovement": true
+    },
+    {
+      "id": 93,
+      "name": "minecraft:unpowered_repeater",
+      "blocksMovement": false
+    },
+    {
+      "id": 94,
+      "name": "minecraft:powered_repeater",
+      "blocksMovement": false
+    },
+    {
+      "id": 95,
+      "name": "minecraft:stained_glass",
+      "blocksMovement": true
+    },
+    {
+      "id": 96,
+      "name": "minecraft:trapdoor",
+      "blocksMovement": true
+    },
+    {
+      "id": 97,
+      "name": "minecraft:monster_egg",
+      "blocksMovement": true
+    },
+    {
+      "id": 98,
+      "name": "minecraft:stonebrick",
+      "blocksMovement": true
+    },
+    {
+      "id": 99,
+      "name": "minecraft:brown_mushroom_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 100,
+      "name": "minecraft:red_mushroom_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 101,
+      "name": "minecraft:iron_bars",
+      "blocksMovement": true
+    },
+    {
+      "id": 102,
+      "name": "minecraft:glass_pane",
+      "blocksMovement": true
+    },
+    {
+      "id": 103,
+      "name": "minecraft:melon_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 104,
+      "name": "minecraft:pumpkin_stem",
+      "blocksMovement": false
+    },
+    {
+      "id": 105,
+      "name": "minecraft:melon_stem",
+      "blocksMovement": false
+    },
+    {
+      "id": 106,
+      "name": "minecraft:vine",
+      "blocksMovement": false
+    },
+    {
+      "id": 107,
+      "name": "minecraft:fence_gate",
+      "blocksMovement": true
+    },
+    {
+      "id": 108,
+      "name": "minecraft:brick_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 109,
+      "name": "minecraft:stone_brick_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 110,
+      "name": "minecraft:mycelium",
+      "blocksMovement": true
+    },
+    {
+      "id": 111,
+      "name": "minecraft:waterlily",
+      "blocksMovement": false
+    },
+    {
+      "id": 112,
+      "name": "minecraft:nether_brick",
+      "blocksMovement": true
+    },
+    {
+      "id": 113,
+      "name": "minecraft:nether_brick_fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 114,
+      "name": "minecraft:nether_brick_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 115,
+      "name": "minecraft:nether_wart",
+      "blocksMovement": false
+    },
+    {
+      "id": 116,
+      "name": "minecraft:enchanting_table",
+      "blocksMovement": true
+    },
+    {
+      "id": 117,
+      "name": "minecraft:brewing_stand",
+      "blocksMovement": true
+    },
+    {
+      "id": 118,
+      "name": "minecraft:cauldron",
+      "blocksMovement": true
+    },
+    {
+      "id": 119,
+      "name": "minecraft:end_portal",
+      "blocksMovement": false
+    },
+    {
+      "id": 120,
+      "name": "minecraft:end_portal_frame",
+      "blocksMovement": true
+    },
+    {
+      "id": 121,
+      "name": "minecraft:end_stone",
+      "blocksMovement": true
+    },
+    {
+      "id": 122,
+      "name": "minecraft:dragon_egg",
+      "blocksMovement": true
+    },
+    {
+      "id": 123,
+      "name": "minecraft:redstone_lamp",
+      "blocksMovement": true
+    },
+    {
+      "id": 124,
+      "name": "minecraft:lit_redstone_lamp",
+      "blocksMovement": true
+    },
+    {
+      "id": 125,
+      "name": "minecraft:double_wooden_slab",
+      "blocksMovement": true
+    },
+    {
+      "id": 126,
+      "name": "minecraft:wooden_slab",
+      "blocksMovement": true
+    },
+    {
+      "id": 127,
+      "name": "minecraft:cocoa",
+      "blocksMovement": false
+    },
+    {
+      "id": 128,
+      "name": "minecraft:sandstone_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 129,
+      "name": "minecraft:emerald_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 130,
+      "name": "minecraft:ender_chest",
+      "blocksMovement": true
+    },
+    {
+      "id": 131,
+      "name": "minecraft:tripwire_hook",
+      "blocksMovement": false
+    },
+    {
+      "id": 132,
+      "name": "minecraft:tripwire",
+      "blocksMovement": false
+    },
+    {
+      "id": 133,
+      "name": "minecraft:emerald_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 134,
+      "name": "minecraft:spruce_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 135,
+      "name": "minecraft:birch_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 136,
+      "name": "minecraft:jungle_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 137,
+      "name": "minecraft:command_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 138,
+      "name": "minecraft:beacon",
+      "blocksMovement": true
+    },
+    {
+      "id": 139,
+      "name": "minecraft:cobblestone_wall",
+      "blocksMovement": true
+    },
+    {
+      "id": 140,
+      "name": "minecraft:flower_pot",
+      "blocksMovement": false
+    },
+    {
+      "id": 141,
+      "name": "minecraft:carrots",
+      "blocksMovement": false
+    },
+    {
+      "id": 142,
+      "name": "minecraft:potatoes",
+      "blocksMovement": false
+    },
+    {
+      "id": 143,
+      "name": "minecraft:wooden_button",
+      "blocksMovement": false
+    },
+    {
+      "id": 144,
+      "name": "minecraft:skull",
+      "blocksMovement": false
+    },
+    {
+      "id": 145,
+      "name": "minecraft:anvil",
+      "blocksMovement": true
+    },
+    {
+      "id": 146,
+      "name": "minecraft:trapped_chest",
+      "blocksMovement": true
+    },
+    {
+      "id": 147,
+      "name": "minecraft:light_weighted_pressure_plate",
+      "blocksMovement": true
+    },
+    {
+      "id": 148,
+      "name": "minecraft:heavy_weighted_pressure_plate",
+      "blocksMovement": true
+    },
+    {
+      "id": 149,
+      "name": "minecraft:unpowered_comparator",
+      "blocksMovement": false
+    },
+    {
+      "id": 150,
+      "name": "minecraft:powered_comparator",
+      "blocksMovement": false
+    },
+    {
+      "id": 151,
+      "name": "minecraft:daylight_detector",
+      "blocksMovement": true
+    },
+    {
+      "id": 152,
+      "name": "minecraft:redstone_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 153,
+      "name": "minecraft:quartz_ore",
+      "blocksMovement": true
+    },
+    {
+      "id": 154,
+      "name": "minecraft:hopper",
+      "blocksMovement": true
+    },
+    {
+      "id": 155,
+      "name": "minecraft:quartz_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 156,
+      "name": "minecraft:quartz_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 157,
+      "name": "minecraft:activator_rail",
+      "blocksMovement": false
+    },
+    {
+      "id": 158,
+      "name": "minecraft:dropper",
+      "blocksMovement": true
+    },
+    {
+      "id": 159,
+      "name": "minecraft:stained_hardened_clay",
+      "blocksMovement": true
+    },
+    {
+      "id": 160,
+      "name": "minecraft:stained_glass_pane",
+      "blocksMovement": true
+    },
+    {
+      "id": 161,
+      "name": "minecraft:leaves2",
+      "blocksMovement": true
+    },
+    {
+      "id": 162,
+      "name": "minecraft:log2",
+      "blocksMovement": true
+    },
+    {
+      "id": 163,
+      "name": "minecraft:acacia_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 164,
+      "name": "minecraft:dark_oak_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 165,
+      "name": "minecraft:slime",
+      "blocksMovement": true
+    },
+    {
+      "id": 166,
+      "name": "minecraft:barrier",
+      "blocksMovement": true
+    },
+    {
+      "id": 167,
+      "name": "minecraft:iron_trapdoor",
+      "blocksMovement": true
+    },
+    {
+      "id": 168,
+      "name": "minecraft:prismarine",
+      "blocksMovement": true
+    },
+    {
+      "id": 169,
+      "name": "minecraft:sea_lantern",
+      "blocksMovement": true
+    },
+    {
+      "id": 170,
+      "name": "minecraft:hay_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 171,
+      "name": "minecraft:carpet",
+      "blocksMovement": false
+    },
+    {
+      "id": 172,
+      "name": "minecraft:hardened_clay",
+      "blocksMovement": true
+    },
+    {
+      "id": 173,
+      "name": "minecraft:coal_block",
+      "blocksMovement": true
+    },
+    {
+      "id": 174,
+      "name": "minecraft:packed_ice",
+      "blocksMovement": true
+    },
+    {
+      "id": 175,
+      "name": "minecraft:double_plant",
+      "blocksMovement": false
+    },
+    {
+      "id": 176,
+      "name": "minecraft:standing_banner",
+      "blocksMovement": true
+    },
+    {
+      "id": 177,
+      "name": "minecraft:wall_banner",
+      "blocksMovement": true
+    },
+    {
+      "id": 178,
+      "name": "minecraft:daylight_detector_inverted",
+      "blocksMovement": true
+    },
+    {
+      "id": 179,
+      "name": "minecraft:red_sandstone",
+      "blocksMovement": true
+    },
+    {
+      "id": 180,
+      "name": "minecraft:red_sandstone_stairs",
+      "blocksMovement": true
+    },
+    {
+      "id": 181,
+      "name": "minecraft:double_stone_slab2",
+      "blocksMovement": true
+    },
+    {
+      "id": 182,
+      "name": "minecraft:stone_slab2",
+      "blocksMovement": true
+    },
+    {
+      "id": 183,
+      "name": "minecraft:spruce_fence_gate",
+      "blocksMovement": true
+    },
+    {
+      "id": 184,
+      "name": "minecraft:birch_fence_gate",
+      "blocksMovement": true
+    },
+    {
+      "id": 185,
+      "name": "minecraft:jungle_fence_gate",
+      "blocksMovement": true
+    },
+    {
+      "id": 186,
+      "name": "minecraft:dark_oak_fence_gate",
+      "blocksMovement": true
+    },
+    {
+      "id": 187,
+      "name": "minecraft:acacia_fence_gate",
+      "blocksMovement": true
+    },
+    {
+      "id": 188,
+      "name": "minecraft:spruce_fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 189,
+      "name": "minecraft:birch_fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 190,
+      "name": "minecraft:jungle_fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 191,
+      "name": "minecraft:dark_oak_fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 192,
+      "name": "minecraft:acacia_fence",
+      "blocksMovement": true
+    },
+    {
+      "id": 193,
+      "name": "minecraft:spruce_door",
+      "blocksMovement": true
+    },
+    {
+      "id": 194,
+      "name": "minecraft:birch_door",
+      "blocksMovement": true
+    },
+    {
+      "id": 195,
+      "name": "minecraft:jungle_door",
+      "blocksMovement": true
+    },
+    {
+      "id": 196,
+      "name": "minecraft:acacia_door",
+      "blocksMovement": true
+    },
+    {
+      "id": 197,
+      "name": "minecraft:dark_oak_door",
+      "blocksMovement": true
+    }
+  ]
+}

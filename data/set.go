@@ -34,13 +34,14 @@ type SetOptions struct {
 	// matching accessor answers with the same emptiness rather than an error:
 	// "this version does not publish sounds" is a fact about the version, not
 	// a failure to build the set.
-	Sounds      SoundRegistry
-	MapIcons    MapIconRegistry
-	BlockLoot   BlockLootRegistry
-	EntityLoot  EntityLootRegistry
-	Commands    CommandTree
-	LoginPacket LoginPacket
-	Tints       Tints
+	Sounds        SoundRegistry
+	MapIcons      MapIconRegistry
+	BlockLoot     BlockLootRegistry
+	EntityLoot    EntityLootRegistry
+	Commands      CommandTree
+	LoginPacket   LoginPacket
+	Tints         Tints
+	BlockMovement BlockMovementRegistry
 }
 
 // Set is an immutable collection of game-data registries and values.
@@ -71,6 +72,7 @@ type Set struct {
 	commands        CommandTree
 	loginPacket     LoginPacket
 	tints           Tints
+	blockMovement   BlockMovementRegistry
 }
 
 // NewSet creates a Set that does not retain caller-owned mutable values.
@@ -114,6 +116,7 @@ func NewSet(options SetOptions) (*Set, error) {
 		commands:        options.Commands.Clone(),
 		loginPacket:     options.LoginPacket.Clone(),
 		tints:           options.Tints.Clone(),
+		blockMovement:   options.BlockMovement,
 	}, nil
 }
 
@@ -195,6 +198,11 @@ func (s *Set) LoginPacket() LoginPacket { return s.loginPacket.Clone() }
 // Tints returns a clone of the tint categories owned by the caller. A version
 // that publishes no tints returns nil.
 func (s *Set) Tints() Tints { return s.tints.Clone() }
+
+// BlockMovement returns the block movement registry supplied to NewSet, or nil
+// for a version whose jar nobody has measured. Nil says the measurement is
+// absent, which a caller must not read as "nothing blocks movement".
+func (s *Set) BlockMovement() BlockMovementRegistry { return s.blockMovement }
 
 // Version returns the protocol version.
 func (s *Set) Version() Version { return s.version }

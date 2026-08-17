@@ -54,6 +54,9 @@ func Data() (*data.Set, error) {
 {{- if .Data.HasTints }}
 		Tints: newTints(),
 {{- end }}
+{{- if .Data.HasBlockMovement }}
+		BlockMovement: newBlockMovementRegistry(),
+{{- end }}
 		Protocol: newProtocol(),
 		Version: newDataVersion(),
 	})

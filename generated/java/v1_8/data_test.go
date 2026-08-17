@@ -705,3 +705,89 @@ func TestSlipperinessMatchesVanilla(t *testing.T) {
 		t.Errorf("unknown block slipperiness = %v, want the default", got)
 	}
 }
+
+// TestBlockMovementAnswersTheGamesOwnRule pins the measurement a caller walks
+// on. The three cases are the ones a guess gets wrong: a flower is not a wall,
+// water is not a floor, and stone is both.
+func TestBlockMovementAnswersTheGamesOwnRule(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+	if movement == nil {
+		t.Fatal("the measured version publishes no block movement registry")
+	}
+
+	for _, test := range []struct {
+		name  string
+		id    data.BlockID
+		want  bool
+		known bool
+	}{
+		{name: "air", id: 0, want: false, known: true},
+		{name: "stone", id: 1, want: true, known: true},
+		{name: "water", id: 9, want: false, known: true},
+		{name: "sapling", id: 6, want: false, known: true},
+		{name: "a block this version does not have", id: 4000, want: false, known: false},
+	} {
+		got, known := movement.ByID(test.id)
+		if got != test.want || known != test.known {
+			t.Errorf("ByID(%s) = %v, %v, want %v, %v", test.name, got, known, test.want, test.known)
+		}
+	}
+
+	if got, want := len(movement.All()), 198; got != want {
+		t.Errorf("measured blocks = %d, want %d", got, want)
+	}
+}
+
+// TestBlockMovementReadsAChunkState pins the encoding, which is the trap.
+//
+// This version packs a chunk state as the block identifier shifted left four
+// with the metadata below it, and packs it the other way round in
+// Block.getStateId. A registry keyed the other way resolves every lookup and
+// answers about the wrong block, so the assertion that matters is the one on a
+// state carrying metadata: stone with any variant is still stone.
+func TestBlockMovementReadsAChunkState(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	for _, test := range []struct {
+		name  string
+		state data.BlockStateID
+		want  bool
+		known bool
+	}{
+		{name: "stone", state: 1 << 4, want: true, known: true},
+		{name: "polished andesite", state: 1<<4 | 6, want: true, known: true},
+		{name: "air", state: 0, want: false, known: true},
+		{name: "flowing water at level three", state: 8<<4 | 3, want: false, known: true},
+		{name: "a state no block has", state: 4000 << 4, want: false, known: false},
+	} {
+		got, known := movement.ByState(test.state)
+		if got != test.want || known != test.known {
+			t.Errorf("ByState(%s) = %v, %v, want %v, %v", test.name, got, known, test.want, test.known)
+		}
+	}
+}
+
+// TestBlockMovementIsCallerOwned pins that a caller mutating the measurement it
+// was handed cannot change what the next caller reads.
+func TestBlockMovementIsCallerOwned(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	first := movement.All()
+	first[1] = false
+
+	if blocks, _ := movement.ByID(1); !blocks {
+		t.Fatal("BlockMovement returned an aliased index")
+	}
+}

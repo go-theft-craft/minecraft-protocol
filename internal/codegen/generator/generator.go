@@ -107,6 +107,7 @@ var generatedFileNames = []string{
 	"commands.go",
 	"login_packet.go",
 	"tints.go",
+	"block_movement.go",
 }
 
 var preservedGeneratedTestNames = []string{
@@ -316,6 +317,7 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 		{"commands", "commands.go.tmpl", "commands.go", func(raw []byte) (any, error) { return loadCommands(raw) }},
 		{"loginPacket", "login_packet.go.tmpl", "login_packet.go", func(raw []byte) (any, error) { return loadLoginPacket(raw) }},
 		{"tints", "tints.go.tmpl", "tints.go", func(raw []byte) (any, error) { return loadTints(raw) }},
+		{"blockMovement", "block_movement.go.tmpl", "block_movement.go", loadBlockMovement},
 	}
 	present := gamedataTmpl{HasPhysics: hasPhysics}
 	for _, entry := range optionalGenerators {
@@ -602,16 +604,17 @@ func parseStableVersionKey(value string) (stableVersionKey, error) {
 // dataset behind them. Physics constants are measured from a Mojang jar, and
 // only the versions someone has run mcreference against have them.
 var optionalGeneratedFileNames = map[string]bool{
-	"physics.go":      true,
-	"raw.go":          true,
-	"coverage.json":   true,
-	"sounds.go":       true,
-	"map_icons.go":    true,
-	"block_loot.go":   true,
-	"entity_loot.go":  true,
-	"commands.go":     true,
-	"login_packet.go": true,
-	"tints.go":        true,
+	"physics.go":        true,
+	"raw.go":            true,
+	"coverage.json":     true,
+	"sounds.go":         true,
+	"map_icons.go":      true,
+	"block_loot.go":     true,
+	"entity_loot.go":    true,
+	"commands.go":       true,
+	"login_packet.go":   true,
+	"tints.go":          true,
+	"block_movement.go": true,
 }
 
 func newTemplateData(packageName string, versionKey stableVersionKey, value any) templateData {
@@ -1015,6 +1018,9 @@ type gamedataTmpl struct {
 	HasCommands    bool
 	HasLoginPacket bool
 	HasTints       bool
+	// HasBlockMovement is measured rather than fetched: only the versions
+	// someone has run mcreference against carry it.
+	HasBlockMovement bool
 }
 
 // set records that the tree publishes a dataset. It is keyed by upstream's
@@ -1035,6 +1041,8 @@ func (g *gamedataTmpl) set(datasetName string) {
 		g.HasLoginPacket = true
 	case "tints":
 		g.HasTints = true
+	case "blockMovement":
+		g.HasBlockMovement = true
 	}
 }
 
@@ -1109,6 +1117,76 @@ func loadPhysics(raw []byte) (*physicsTmpl, error) {
 		SinTableBase64:      source.SinTableBase64,
 		BlockSlipperiness:   blocks,
 		EntityMotion:        motion,
+	}, nil
+}
+
+// stateEncodingChunkShift names the only state encoding a measurement may
+// declare, and the shift that reads a block identifier out of it. Protocol 47
+// chunk data packs a state as the block identifier shifted left four.
+const (
+	stateEncodingChunkShift = "id<<4|meta"
+	chunkStateShift         = 4
+)
+
+type blockMovementTmpl struct {
+	StateEncoding string
+	StateShift    int
+	Blocks        []blockMovementEntryTmpl
+}
+
+type blockMovementEntryTmpl struct {
+	ID             int
+	Name           string
+	BlocksMovement bool
+}
+
+// loadBlockMovement reads the measured block facts and refuses any state
+// encoding it has not been taught to read.
+//
+// The refusal is the point. A document for a flattened version keys the same
+// fact by state rather than by block, and generating this template against it
+// would produce a registry that resolves every lookup and answers about a
+// different block each time. A generator that stops is the only version of
+// that failure anyone would notice.
+func loadBlockMovement(raw []byte) (any, error) {
+	var source struct {
+		Version       string `json:"version"`
+		Side          string `json:"side"`
+		JarSHA256     string `json:"jarSha256"`
+		StateEncoding string `json:"stateEncoding"`
+		Blocks        []struct {
+			ID             int    `json:"id"`
+			Name           string `json:"name"`
+			BlocksMovement bool   `json:"blocksMovement"`
+		} `json:"blocks"`
+	}
+	if err := json.Unmarshal(raw, &source); err != nil {
+		return nil, fmt.Errorf("unmarshal block movement: %w", err)
+	}
+	if source.StateEncoding != stateEncodingChunkShift {
+		return nil, fmt.Errorf(
+			"block movement declares state encoding %q, and only %q is supported",
+			source.StateEncoding, stateEncodingChunkShift,
+		)
+	}
+	if len(source.Blocks) == 0 {
+		return nil, fmt.Errorf("block movement describes no blocks")
+	}
+
+	blocks := make([]blockMovementEntryTmpl, len(source.Blocks))
+	for index, block := range source.Blocks {
+		blocks[index] = blockMovementEntryTmpl{
+			ID:             block.ID,
+			Name:           block.Name,
+			BlocksMovement: block.BlocksMovement,
+		}
+	}
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].ID < blocks[j].ID })
+
+	return &blockMovementTmpl{
+		StateEncoding: source.StateEncoding,
+		StateShift:    chunkStateShift,
+		Blocks:        blocks,
 	}, nil
 }
 

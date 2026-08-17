@@ -86,13 +86,16 @@ every transitive dependency it installs.
 
 `source/java/1.8/physics.json` contains numeric constants measured from a
 Minecraft Java Edition 1.8.9 server jar obtained from Mojang, together with
-constants transcribed by maintainers from a local research workspace. The
-`extracted` block in `source/java/1.8/manifest.json` records the extraction
-tool, its revision, the Minecraft version, the side, and the SHA-256 digest of
-the jar as Mojang published it, so the provenance can be checked against
-Mojang's own metadata.
+constants transcribed by maintainers from a local research workspace.
+`source/java/1.8/blockMovement.json` contains, per block, its registry name and
+whether the game's material stops an entity walking into it, measured from the
+same jar. The `extracted` block in `source/java/1.8/manifest.json` records the
+extraction tool, its revision, the Minecraft version, the side, and the SHA-256
+digest of the jar as Mojang published it, so the provenance can be checked
+against Mojang's own metadata.
 
 This repository contains no Minecraft jar, no mapping file, no decompiled Java
-source, and no game asset. It contains measured numeric values only. Minecraft
+source, and no game asset. It contains measured values and the registry names
+they are keyed by. Minecraft
 is a product of Mojang AB. This project is not an official Minecraft product
 and is not approved by or associated with Mojang or Microsoft.

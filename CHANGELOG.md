@@ -4,6 +4,25 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Added
+
+- `data`: `BlockMovementRegistry` answers whether a block stops something
+  walking into it, and `Set.BlockMovement` publishes it. Upstream's block data
+  says what a block is called, how hard it is, and what it drops, and never
+  says whether an entity can occupy its cell — so a consumer holding the state
+  identifiers a protocol carries could see a whole world and still not tell a
+  wall from a flower. The fact is the game's own material, measured out of a
+  verified Mojang server jar and pinned in the `extracted` block of
+  `source/java/1.8/manifest.json` beside the physics constants.
+  `generated/java/v1_8` publishes it for all 198 blocks; `generated/java/v26_1`
+  returns nil, because nobody has measured that jar yet. Nil means the
+  measurement is absent, which is not the same as "nothing blocks movement":
+  `ByState` and `ByID` return a second result that separates an unknown block
+  from a passable one, and a caller must refuse an unknown one rather than walk
+  through it.
+- `mcproto data validate` reports which datasets were measured from a game jar
+  rather than fetched from upstream, alongside the aliases it already reports.
+
 ## 0.3.0 - 2026-08-17
 
 ### Added

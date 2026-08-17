@@ -31,6 +31,7 @@ func Data() (*data.Set, error) {
 		Language:        newLanguageRegistry(),
 		CollisionShapes: newCollisionShapes(),
 		Physics:         newPhysics(),
+		BlockMovement:   newBlockMovementRegistry(),
 		Protocol:        newProtocol(),
 		Version:         newDataVersion(),
 	})

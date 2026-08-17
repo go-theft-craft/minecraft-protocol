@@ -908,8 +908,13 @@ func TestExtractedPhysicsChecksumIsEnforced(t *testing.T) {
 // missing render-plan entry.
 func TestRunWithoutPhysicsOmitsTheGeneratedFile(t *testing.T) {
 	dir := copySource(t)
-	if err := os.Remove(filepath.Join(dir, "physics.json")); err != nil {
-		t.Fatal(err)
+	// Every measured dataset goes, not only physics: dropping the manifest's
+	// extracted section leaves any measured file behind unrecorded, which the
+	// manifest is right to refuse.
+	for _, measured := range []string{"physics.json", "blockMovement.json"} {
+		if err := os.Remove(filepath.Join(dir, measured)); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
@@ -944,6 +949,58 @@ func TestRunWithoutPhysicsOmitsTheGeneratedFile(t *testing.T) {
 	}
 	if strings.Contains(string(gamedata), "newPhysics()") {
 		t.Fatal("gamedata.go calls newPhysics() but no physics.go was generated")
+	}
+}
+
+// TestBlockMovementRefusesAStateEncodingItCannotRead pins the one way this
+// dataset fails silently.
+//
+// The measurement declares how a state identifier packs a block identifier,
+// and 1.8.9 packs the same fact two ways: chunk data shifts the identifier left
+// four, and the game's own getStateId puts the identifier in the low twelve
+// bits. A generator that assumed the first and was handed the second would emit
+// a registry that resolves every lookup and answers about the wrong block every
+// time. Stopping is the only version of that failure anyone would notice.
+func TestBlockMovementRefusesAStateEncodingItCannotRead(t *testing.T) {
+	document := []byte(`{"version":"1.8.9","side":"server","jarSha256":"",
+		"stateEncoding":"id|meta<<12","blocks":[{"id":1,"name":"minecraft:stone","blocksMovement":true}]}`)
+
+	_, err := loadBlockMovement(document)
+	if err == nil || !strings.Contains(err.Error(), "id|meta<<12") {
+		t.Fatalf("loadBlockMovement() error = %v, want a refusal naming the encoding", err)
+	}
+}
+
+// TestBlockMovementReadsTheMeasuredTree pins that the committed measurement
+// reaches the generator by name and describes every block the version has.
+func TestBlockMovementReadsTheMeasuredTree(t *testing.T) {
+	source, err := loadVerifiedSource(copySource(t))
+	if err != nil {
+		t.Fatalf("loadVerifiedSource: %v", err)
+	}
+	body, err := source.dataset("blockMovement")
+	if err != nil {
+		t.Fatalf("dataset(blockMovement): %v", err)
+	}
+
+	loaded, err := loadBlockMovement(body)
+	if err != nil {
+		t.Fatalf("loadBlockMovement: %v", err)
+	}
+	movement, ok := loaded.(*blockMovementTmpl)
+	if !ok {
+		t.Fatalf("loadBlockMovement returned %T", loaded)
+	}
+	if got, want := len(movement.Blocks), 198; got != want {
+		t.Fatalf("measured blocks = %d, want %d", got, want)
+	}
+	if movement.StateShift != chunkStateShift {
+		t.Fatalf("state shift = %d, want %d", movement.StateShift, chunkStateShift)
+	}
+	for index := 1; index < len(movement.Blocks); index++ {
+		if movement.Blocks[index-1].ID >= movement.Blocks[index].ID {
+			t.Fatalf("blocks are not sorted by identifier at index %d", index)
+		}
 	}
 }
 

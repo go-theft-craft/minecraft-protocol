@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/go-theft-craft/minecraft-protocol/internal/sourcefetch"
 	"github.com/go-theft-craft/minecraft-protocol/source/manifest"
@@ -66,6 +67,11 @@ type treeReport struct {
 	DatasetCount           int             `json:"datasetCount"`
 	AliasedCount           int             `json:"aliasedCount"`
 	Datasets               []datasetReport `json:"datasets"`
+	// Measured names the datasets read out of a Mojang jar rather than
+	// fetched from upstream. They verify the same way and come from somewhere
+	// else, and a reader auditing the tree has to be able to tell which is
+	// which without opening the manifest.
+	Measured []string `json:"measured,omitempty"`
 }
 
 func newTreeReport(loaded *manifest.Manifest) treeReport {
@@ -77,6 +83,12 @@ func newTreeReport(loaded *manifest.Manifest) treeReport {
 		SourceRevision:         loaded.SourceRevision,
 		DatasetCount:           len(loaded.Datasets),
 		Datasets:               make([]datasetReport, 0, len(loaded.Datasets)),
+	}
+	if loaded.Extracted != nil {
+		for _, dataset := range loaded.Extracted.Datasets {
+			report.Measured = append(report.Measured, dataset.Name)
+		}
+		sort.Strings(report.Measured)
 	}
 
 	for _, dataset := range loaded.Datasets {
@@ -120,6 +132,9 @@ func (r treeReport) write(stdout io.Writer, format string) error {
 	case "text":
 		_, _ = fmt.Fprintf(stdout, "%s/%s protocol %d at %s\n", r.Edition, r.TargetMinecraftVersion, r.Protocol, r.SourceRevision)
 		_, _ = fmt.Fprintf(stdout, "%d datasets, %d resolved from an older version\n", r.DatasetCount, r.AliasedCount)
+		if len(r.Measured) > 0 {
+			_, _ = fmt.Fprintf(stdout, "%d measured from a game jar: %s\n", len(r.Measured), strings.Join(r.Measured, ", "))
+		}
 		for _, dataset := range r.Datasets {
 			if dataset.Aliased {
 				_, _ = fmt.Fprintf(stdout, "  %-22s %s (alias of %s)\n", dataset.Name, dataset.SourcePath, dataset.SourceVersion)
