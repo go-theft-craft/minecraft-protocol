@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-17
+
 ### Added
 
 - `data`: `BlockMovementRegistry` answers whether a block stops something
