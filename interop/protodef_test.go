@@ -680,5 +680,36 @@ func differentialFixtures(t *testing.T) []differentialFixture {
 			value: &v26_1.PlayServerboundKeepAlive{KeepAliveID: 24680},
 			fresh: func() packetCodec { return &v26_1.PlayServerboundKeepAlive{} },
 		},
+		{
+			// A particle the schema names no switch case for, which is most of
+			// them: 98 of protocol 775's 117 particle types carry no data, and
+			// the switch has no default. Erroring on that combination read as
+			// strictness and was a decoder that dropped the connection when
+			// anything exploded. This fixture is here because the agreement is
+			// the thing worth pinning: ProtoDef's compiler, which is what
+			// node-minecraft-protocol runs, encodes a void default, so Go and
+			// Node have to produce the same empty bytes for this packet.
+			state: "play", direction: "toClient", packetName: "world_particles",
+			packetLabel: "particle with no data case",
+			value: &v26_1.PlayClientboundWorldParticles{
+				LongDistance: true, X: 1, Y: 2, Z: 3, Amount: 4,
+				Particle: v26_1.Particle{Type: "explosion_emitter"},
+			},
+			fresh: func() packetCodec { return &v26_1.PlayClientboundWorldParticles{} },
+		},
+		{
+			// The other half of the same switch, so the fixture above cannot
+			// pass by the encoder having stopped writing particle data at all.
+			state: "play", direction: "toClient", packetName: "world_particles",
+			packetLabel: "particle with a data case",
+			value: &v26_1.PlayClientboundWorldParticles{
+				LongDistance: true, X: 1, Y: 2, Z: 3, Amount: 4,
+				Particle: v26_1.Particle{
+					Type: "block",
+					Data: v26_1.ParticleDataSwitch{Block: 5},
+				},
+			},
+			fresh: func() packetCodec { return &v26_1.PlayClientboundWorldParticles{} },
+		},
 	}
 }

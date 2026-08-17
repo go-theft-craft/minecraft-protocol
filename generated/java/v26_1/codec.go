@@ -2646,7 +2646,8 @@ func (shared *ItemBlockPredicate) Decode(buffer *java.Buffer) error {
 				}
 				(*((*shared).Properties))[index1].Value.True.ExactValue = value12
 			default:
-				return fmt.Errorf("field handshaking.toClient.ItemBlockPredicate.properties[].value: unsupported switch value %v", (*((*shared).Properties))[index1].IsExactMatch)
+				// handshaking.toClient.ItemBlockPredicate.properties[].value: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	} else {
@@ -2718,7 +2719,8 @@ func (shared *ItemBlockPredicate) Encode(buffer *java.Buffer) error {
 					return err
 				}
 			default:
-				return fmt.Errorf("field handshaking.toClient.ItemBlockPredicate.properties[].value: unsupported switch value %v", (*((*shared).Properties))[index1].IsExactMatch)
+				// handshaking.toClient.ItemBlockPredicate.properties[].value: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	}
@@ -3057,7 +3059,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				}
 				((*shared).Data.AttributeModifiers)[index0].Display.Component.Override = value20
 			default:
-				return fmt.Errorf("field handshaking.toClient.SlotComponent.data[].display.component: unsupported switch value %v", ((*shared).Data.AttributeModifiers)[index0].Display.Type)
+				// handshaking.toClient.SlotComponent.data[].display.component: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	case "axolotl/variant":
@@ -3604,7 +3607,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				}
 				((*shared).Data.Consumable.Effects)[index10].AnonymousSwitch1.TeleportRandomly.Diameter = value111
 			default:
-				return fmt.Errorf("field handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: unsupported switch value %v", ((*shared).Data.Consumable.Effects)[index10].Type)
+				// handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	case "container":
@@ -3772,7 +3776,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				(*shared).Data.DamageType.DamageType.True.ID = id130
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.damageType: unsupported switch value %v", (*shared).Data.DamageType.HasHolder)
+			// handshaking.toClient.SlotComponent.data.damageType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "death_protection":
 		count140, err := buffer.ReadCollectionLength("handshaking.toClient.SlotComponent.data.effects")
@@ -3871,7 +3876,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				}
 				((*shared).Data.DeathProtection.Effects)[index18].AnonymousSwitch1.TeleportRandomly.Diameter = value155
 			default:
-				return fmt.Errorf("field handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: unsupported switch value %v", ((*shared).Data.DeathProtection.Effects)[index18].Type)
+				// handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	case "debug_stick_state":
@@ -4287,7 +4293,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				(*shared).Data.Instrument.Data.True.ID = id219
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.data: unsupported switch value %v", (*shared).Data.Instrument.HasHolder)
+			// handshaking.toClient.SlotComponent.data.data: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "intangible_projectile":
 	case "item_model":
@@ -4369,7 +4376,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				(*shared).Data.JukeboxPlayable.Song.True.ID = id233
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.song: unsupported switch value %v", (*shared).Data.JukeboxPlayable.HasHolder)
+			// handshaking.toClient.SlotComponent.data.song: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "kinetic_weapon":
 		value243, err := buffer.ReadVarInt("handshaking.toClient.SlotComponent.data.contactCooldownTicks")
@@ -5010,7 +5018,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				}
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.anonymousSwitch1: unsupported switch value %v", (*shared).Data.Profile.Type)
+			// handshaking.toClient.SlotComponent.data.anonymousSwitch1: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		present347, err := buffer.ReadBool("handshaking.toClient.SlotComponent.data.skinPatch.body")
 		if err != nil {
@@ -5129,7 +5138,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 				(*shared).Data.ProvidesTrimMaterial.Material.True.ID = id359
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.material: unsupported switch value %v", (*shared).Data.ProvidesTrimMaterial.HasHolder)
+			// handshaking.toClient.SlotComponent.data.material: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "rabbit/variant":
 		value366, err := buffer.ReadVarInt("handshaking.toClient.SlotComponent.data")
@@ -5615,7 +5625,8 @@ func (shared *SlotComponent) Decode(buffer *java.Buffer) error {
 			(*shared).Data.ZombieNautilusVariant.ID = id448
 		}
 	default:
-		return fmt.Errorf("field handshaking.toClient.SlotComponent.data: unsupported switch value %v", (*shared).Type)
+		// handshaking.toClient.SlotComponent.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -5697,7 +5708,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 					return err
 				}
 			default:
-				return fmt.Errorf("field handshaking.toClient.SlotComponent.data[].display.component: unsupported switch value %v", ((*shared).Data.AttributeModifiers)[index0].Display.Type)
+				// handshaking.toClient.SlotComponent.data[].display.component: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	case "axolotl/variant":
@@ -6095,7 +6107,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 					return err
 				}
 			default:
-				return fmt.Errorf("field handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: unsupported switch value %v", ((*shared).Data.Consumable.Effects)[index10].Type)
+				// handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	case "container":
@@ -6221,7 +6234,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 				}
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.damageType: unsupported switch value %v", (*shared).Data.DamageType.HasHolder)
+			// handshaking.toClient.SlotComponent.data.damageType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "death_protection":
 		count48 := len((*shared).Data.DeathProtection.Effects)
@@ -6297,7 +6311,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 					return err
 				}
 			default:
-				return fmt.Errorf("field handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: unsupported switch value %v", ((*shared).Data.DeathProtection.Effects)[index18].Type)
+				// handshaking.toClient.SlotComponent.data.effects[].anonymousSwitch1: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	case "debug_stick_state":
@@ -6582,7 +6597,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 				}
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.data: unsupported switch value %v", (*shared).Data.Instrument.HasHolder)
+			// handshaking.toClient.SlotComponent.data.data: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "intangible_projectile":
 	case "item_model":
@@ -6637,7 +6653,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 				}
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.song: unsupported switch value %v", (*shared).Data.JukeboxPlayable.HasHolder)
+			// handshaking.toClient.SlotComponent.data.song: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "kinetic_weapon":
 		if err := buffer.WriteVarInt("handshaking.toClient.SlotComponent.data.contactCooldownTicks", (*shared).Data.KineticWeapon.ContactCooldownTicks); err != nil {
@@ -7068,7 +7085,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 				}
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.anonymousSwitch1: unsupported switch value %v", (*shared).Data.Profile.Type)
+			// handshaking.toClient.SlotComponent.data.anonymousSwitch1: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		present111 := (*shared).Data.Profile.SkinPatch.Body != nil
 		if err := buffer.WriteBool("handshaking.toClient.SlotComponent.data.skinPatch.body", present111); err != nil {
@@ -7149,7 +7167,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 				}
 			}
 		default:
-			return fmt.Errorf("field handshaking.toClient.SlotComponent.data.material: unsupported switch value %v", (*shared).Data.ProvidesTrimMaterial.HasHolder)
+			// handshaking.toClient.SlotComponent.data.material: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	case "rabbit/variant":
 		if err := buffer.WriteVarInt("handshaking.toClient.SlotComponent.data", (*shared).Data.RabbitVariant); err != nil {
@@ -7492,7 +7511,8 @@ func (shared *SlotComponent) Encode(buffer *java.Buffer) error {
 			}
 		}
 	default:
-		return fmt.Errorf("field handshaking.toClient.SlotComponent.data: unsupported switch value %v", (*shared).Type)
+		// handshaking.toClient.SlotComponent.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -8364,7 +8384,8 @@ func (shared *DebugSubscriptionUpdate) Decode(buffer *java.Buffer) error {
 				}
 			case "VillageSections":
 			default:
-				return fmt.Errorf("field play.toClient.DebugSubscriptionUpdate.anonymousSwitch1.payload: unsupported switch value %v", (*shared).Type)
+				// play.toClient.DebugSubscriptionUpdate.anonymousSwitch1.payload: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		} else {
 			(*shared).AnonymousSwitch1.Default.Payload = nil
@@ -8610,7 +8631,8 @@ func (shared *DebugSubscriptionUpdate) Encode(buffer *java.Buffer) error {
 				}
 			case "VillageSections":
 			default:
-				return fmt.Errorf("field play.toClient.DebugSubscriptionUpdate.anonymousSwitch1.payload: unsupported switch value %v", (*shared).Type)
+				// play.toClient.DebugSubscriptionUpdate.anonymousSwitch1.payload: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 		}
 	}
@@ -9019,7 +9041,8 @@ func (shared *ItemBlockProperty) Decode(buffer *java.Buffer) error {
 		}
 		(*shared).Value.True.ExactValue = value5
 	default:
-		return fmt.Errorf("field play.toClient.ItemBlockProperty.value: unsupported switch value %v", (*shared).IsExactMatch)
+		// play.toClient.ItemBlockProperty.value: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -9047,7 +9070,8 @@ func (shared *ItemBlockProperty) Encode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.ItemBlockProperty.value: unsupported switch value %v", (*shared).IsExactMatch)
+		// play.toClient.ItemBlockProperty.value: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -9151,7 +9175,8 @@ func (shared *ItemConsumeEffect) Decode(buffer *java.Buffer) error {
 		}
 		(*shared).AnonymousSwitch1.TeleportRandomly.Diameter = value5
 	default:
-		return fmt.Errorf("field play.toClient.ItemConsumeEffect.anonymousSwitch1: unsupported switch value %v", (*shared).Type)
+		// play.toClient.ItemConsumeEffect.anonymousSwitch1: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -9195,7 +9220,8 @@ func (shared *ItemConsumeEffect) Encode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.ItemConsumeEffect.anonymousSwitch1: unsupported switch value %v", (*shared).Type)
+		// play.toClient.ItemConsumeEffect.anonymousSwitch1: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -9900,7 +9926,8 @@ func (shared *Particle) Decode(buffer *java.Buffer) error {
 			}
 			(*shared).Data.Vibration.Position.Entity.EntityEyeHeight = value33
 		default:
-			return fmt.Errorf("field play.toClient.Particle.data.position: unsupported switch value %v", (*shared).Data.Vibration.PositionType)
+			// play.toClient.Particle.data.position: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		value34, err := buffer.ReadVarInt("play.toClient.Particle.data.ticks")
 		if err != nil {
@@ -9908,7 +9935,8 @@ func (shared *Particle) Decode(buffer *java.Buffer) error {
 		}
 		(*shared).Data.Vibration.Ticks = value34
 	default:
-		return fmt.Errorf("field play.toClient.Particle.data: unsupported switch value %v", (*shared).Type)
+		// play.toClient.Particle.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -10054,13 +10082,15 @@ func (shared *Particle) Encode(buffer *java.Buffer) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("field play.toClient.Particle.data.position: unsupported switch value %v", (*shared).Data.Vibration.PositionType)
+			// play.toClient.Particle.data.position: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		if err := buffer.WriteVarInt("play.toClient.Particle.data.ticks", (*shared).Data.Vibration.Ticks); err != nil {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.Particle.data: unsupported switch value %v", (*shared).Type)
+		// play.toClient.Particle.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -10453,7 +10483,8 @@ func (shared *RecipeDisplay) Decode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.RecipeDisplay.data: unsupported switch value %v", (*shared).Type)
+		// play.toClient.RecipeDisplay.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -10608,7 +10639,8 @@ func (shared *RecipeDisplay) Encode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.RecipeDisplay.data: unsupported switch value %v", (*shared).Type)
+		// play.toClient.RecipeDisplay.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -10640,7 +10672,8 @@ func (shared *ResolvableProfile) Decode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.ResolvableProfile.anonymousSwitch1: unsupported switch value %v", (*shared).Type)
+		// play.toClient.ResolvableProfile.anonymousSwitch1: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	if err := (&(*shared).SkinPatch).Decode(buffer); err != nil {
 		return err
@@ -10669,7 +10702,8 @@ func (shared *ResolvableProfile) Encode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.ResolvableProfile.anonymousSwitch1: unsupported switch value %v", (*shared).Type)
+		// play.toClient.ResolvableProfile.anonymousSwitch1: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	if err := (&(*shared).SkinPatch).Encode(buffer); err != nil {
 		return err
@@ -10813,7 +10847,8 @@ func (shared *SlotDisplay) Decode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.SlotDisplay.data: unsupported switch value %v", (*shared).Type)
+		// play.toClient.SlotDisplay.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -10926,7 +10961,8 @@ func (shared *SlotDisplay) Encode(buffer *java.Buffer) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.SlotDisplay.data: unsupported switch value %v", (*shared).Type)
+		// play.toClient.SlotDisplay.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -13025,7 +13061,8 @@ func (packet *PlayClientboundDeclareCommands) Decode(buffer *java.Buffer) error 
 			case "minecraft:vec2":
 			case "minecraft:vec3":
 			default:
-				return fmt.Errorf("field play.toClient.declare_commands.nodes[].extraNodeData.properties: unsupported switch value %v", (packet.Nodes)[index0].ExtraNodeData.Case2.Parser)
+				// play.toClient.declare_commands.nodes[].extraNodeData.properties: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 			switch (packet.Nodes)[index0].Flags.HasCustomSuggestions {
 			case 1:
@@ -13037,7 +13074,8 @@ func (packet *PlayClientboundDeclareCommands) Decode(buffer *java.Buffer) error 
 			default:
 			}
 		default:
-			return fmt.Errorf("field play.toClient.declare_commands.nodes[].extraNodeData: unsupported switch value %v", (packet.Nodes)[index0].Flags.CommandNodeType)
+			// play.toClient.declare_commands.nodes[].extraNodeData: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	value56, err := buffer.ReadVarInt("play.toClient.declare_commands.rootIndex")
@@ -13345,7 +13383,8 @@ func (packet *PlayClientboundDeclareCommands) Encode(buffer *java.Buffer) error 
 			case "minecraft:vec2":
 			case "minecraft:vec3":
 			default:
-				return fmt.Errorf("field play.toClient.declare_commands.nodes[].extraNodeData.properties: unsupported switch value %v", (packet.Nodes)[index0].ExtraNodeData.Case2.Parser)
+				// play.toClient.declare_commands.nodes[].extraNodeData.properties: the schema names no case for this value and no
+				// default, so the field is absent from the wire.
 			}
 			switch (packet.Nodes)[index0].Flags.HasCustomSuggestions {
 			case 1:
@@ -13355,7 +13394,8 @@ func (packet *PlayClientboundDeclareCommands) Encode(buffer *java.Buffer) error 
 			default:
 			}
 		default:
-			return fmt.Errorf("field play.toClient.declare_commands.nodes[].extraNodeData: unsupported switch value %v", (packet.Nodes)[index0].Flags.CommandNodeType)
+			// play.toClient.declare_commands.nodes[].extraNodeData: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	if err := buffer.WriteVarInt("play.toClient.declare_commands.rootIndex", packet.RootIndex); err != nil {
@@ -14145,7 +14185,8 @@ func (packet *PlayClientboundDebugEvent) Decode(buffer *java.Buffer) error {
 		}
 	case "VillageSections":
 	default:
-		return fmt.Errorf("field play.toClient.debug_event.event.value: unsupported switch value %v", packet.Event.Type)
+		// play.toClient.debug_event.event.value: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	*target = *packet
 	return nil
@@ -14374,7 +14415,8 @@ func (packet *PlayClientboundDebugEvent) Encode(buffer *java.Buffer) error {
 		}
 	case "VillageSections":
 	default:
-		return fmt.Errorf("field play.toClient.debug_event.event.value: unsupported switch value %v", packet.Event.Type)
+		// play.toClient.debug_event.event.value: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -19168,7 +19210,8 @@ func (packet *PlayClientboundEntityMetadata) Decode(buffer *java.Buffer) error {
 			}
 			(packet.Metadata)[index0].Value.ZombieNautilusVariant = value55
 		default:
-			return fmt.Errorf("field play.toClient.entity_metadata.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].Type)
+			// play.toClient.entity_metadata.metadata[].value: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	*target = *packet
@@ -19434,7 +19477,8 @@ func (packet *PlayClientboundEntityMetadata) Encode(buffer *java.Buffer) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("field play.toClient.entity_metadata.metadata[].value: unsupported switch value %v", (packet.Metadata)[index0].Type)
+			// play.toClient.entity_metadata.metadata[].value: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	if err := buffer.WriteTerminator("play.toClient.entity_metadata.metadata", 255); err != nil {
@@ -21945,7 +21989,8 @@ func (packet *PlayClientboundServerLinks) Decode(buffer *java.Buffer) error {
 			}
 			(packet.Links)[index0].KnownType.True = mapped4
 		default:
-			return fmt.Errorf("field play.toClient.server_links.links[].knownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// play.toClient.server_links.links[].knownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		switch (packet.Links)[index0].HasKnownType {
 		case false:
@@ -21955,7 +22000,8 @@ func (packet *PlayClientboundServerLinks) Decode(buffer *java.Buffer) error {
 			}
 			(packet.Links)[index0].UnknownType.False = value5
 		default:
-			return fmt.Errorf("field play.toClient.server_links.links[].unknownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// play.toClient.server_links.links[].unknownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		value6, err := buffer.ReadString("play.toClient.server_links.links[].link")
 		if err != nil {
@@ -21989,7 +22035,8 @@ func (packet *PlayClientboundServerLinks) Encode(buffer *java.Buffer) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("field play.toClient.server_links.links[].knownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// play.toClient.server_links.links[].knownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		switch (packet.Links)[index0].HasKnownType {
 		case false:
@@ -21997,7 +22044,8 @@ func (packet *PlayClientboundServerLinks) Encode(buffer *java.Buffer) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("field play.toClient.server_links.links[].unknownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// play.toClient.server_links.links[].unknownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		if err := buffer.WriteString("play.toClient.server_links.links[].link", (packet.Links)[index0].Link); err != nil {
 			return err
@@ -22040,7 +22088,8 @@ func (packet *PlayClientboundTrackedWaypoint) Decode(buffer *java.Buffer) error 
 		}
 		packet.Waypoint.AnonymousSwitch1.True.UUID = value5
 	default:
-		return fmt.Errorf("field play.toClient.tracked_waypoint.waypoint.anonymousSwitch1: unsupported switch value %v", packet.Waypoint.HasUUID)
+		// play.toClient.tracked_waypoint.waypoint.anonymousSwitch1: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	value6, err := buffer.ReadString("play.toClient.tracked_waypoint.waypoint.icon.style")
 	if err != nil {
@@ -22103,7 +22152,8 @@ func (packet *PlayClientboundTrackedWaypoint) Decode(buffer *java.Buffer) error 
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.tracked_waypoint.waypoint.data: unsupported switch value %v", packet.Waypoint.Type)
+		// play.toClient.tracked_waypoint.waypoint.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	*target = *packet
 	return nil
@@ -22133,7 +22183,8 @@ func (packet *PlayClientboundTrackedWaypoint) Encode(buffer *java.Buffer) error 
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.tracked_waypoint.waypoint.anonymousSwitch1: unsupported switch value %v", packet.Waypoint.HasUUID)
+		// play.toClient.tracked_waypoint.waypoint.anonymousSwitch1: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	if err := buffer.WriteString("play.toClient.tracked_waypoint.waypoint.icon.style", packet.Waypoint.Icon.Style); err != nil {
 		return err
@@ -22177,7 +22228,8 @@ func (packet *PlayClientboundTrackedWaypoint) Encode(buffer *java.Buffer) error 
 			return err
 		}
 	default:
-		return fmt.Errorf("field play.toClient.tracked_waypoint.waypoint.data: unsupported switch value %v", packet.Waypoint.Type)
+		// play.toClient.tracked_waypoint.waypoint.data: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -24416,7 +24468,8 @@ func (packet *PlayServerboundAdvancementTab) Decode(buffer *java.Buffer) error {
 		packet.TabID.Case0 = value2
 	case 1:
 	default:
-		return fmt.Errorf("field play.toServer.advancement_tab.tabId: unsupported switch value %v", packet.Action)
+		// play.toServer.advancement_tab.tabId: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	*target = *packet
 	return nil
@@ -24436,7 +24489,8 @@ func (packet *PlayServerboundAdvancementTab) Encode(buffer *java.Buffer) error {
 		}
 	case 1:
 	default:
-		return fmt.Errorf("field play.toServer.advancement_tab.tabId: unsupported switch value %v", packet.Action)
+		// play.toServer.advancement_tab.tabId: the schema names no case for this value and no
+		// default, so the field is absent from the wire.
 	}
 	return nil
 }
@@ -26172,7 +26226,8 @@ func (packet *ConfigurationClientboundServerLinks) Decode(buffer *java.Buffer) e
 			}
 			(packet.Links)[index0].KnownType.True = mapped4
 		default:
-			return fmt.Errorf("field configuration.toClient.server_links.links[].knownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// configuration.toClient.server_links.links[].knownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		switch (packet.Links)[index0].HasKnownType {
 		case false:
@@ -26182,7 +26237,8 @@ func (packet *ConfigurationClientboundServerLinks) Decode(buffer *java.Buffer) e
 			}
 			(packet.Links)[index0].UnknownType.False = value5
 		default:
-			return fmt.Errorf("field configuration.toClient.server_links.links[].unknownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// configuration.toClient.server_links.links[].unknownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		value6, err := buffer.ReadString("configuration.toClient.server_links.links[].link")
 		if err != nil {
@@ -26216,7 +26272,8 @@ func (packet *ConfigurationClientboundServerLinks) Encode(buffer *java.Buffer) e
 				return err
 			}
 		default:
-			return fmt.Errorf("field configuration.toClient.server_links.links[].knownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// configuration.toClient.server_links.links[].knownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		switch (packet.Links)[index0].HasKnownType {
 		case false:
@@ -26224,7 +26281,8 @@ func (packet *ConfigurationClientboundServerLinks) Encode(buffer *java.Buffer) e
 				return err
 			}
 		default:
-			return fmt.Errorf("field configuration.toClient.server_links.links[].unknownType: unsupported switch value %v", (packet.Links)[index0].HasKnownType)
+			// configuration.toClient.server_links.links[].unknownType: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 		if err := buffer.WriteString("configuration.toClient.server_links.links[].link", (packet.Links)[index0].Link); err != nil {
 			return err

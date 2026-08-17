@@ -123,7 +123,8 @@ func (shared *EntityMetadata) Decode(buffer *java.Buffer) error {
 			}
 			(*shared)[index0].Value.Case7.Roll = value16
 		default:
-			return fmt.Errorf("field play.toClient.entityMetadata[].value: unsupported switch value %v", (*shared)[index0].AnonymousBitField1.Type)
+			// play.toClient.entityMetadata[].value: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	return nil
@@ -195,7 +196,8 @@ func (shared *EntityMetadata) Encode(buffer *java.Buffer) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("field play.toClient.entityMetadata[].value: unsupported switch value %v", (*shared)[index0].AnonymousBitField1.Type)
+			// play.toClient.entityMetadata[].value: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	if err := buffer.WriteTerminator("play.toClient.entityMetadata", 127); err != nil {
@@ -3800,7 +3802,8 @@ func (packet *PlayClientboundPlayerInfo) Decode(buffer *java.Buffer) error {
 			}
 			(packet.Data)[index0].AnonymousSwitch1.UpdateLatency.Ping = value18
 		default:
-			return fmt.Errorf("field play.toClient.player_info.data[].anonymousSwitch1: unsupported switch value %v", packet.Action)
+			// play.toClient.player_info.data[].anonymousSwitch1: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	*target = *packet
@@ -3887,7 +3890,8 @@ func (packet *PlayClientboundPlayerInfo) Encode(buffer *java.Buffer) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("field play.toClient.player_info.data[].anonymousSwitch1: unsupported switch value %v", packet.Action)
+			// play.toClient.player_info.data[].anonymousSwitch1: the schema names no case for this value and no
+			// default, so the field is absent from the wire.
 		}
 	}
 	return nil

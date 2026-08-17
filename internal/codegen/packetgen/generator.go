@@ -827,13 +827,22 @@ func (r *operationRenderer) renderSwitch(output *sourceWriter, operation Operati
 		}
 		output.indent--
 	} else {
+		// A schema switch with no default carries nothing for the values it
+		// does not name, so an unmatched value reads and writes no bytes.
+		//
+		// This is ProtoDef's behaviour rather than a choice made here, and
+		// ProtoDef has two implementations that disagree about it: the
+		// interpreter throws, and the compiler emits a void default. The
+		// compiler is the one node-minecraft-protocol runs in production and
+		// the one this repository's differential lane compares against, so it
+		// is the one to match. Following the interpreter instead means
+		// rejecting traffic every real client accepts, which is what erroring
+		// here used to do — 98 of protocol 775's 117 particle types name no
+		// case, so a flame or an explosion ended the connection.
 		output.line("default:")
 		output.indent++
-		output.line(
-			"return fmt.Errorf(%s, %s)",
-			strconv.Quote("field "+operation.Path+": unsupported switch value %v"),
-			operation.Compare.Value,
-		)
+		output.line("// %s: the schema names no case for this value and no", operation.Path)
+		output.line("// default, so the field is absent from the wire.")
 		output.indent--
 	}
 	output.line("}")
