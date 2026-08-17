@@ -4,6 +4,21 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-17
+
+### Added
+
+- `wire/java`: `NetworkNBT.Int` and `NBT.Int` read one `TAG_Int` by a path of
+  compound keys, returning a second result that separates an absent key from a
+  real zero. Both NBT types are retained losslessly and exposed only as bytes,
+  which left a caller needing one scalar out of server-sent data with a choice
+  between guessing it and writing its own NBT walker — and a chunk column's
+  sections cannot be placed in the world without the dimension type's `min_y`,
+  which is legitimately zero in the nether. Names are matched in the encoding
+  they arrived in, so a key is never decoded to compare it. Only integers are
+  readable: a string accessor needs a decoder from Java's modified UTF-8 to a
+  Go string, which this package does not have.
+
 ## 0.2.0 - 2026-08-16
 
 This release publishes Java Edition 26.1 and protocol 775, the routing,
