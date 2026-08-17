@@ -4,6 +4,28 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Added
+
+- `generated/java/v26_1`: `Physics()` answers for Java 26.1.2 —
+  `defaultSlipperiness`, all 1,168 blocks' slipperiness, the 65,536-entry
+  trigonometry table, and the player's four motion constants — measured from a
+  verified Mojang server jar and pinned in the `extracted` block of
+  `source/java/26.1/manifest.json` beside that version's block measurement.
+  Until now only Java 1.8.9 carried physics, so a consumer simulating the modern
+  protocol had a world it could see and no constants to move through it with.
+  Three of the four constants are `float` values Java widens where it applies
+  them, and they are stored widened: the step height is `0.6000000238418579`
+  rather than the attribute's round `0.6`, because the game narrows the attribute
+  to a `float` where the step-up reads it. A new round-trip test compares every
+  generated constant against the pinned document at full precision, so a
+  generator that shortened one would fail rather than drift.
+  Only the player is recorded. The item and arrow families 1.8.9 carries are not
+  measured for this version, because nothing uses them yet.
+  The version's trigonometry table is bit for bit identical to 1.8.9's, and it
+  is stored again rather than shared: an identical measurement of two versions is
+  a fact about both, and sharing one table would be a claim about every version
+  after them.
+
 ## 0.4.0 - 2026-08-17
 
 ### Added

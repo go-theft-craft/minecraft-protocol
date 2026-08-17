@@ -88,7 +88,7 @@ func TestRawHoldsEveryDataset(t *testing.T) {
 		"blockMovement", "blocks",
 		"commands", "effects", "enchantments", "entities", "entityLoot",
 		"foods", "instruments", "items", "language", "loginPacket",
-		"mapIcons", "materials", "particles", "proto", "protocol",
+		"mapIcons", "materials", "particles", "physics", "proto", "protocol",
 		"recipes", "sounds", "tints", "version", "windows",
 	}
 	if !slices.Equal(names, want) {

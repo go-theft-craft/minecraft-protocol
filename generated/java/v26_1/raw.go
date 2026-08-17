@@ -41,6 +41,7 @@ var rawDatasetSources = []rawDatasetSource{
 	{name: "mapIcons", path: "data/pc/1.20.2/mapIcons.json", mediaType: "application/json", file: "raw/mapIcons.json"},
 	{name: "materials", path: "data/pc/26.1/materials.json", mediaType: "application/json", file: "raw/materials.json"},
 	{name: "particles", path: "data/pc/26.1/particles.json", mediaType: "application/json", file: "raw/particles.json"},
+	{name: "physics", path: "physics.json", mediaType: "application/json", file: "raw/physics.json"},
 	{name: "proto", path: "data/pc/latest/proto.yml", mediaType: "application/yaml", file: "raw/proto.yml"},
 	{name: "protocol", path: "data/pc/26.1/protocol.json", mediaType: "application/json", file: "raw/protocol.json"},
 	{name: "recipes", path: "data/pc/26.1/recipes.json", mediaType: "application/json", file: "raw/recipes.json"},

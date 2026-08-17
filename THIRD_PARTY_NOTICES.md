@@ -94,6 +94,15 @@ extraction tool, its revision, the Minecraft version, the side, and the SHA-256
 digest of the jar as Mojang published it, so the provenance can be checked
 against Mojang's own metadata.
 
+`source/java/26.1/physics.json` and `source/java/26.1/blockMovement.json` are the
+same two measurements taken from a Minecraft Java Edition 26.1.2 server jar
+obtained from Mojang, recorded by the `extracted` block in
+`source/java/26.1/manifest.json` in the same terms. Two differences are the
+version's own rather than this project's: the block measurement is keyed by state
+range because that version computes the answer per state, and the physics
+document records the player alone, because the player is what has been used and a
+constant nobody uses is a constant nobody checks.
+
 This repository contains no Minecraft jar, no mapping file, no decompiled Java
 source, and no game asset. It contains measured values and the registry names
 they are keyed by. Minecraft

@@ -27,8 +27,8 @@ func TestTreeReportNamesMeasuredDatasets(t *testing.T) {
 }
 
 // TestTreeReportNamesTheMeasuredDatasetsOf26_1 pins the other real tree. It
-// carries the block measurement and not the physics one, because 26.1.2 has a
-// block dumper and no physics dumper yet.
+// carries both measurements now: the block dumper landed first and the physics
+// dumper followed, so this version says the same two things 1.8.9 does.
 func TestTreeReportNamesTheMeasuredDatasetsOf26_1(t *testing.T) {
 	loaded, err := manifest.Load("../../source/java/26.1")
 	if err != nil {
@@ -36,7 +36,7 @@ func TestTreeReportNamesTheMeasuredDatasetsOf26_1(t *testing.T) {
 	}
 
 	report := newTreeReport(loaded)
-	if want := []string{"blockMovement"}; !reflect.DeepEqual(report.Measured, want) {
+	if want := []string{"blockMovement", "physics"}; !reflect.DeepEqual(report.Measured, want) {
 		t.Fatalf("measured datasets = %v, want %v", report.Measured, want)
 	}
 }

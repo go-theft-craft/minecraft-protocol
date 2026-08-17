@@ -187,12 +187,18 @@
   ],
   "extracted": {
     "tool": "mcreference",
-    "toolRevision": "ff5f42f10065f6ecba64c5793331bfb753b33654",
+    "toolRevision": "443d99da3c3af651c04f4d60842f433bc8131943",
     "minecraftVersion": "26.1.2",
     "side": "server",
     "jarSha256": "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42",
     "license": "Mojang End User Licence Agreement",
     "datasets": [
+      {
+        "name": "physics",
+        "file": "physics.json",
+        "mediaType": "application/json",
+        "sha256": "93af4c6710d43cf2aa18e42a811f492bfb48d97ab4a794fb18b7e02c2e4fff50"
+      },
       {
         "name": "blockMovement",
         "file": "blockMovement.json",
