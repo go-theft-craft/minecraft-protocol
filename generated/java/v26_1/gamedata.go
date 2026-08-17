@@ -37,6 +37,7 @@ func Data() (*data.Set, error) {
 		Commands:        newCommandTree(),
 		LoginPacket:     newLoginPacket(),
 		Tints:           newTints(),
+		BlockMovement:   newBlockMovementRegistry(),
 		Protocol:        newProtocol(),
 		Version:         newDataVersion(),
 	})

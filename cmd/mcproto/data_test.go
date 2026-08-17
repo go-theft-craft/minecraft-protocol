@@ -26,15 +26,35 @@ func TestTreeReportNamesMeasuredDatasets(t *testing.T) {
 	}
 }
 
-// TestTreeReportOmitsMeasuredDatasetsWhenThereAreNone pins the other half: a
-// tree nobody has measured says nothing rather than reporting an empty list.
-func TestTreeReportOmitsMeasuredDatasetsWhenThereAreNone(t *testing.T) {
+// TestTreeReportNamesTheMeasuredDatasetsOf26_1 pins the other real tree. It
+// carries the block measurement and not the physics one, because 26.1.2 has a
+// block dumper and no physics dumper yet.
+func TestTreeReportNamesTheMeasuredDatasetsOf26_1(t *testing.T) {
 	loaded, err := manifest.Load("../../source/java/26.1")
 	if err != nil {
 		t.Fatalf("manifest.Load: %v", err)
 	}
 
-	if report := newTreeReport(loaded); report.Measured != nil {
+	report := newTreeReport(loaded)
+	if want := []string{"blockMovement"}; !reflect.DeepEqual(report.Measured, want) {
+		t.Fatalf("measured datasets = %v, want %v", report.Measured, want)
+	}
+}
+
+// TestTreeReportOmitsMeasuredDatasetsWhenThereAreNone pins the third case: a
+// tree nobody has measured says nothing rather than reporting an empty list.
+//
+// It builds the manifest rather than loading one, because every tree in this
+// repository is now measured and the distinction between "none" and "an empty
+// list" would otherwise stop being tested the moment it stopped being visible.
+func TestTreeReportOmitsMeasuredDatasetsWhenThereAreNone(t *testing.T) {
+	unmeasured := &manifest.Manifest{
+		Edition:                "java",
+		TargetMinecraftVersion: "1.8.9",
+		Protocol:               47,
+	}
+
+	if report := newTreeReport(unmeasured); report.Measured != nil {
 		t.Fatalf("measured datasets = %v, want none", report.Measured)
 	}
 }

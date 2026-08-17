@@ -84,7 +84,8 @@ func TestRawHoldsEveryDataset(t *testing.T) {
 
 	names := Raw().Names()
 	want := []string{
-		"attributes", "biomes", "blockCollisionShapes", "blockLoot", "blocks",
+		"attributes", "biomes", "blockCollisionShapes", "blockLoot",
+		"blockMovement", "blocks",
 		"commands", "effects", "enchantments", "entities", "entityLoot",
 		"foods", "instruments", "items", "language", "loginPacket",
 		"mapIcons", "materials", "particles", "proto", "protocol",

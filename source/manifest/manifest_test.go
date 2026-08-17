@@ -366,6 +366,29 @@ func TestLoadAcceptsExtractedProvenance(t *testing.T) {
 	}
 }
 
+// TestLoadAcceptsAPatchOfTheTargetVersion pins the case the 26.1 tree is.
+//
+// A target is not always a release. Upstream publishes its data under 26.1 and
+// Mojang ships no jar by that name, so the measurement comes from a patch in
+// that line. Requiring the two to be equal would have left only dishonest
+// options: label the jar a version that does not exist, or record no
+// measurement for a version that was measured.
+func TestLoadAcceptsAPatchOfTheTargetVersion(t *testing.T) {
+	value, files := valid()
+	block, body := physics()
+	block["minecraftVersion"] = "26.1.2"
+	value["extracted"] = block
+	files["data/physics.json"] = body
+
+	loaded, err := manifest.Load(write(t, value, files))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.Extracted.MinecraftVersion != "26.1.2" {
+		t.Fatalf("minecraftVersion = %q, want the patch it was measured from", loaded.Extracted.MinecraftVersion)
+	}
+}
+
 // TestLoadAcceptsATreeWithoutExtractedProvenance pins that extracted data is
 // optional: trees whose version has no measured constants still load.
 func TestLoadAcceptsATreeWithoutExtractedProvenance(t *testing.T) {
@@ -400,7 +423,21 @@ func TestLoadRejectsExtractedProvenance(t *testing.T) {
 		{
 			name:   "version disagrees with target",
 			mutate: func(block map[string]any) { block["minecraftVersion"] = "1.8.9" },
-			want:   "does not match target",
+			want:   "does not measure target",
+		},
+		{
+			// A jar from a neighbouring release line is the mistake the patch
+			// rule could have let through if it compared loosely.
+			name:   "version from another release line",
+			mutate: func(block map[string]any) { block["minecraftVersion"] = "26.2.1" },
+			want:   "does not measure target",
+		},
+		{
+			// 26.10 shares the characters of 26.1 without being a patch of it,
+			// which is why the rule matches at a component boundary.
+			name:   "version that only shares a prefix",
+			mutate: func(block map[string]any) { block["minecraftVersion"] = "26.10" },
+			want:   "does not measure target",
 		},
 		{
 			name:   "unsupported side",

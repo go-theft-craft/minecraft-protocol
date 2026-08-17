@@ -184,5 +184,21 @@
       "mediaType": "application/json",
       "sha256": "9b5eaad2c51089a2cefd42ac8f5342db9c64e7486fb1bc7ae99e65d29e3d5e14"
     }
-  ]
+  ],
+  "extracted": {
+    "tool": "mcreference",
+    "toolRevision": "ff5f42f10065f6ecba64c5793331bfb753b33654",
+    "minecraftVersion": "26.1.2",
+    "side": "server",
+    "jarSha256": "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42",
+    "license": "Mojang End User Licence Agreement",
+    "datasets": [
+      {
+        "name": "blockMovement",
+        "file": "blockMovement.json",
+        "mediaType": "application/json",
+        "sha256": "f080bfe9480be0feee2e6f9596d9ecec2570a8360a8d7eec779eeebb9af65d4b"
+      }
+    ]
+  }
 }

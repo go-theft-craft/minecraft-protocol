@@ -228,7 +228,12 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 	packageName := config.Package
 	var rawFiles []renderedFile
 	rendered := make(map[string][]byte, len(generatedFileNames))
-	add := func(datasetName, templateName, outputFile string, load func([]byte) (any, error)) error {
+	// addChoosing renders a dataset whose template depends on what the dataset
+	// turns out to say. Only the measured block facts need it: the version that
+	// keys them by block and the version that keys them by state generate
+	// different registries, and which one a tree holds is a property of the
+	// file rather than of the render plan.
+	addChoosing := func(datasetName string, chooseTemplate func(any) string, outputFile string, load func([]byte) (any, error)) error {
 		body, err := source.dataset(datasetName)
 		if err != nil {
 			return err
@@ -237,7 +242,7 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 		if err != nil {
 			return fmt.Errorf("parse %s: %w", datasetName, err)
 		}
-		raw, err := renderFile(templates, templateName, newTemplateData(packageName, versionKey, value))
+		raw, err := renderFile(templates, chooseTemplate(value), newTemplateData(packageName, versionKey, value))
 		if err != nil {
 			return fmt.Errorf("generate %s: %w", outputFile, err)
 		}
@@ -246,6 +251,9 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 		}
 		rendered[outputFile] = raw
 		return nil
+	}
+	add := func(datasetName, templateName, outputFile string, load func([]byte) (any, error)) error {
+		return addChoosing(datasetName, func(any) string { return templateName }, outputFile, load)
 	}
 
 	arrayGenerators := []struct {
@@ -317,7 +325,6 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 		{"commands", "commands.go.tmpl", "commands.go", func(raw []byte) (any, error) { return loadCommands(raw) }},
 		{"loginPacket", "login_packet.go.tmpl", "login_packet.go", func(raw []byte) (any, error) { return loadLoginPacket(raw) }},
 		{"tints", "tints.go.tmpl", "tints.go", func(raw []byte) (any, error) { return loadTints(raw) }},
-		{"blockMovement", "block_movement.go.tmpl", "block_movement.go", loadBlockMovement},
 	}
 	present := gamedataTmpl{HasPhysics: hasPhysics}
 	for _, entry := range optionalGenerators {
@@ -328,6 +335,21 @@ func buildRenderPlan(templates templateSet, source *verifiedSource, config Confi
 			return nil, err
 		}
 		present.set(entry.datasetName)
+	}
+
+	if _, ok := source.Files["blockMovement"]; ok {
+		chooseTemplate := func(value any) string {
+			measurement, isMeasurement := value.(*blockMovementTmpl)
+			if !isMeasurement {
+				return "block_movement.go.tmpl"
+			}
+
+			return measurement.templateName()
+		}
+		if err := addChoosing("blockMovement", chooseTemplate, "block_movement.go", loadBlockMovement); err != nil {
+			return nil, err
+		}
+		present.set("blockMovement")
 	}
 
 	for _, entry := range []struct {
@@ -1120,22 +1142,65 @@ func loadPhysics(raw []byte) (*physicsTmpl, error) {
 	}, nil
 }
 
-// stateEncodingChunkShift names the only state encoding a measurement may
-// declare, and the shift that reads a block identifier out of it. Protocol 47
-// chunk data packs a state as the block identifier shifted left four.
+// The state encodings a measurement may declare, and for the shifted one the
+// shift that reads a block identifier out of it.
+//
+// Protocol 47 chunk data packs a state as the block identifier shifted left
+// four, so the block is arithmetic on the state. Protocol 775 assigns states
+// registry indices in registration order, so nothing can be recovered from one
+// by arithmetic and the measurement carries the range of states each block
+// owns instead. They generate different registries from different templates,
+// and a measurement that declares neither is refused rather than guessed at.
 const (
-	stateEncodingChunkShift = "id<<4|meta"
-	chunkStateShift         = 4
+	stateEncodingChunkShift    = "id<<4|meta"
+	stateEncodingStateRegistry = "block-state-registry"
+	chunkStateShift            = 4
 )
 
 type blockMovementTmpl struct {
 	StateEncoding string
-	StateShift    int
-	Blocks        []blockMovementEntryTmpl
+	// StateShift reads a block identifier out of a state, for the shifted
+	// encoding. It is zero for the registry encoding, where no shift exists.
+	StateShift int
+	Blocks     []blockMovementEntryTmpl
+	// Ranges is the state span each block owns, sorted and gap-free, for the
+	// registry encoding. It is what a lookup binary-searches.
+	Ranges []blockMovementRangeTmpl
+	// Exceptions are the states that disagree with the block they belong to,
+	// sorted by state.
+	Exceptions []blockMovementExceptionTmpl
+}
+
+// templateName returns the template that renders this measurement. The two
+// encodings produce genuinely different registries — one a map keyed by block,
+// one a search over state ranges — rather than one registry with a branch in
+// it.
+func (b *blockMovementTmpl) templateName() string {
+	if b.StateEncoding == stateEncodingStateRegistry {
+		return "block_movement_states.go.tmpl"
+	}
+
+	return "block_movement.go.tmpl"
 }
 
 type blockMovementEntryTmpl struct {
 	ID             int
+	Name           string
+	BlocksMovement bool
+	// Mixed marks a block whose states do not all answer alike, so the
+	// generated registry can decline to answer for the block as a whole.
+	Mixed bool
+}
+
+type blockMovementRangeTmpl struct {
+	From           int
+	To             int
+	Name           string
+	BlocksMovement bool
+}
+
+type blockMovementExceptionTmpl struct {
+	State          int
 	Name           string
 	BlocksMovement bool
 }
@@ -1143,11 +1208,11 @@ type blockMovementEntryTmpl struct {
 // loadBlockMovement reads the measured block facts and refuses any state
 // encoding it has not been taught to read.
 //
-// The refusal is the point. A document for a flattened version keys the same
-// fact by state rather than by block, and generating this template against it
-// would produce a registry that resolves every lookup and answers about a
-// different block each time. A generator that stops is the only version of
-// that failure anyone would notice.
+// The refusal is the point. The two versions measured so far key the same fact
+// differently — one by block, one by state — and generating either against the
+// other's template would produce a registry that resolves every lookup and
+// answers about a different block each time. A generator that stops is the only
+// version of that failure anyone would notice.
 func loadBlockMovement(raw []byte) (any, error) {
 	var source struct {
 		Version       string `json:"version"`
@@ -1158,36 +1223,114 @@ func loadBlockMovement(raw []byte) (any, error) {
 			ID             int    `json:"id"`
 			Name           string `json:"name"`
 			BlocksMovement bool   `json:"blocksMovement"`
+			StateRange     *struct {
+				From int `json:"from"`
+				To   int `json:"to"`
+			} `json:"stateRange"`
+			StateExceptions []struct {
+				State          int  `json:"state"`
+				BlocksMovement bool `json:"blocksMovement"`
+			} `json:"stateExceptions"`
 		} `json:"blocks"`
 	}
 	if err := json.Unmarshal(raw, &source); err != nil {
 		return nil, fmt.Errorf("unmarshal block movement: %w", err)
-	}
-	if source.StateEncoding != stateEncodingChunkShift {
-		return nil, fmt.Errorf(
-			"block movement declares state encoding %q, and only %q is supported",
-			source.StateEncoding, stateEncodingChunkShift,
-		)
 	}
 	if len(source.Blocks) == 0 {
 		return nil, fmt.Errorf("block movement describes no blocks")
 	}
 
 	blocks := make([]blockMovementEntryTmpl, len(source.Blocks))
+	ranges := make([]blockMovementRangeTmpl, 0, len(source.Blocks))
+	exceptions := make([]blockMovementExceptionTmpl, 0)
 	for index, block := range source.Blocks {
 		blocks[index] = blockMovementEntryTmpl{
 			ID:             block.ID,
 			Name:           block.Name,
 			BlocksMovement: block.BlocksMovement,
+			Mixed:          len(block.StateExceptions) != 0,
+		}
+		if block.StateRange != nil {
+			ranges = append(ranges, blockMovementRangeTmpl{
+				From:           block.StateRange.From,
+				To:             block.StateRange.To,
+				Name:           block.Name,
+				BlocksMovement: block.BlocksMovement,
+			})
+		}
+		for _, exception := range block.StateExceptions {
+			exceptions = append(exceptions, blockMovementExceptionTmpl{
+				State:          exception.State,
+				Name:           block.Name,
+				BlocksMovement: exception.BlocksMovement,
+			})
 		}
 	}
 	sort.Slice(blocks, func(i, j int) bool { return blocks[i].ID < blocks[j].ID })
+	sort.Slice(ranges, func(i, j int) bool { return ranges[i].From < ranges[j].From })
+	sort.Slice(exceptions, func(i, j int) bool { return exceptions[i].State < exceptions[j].State })
 
-	return &blockMovementTmpl{
-		StateEncoding: source.StateEncoding,
-		StateShift:    chunkStateShift,
-		Blocks:        blocks,
-	}, nil
+	switch source.StateEncoding {
+	case stateEncodingChunkShift:
+		if len(ranges) != 0 || len(exceptions) != 0 {
+			return nil, fmt.Errorf(
+				"block movement declares encoding %q but carries per-state detail",
+				source.StateEncoding,
+			)
+		}
+
+		return &blockMovementTmpl{
+			StateEncoding: source.StateEncoding,
+			StateShift:    chunkStateShift,
+			Blocks:        blocks,
+		}, nil
+	case stateEncodingStateRegistry:
+		if err := checkStateRanges(ranges, len(source.Blocks)); err != nil {
+			return nil, err
+		}
+
+		return &blockMovementTmpl{
+			StateEncoding: source.StateEncoding,
+			Blocks:        blocks,
+			Ranges:        ranges,
+			Exceptions:    exceptions,
+		}, nil
+	default:
+		return nil, fmt.Errorf(
+			"block movement declares state encoding %q, and only %q and %q are supported",
+			source.StateEncoding, stateEncodingChunkShift, stateEncodingStateRegistry,
+		)
+	}
+}
+
+// checkStateRanges refuses a measurement the generated lookup would misread.
+//
+// The lookup is a binary search over ranges, which assumes they are sorted,
+// disjoint, and start at zero. A measurement that breaks the assumption still
+// generates, still compiles, and answers about a neighbouring block or reports
+// a real state as unmeasured. The extractor checks this too; it is checked
+// again here because the file is committed data that anyone can hand-edit, and
+// the generator is the last place to catch it.
+func checkStateRanges(ranges []blockMovementRangeTmpl, blocks int) error {
+	if len(ranges) != blocks {
+		return fmt.Errorf("block movement describes %d blocks but only %d state ranges", blocks, len(ranges))
+	}
+
+	next := 0
+	for _, span := range ranges {
+		if span.To < span.From {
+			return fmt.Errorf("block %q has state range %d..%d", span.Name, span.From, span.To)
+		}
+		if span.From != next {
+			return fmt.Errorf(
+				"state %d is not described: block %q starts its range at %d",
+				next, span.Name, span.From,
+			)
+		}
+		next = span.To + 1
+	}
+
+	return nil
 }
 
 type collisionShapesTmpl struct {

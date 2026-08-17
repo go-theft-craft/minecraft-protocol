@@ -26,6 +26,7 @@ var rawDatasetSources = []rawDatasetSource{
 	{name: "biomes", path: "data/pc/26.1/biomes.json", mediaType: "application/json", file: "raw/biomes.json"},
 	{name: "blockCollisionShapes", path: "data/pc/26.1/blockCollisionShapes.json", mediaType: "application/json", file: "raw/blockCollisionShapes.json"},
 	{name: "blockLoot", path: "data/pc/1.20/blockLoot.json", mediaType: "application/json", file: "raw/blockLoot.json"},
+	{name: "blockMovement", path: "blockMovement.json", mediaType: "application/json", file: "raw/blockMovement.json"},
 	{name: "blocks", path: "data/pc/26.1/blocks.json", mediaType: "application/json", file: "raw/blocks.json"},
 	{name: "commands", path: "data/pc/1.20.3/commands.json", mediaType: "application/json", file: "raw/commands.json"},
 	{name: "effects", path: "data/pc/26.1/effects.json", mediaType: "application/json", file: "raw/effects.json"},

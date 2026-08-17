@@ -247,8 +247,8 @@ func (m *Manifest) validateExtracted(seen map[string]struct{}) error {
 	if m.Extracted.ToolRevision == "" {
 		return fmt.Errorf("extracted toolRevision is required")
 	}
-	if m.Extracted.MinecraftVersion != m.TargetMinecraftVersion {
-		return fmt.Errorf("extracted minecraftVersion %q does not match target %q", m.Extracted.MinecraftVersion, m.TargetMinecraftVersion)
+	if !measuresTarget(m.Extracted.MinecraftVersion, m.TargetMinecraftVersion) {
+		return fmt.Errorf("extracted minecraftVersion %q does not measure target %q", m.Extracted.MinecraftVersion, m.TargetMinecraftVersion)
 	}
 	if m.Extracted.Side != extractionSide {
 		return fmt.Errorf("unsupported extraction side %q, want %q", m.Extracted.Side, extractionSide)
@@ -274,6 +274,25 @@ func (m *Manifest) validateExtracted(seen map[string]struct{}) error {
 	}
 
 	return nil
+}
+
+// measuresTarget reports whether a jar of the measured version answers for the
+// target version.
+//
+// Equality is the usual case and the one the 1.8 tree has: its target is the
+// full release 1.8.9 and the jar measured is exactly that. The 26.1 tree is the
+// other case, because a target is not always a release. Upstream publishes its
+// data under 26.1 and Mojang ships no jar by that name — the releases in that
+// line are 26.1.1, 26.1.2, and so on — so requiring equality would leave two
+// choices, both dishonest: label the jar as a version that does not exist, or
+// record no measurement for a version that was measured.
+//
+// A patch release of the target line is accepted, and only at a component
+// boundary, so this still refuses 26.2.1 for a 26.1 target and 26.10 for a 26.1
+// one. The exact jar stays pinned by digest either way, which is the fact a
+// third party would check.
+func measuresTarget(measured, target string) bool {
+	return measured == target || strings.HasPrefix(measured, target+".")
 }
 
 func (d ExtractedDataset) validate() error {
