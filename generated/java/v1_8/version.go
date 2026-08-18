@@ -7,9 +7,13 @@ import (
 )
 
 const (
-	ProtocolVersion int32  = 47
-	VersionName     string = "1.8.9"
-	MetadataEnd     byte   = 0x7F
+	ProtocolVersion int32 = 47
+	// VersionName names the dataset this package was generated from. It is
+	// not necessarily the name a client is told: newDataVersion below carries
+	// MinecraftVersion, which is. Where the two differ — they do for protocol
+	// 47 — docs/version-names.md says which is which and why.
+	VersionName string = "1.8.9"
+	MetadataEnd byte   = 0x7F
 )
 
 func Version() protocol.Version {

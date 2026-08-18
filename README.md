@@ -570,7 +570,8 @@ import (
 	_ "github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8"
 )
 
-set, err := data.Load("java/1.8.9")
+set, err := data.Load("java/1.8.9") // the dataset name; docs/version-names.md says
+                                    // why a protocol 47 client is told "1.8.8"
 ```
 
 `data.Protocol` is a lossy protocol summary in this milestone. It keeps packet

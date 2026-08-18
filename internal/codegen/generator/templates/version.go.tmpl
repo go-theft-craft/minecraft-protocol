@@ -8,6 +8,10 @@ import (
 
 const (
 	ProtocolVersion int32 = {{ .Data.Protocol }}
+	// VersionName names the dataset this package was generated from. It is
+	// not necessarily the name a client is told: newDataVersion below carries
+	// MinecraftVersion, which is. Where the two differ — they do for protocol
+	// 47 — docs/version-names.md says which is which and why.
 	VersionName string = {{ printf "%q" .Data.TargetVersion }}
 	MetadataEnd byte = {{ printf "0x%02X" .Data.MetadataEnd }}
 )

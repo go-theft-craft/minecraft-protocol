@@ -28,6 +28,30 @@ func TestVersionAndRegistration(t *testing.T) {
 	}
 }
 
+func TestProtocol47HasTwoNamesAndTheContractSaysWhichIsWhich(t *testing.T) {
+	t.Parallel()
+
+	// Two names, four lines apart in version.go, and until now the difference
+	// was a coincidence a reader had to notice. "1.8.9" names the dataset,
+	// because that is what PrismarineJS published it as and what mcreference
+	// prepares. "1.8.8" is what a client is told, because that is what
+	// protocol 47 clients call it and what the independent Node
+	// implementation lists. A change to either is a change to a contract —
+	// docs/version-names.md is the record — so this test exists beside
+	// TestVersionAndRegistration to make a disagreement name the contract
+	// rather than a literal.
+	if got := Version().Name; got != "1.8.9" {
+		t.Errorf("the dataset name is %q, want %q", got, "1.8.9")
+	}
+	set, err := data.Load("java/1.8.9")
+	if err != nil {
+		t.Fatalf("data.Load: %v", err)
+	}
+	if got := set.Version().MinecraftVersion; got != "1.8.8" {
+		t.Errorf("the advertised name is %q, want %q", got, "1.8.8")
+	}
+}
+
 func TestRegistryCounts(t *testing.T) {
 	set, err := Data()
 	if err != nil {
