@@ -93,6 +93,49 @@ err = stream.Wait()                 // first fatal cause, or nil after Shutdown
 goroutine; `net.Conn.Close` satisfies that. A running stream owns its session
 exclusively, so use `Stream.Snapshot` rather than reading the session directly.
 
+## Chunk columns
+
+The generated codecs stop at a chunk packet's column blob, because ProtoDef
+describes it as a buffer and the layout inside it belongs to the game version
+rather than to the schema. `wire/java/chunk` reads that layout, so a client and
+a server do not each keep their own copy of arithmetic that fails silently when
+it is wrong.
+
+Splitting is separate from decoding. A joining player receives hundreds of
+columns and reads blocks out of very few, so a split walks a column into
+per-section byte ranges that alias it, and a caller decodes only the sections it
+is asked about:
+
+```go
+sections, err := chunk.Split775(packet.ChunkData, dimensionMinY/16)
+if err != nil {
+	return err
+}
+
+states, err := chunk.DecodeSection775(sections[0].Blocks)  // 4096 block states
+```
+
+Protocol 47 splits from the packet's bitmask alone, because the block data comes
+first. Reading the light and biomes behind it needs two conditions the blob does
+not carry — whether the dimension sends sky light, and whether the packet is
+ground-up — which is what `Layout47` names:
+
+```go
+sections, rest, err := chunk.Split47(packet.BitMap, packet.ChunkData)
+
+layout := chunk.Layout47{Bitmap: packet.BitMap, SkyLight: true, GroundUp: packet.GroundUp}
+column, err := chunk.Decode47(layout, packet.ChunkData)
+```
+
+`Layout47.Bytes` is also the stride the bulk packet needs: it concatenates
+columns with no lengths of their own.
+
+A protocol 775 column does not carry where it starts either. The bottom section
+index is the dimension's minimum build height divided by sixteen, which comes
+from the `dimension_type` registry sent in configuration — minus four in a 26.1
+overworld, and a caller that assumes zero puts every block sixty-four blocks too
+high.
+
 ## Game-data contracts
 
 The `data` package provides typed game-data values, read-only lookup

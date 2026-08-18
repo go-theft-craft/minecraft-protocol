@@ -4,6 +4,30 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Added
+
+- `wire/java/chunk` reads the chunk column that a chunk packet carries as one
+  opaque byte array. The generated codecs stop at that array because ProtoDef
+  describes it as a buffer and what is inside it belongs to the game version
+  rather than to the schema, so every consumer that wanted a block out of a
+  column wrote the layout again. `Split775` and `Split47` walk a column into
+  per-section byte ranges that alias it, and `DecodeSection775`,
+  `DecodeBiomes775` and `DecodeSection47` turn one of those ranges into values:
+  a joining player receives hundreds of columns and reads blocks out of very
+  few, so the walk is cheap and the decode is the caller's to ask for.
+
+  Protocol 775 columns are checked against a column captured from a real Paper
+  26.1 server. Each of its sections declares how many blocks the server
+  considers non-empty, which nothing in the decode path reads, so the decode
+  agreeing with all 24 counts is an independent statement about every one of
+  98,304 blocks.
+
+  Protocol 47 columns need two conditions the blob does not carry — whether the
+  dimension sends sky light, and whether the packet is ground-up — which
+  `Layout47` names. Neither wrong setting damages the block data, so
+  `Decode47` refuses a column whose length disagrees with its layout;
+  `Layout47.Bytes` is also the stride that slices the bulk packet.
+
 ## 0.7.2 - 2026-08-18
 
 ### Fixed
