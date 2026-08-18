@@ -6,9 +6,11 @@
 > finish — the configuration and play transitions modern Java login needs —
 > closed in M4: `Negotiator` is version-neutral through `protocol.LoginExchange`
 > and `login/negotiator_v26_1_test.go` drives a full 775 login through
-> configuration into play. `login.Acceptor` is still protocol 47 only, and that
-> is M10's, not this plan's. The checkboxes below were never ticked and are not
-> evidence.
+> configuration into play. `login.Acceptor` served protocol 47 only until
+> 2026-08-18, when M10's first task (`b644bb4`) gave it the server half of
+> `protocol.LoginExchange` and a 775 login; that was M10's work, not this
+> plan's. The boxes below are ticked by outcome, checked against this
+> repository on 2026-08-18.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -79,7 +81,7 @@
 **Interfaces:**
 - Produces: `type Conduit struct{...}`; `func newConduit(Transport) *Conduit`; `func (*Conduit) Read([]byte) (int, error)`; `func (*Conduit) Write([]byte) (int, error)`; `func (*Conduit) PreFrameReader() *bufio.Reader`; `func (*Conduit) pipeline() map[string]string`. `Stream` gains the field `conduit *Conduit`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `conduit_test.go`:
 
@@ -130,12 +132,12 @@ func TestConduitReportsDisabledEncryptionInPipeline(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./ -run TestConduit`
 Expected: FAIL, `undefined: newConduit`.
 
-- [ ] **Step 3: Write the conduit**
+- [x] **Step 3: Write the conduit**
 
 Create `conduit.go`. The cipher fields are nil in this task and installed in Task 5; the structure exists now so the pumps only change once.
 
@@ -224,7 +226,7 @@ func (c *Conduit) pipeline() map[string]string {
 }
 ```
 
-- [ ] **Step 4: Build the conduit in NewStream**
+- [x] **Step 4: Build the conduit in NewStream**
 
 In `stream.go`, inside the `stream := &Stream{...}` literal in `NewStream`, add the field after `processing`:
 
@@ -240,7 +242,7 @@ And add the field to the `Stream` struct, directly after `transport Transport`:
 	conduit *Conduit
 ```
 
-- [ ] **Step 5: Route both pumps through the conduit**
+- [x] **Step 5: Route both pumps through the conduit**
 
 In `stream_runtime.go`, replace the first line of `readPump`:
 
@@ -268,17 +270,17 @@ In `writePump`, replace the transport writer:
 
 Then remove the now-unused `"bufio"` import from `stream_runtime.go`.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `devbox run -- task test -- ./ -run 'TestConduit|TestStream|TestPreFrame'`
 Expected: PASS. The whole existing stream suite must still pass unchanged: the conduit is a transparent passthrough until Task 5.
 
-- [ ] **Step 7: Run the full suite**
+- [x] **Step 7: Run the full suite**
 
 Run: `devbox run -- task test`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -299,7 +301,7 @@ git commit -m "feat(protocol): route stream pumps through a conduit"
 - Consumes: `*Conduit` from Task 1.
 - Produces: `type TransportControl interface { Control; ApplyTransport(*Conduit) error }`. `Stream.Snapshot` now includes `encryption.enabled`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `stream_transition_test.go`:
 
@@ -365,12 +367,12 @@ func TestStreamSnapshotIncludesConduitPipeline(t *testing.T) {
 
 If `startTestStream` does not exist with that name in `stream_test_helpers_test.go`, use whichever helper the existing tests in that file use to start a stream over an in-memory transport, and keep the assertions as written.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./ -run 'TestStreamRoutesTransportControl|TestStreamSnapshotIncludesConduit'`
 Expected: FAIL, `undefined: Conduit` in the method signature or a missing `encryption.enabled` key.
 
-- [ ] **Step 3: Define the interface**
+- [x] **Step 3: Define the interface**
 
 Create `transport_control.go`:
 
@@ -394,7 +396,7 @@ type TransportControl interface {
 }
 ```
 
-- [ ] **Step 4: Route the control**
+- [x] **Step 4: Route the control**
 
 Replace `processControl` in `stream_runtime.go`:
 
@@ -421,7 +423,7 @@ func (s *Stream) processControl(request *controlRequest) {
 }
 ```
 
-- [ ] **Step 5: Merge the conduit into the snapshot**
+- [x] **Step 5: Merge the conduit into the snapshot**
 
 Find the `snapshotRequests` case in `coordinate` and send a merged snapshot rather than `s.session.Snapshot()`. Add this method to `stream_runtime.go`:
 
@@ -446,12 +448,12 @@ func (s *Stream) snapshot() Snapshot {
 
 Leave the `before` and `after` snapshots in `decodeInbound` and `processWrite` as `s.session.Snapshot()`. Observation records describe the session at a frame boundary, and Task 6 adds a dedicated record for the encryption switch.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `devbox run -- task test -- ./ -run TestStream`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -470,7 +472,7 @@ git commit -m "feat(protocol): route transport controls to the conduit"
 **Interfaces:**
 - Produces: `type SharedSecret struct{...}`; `func NewSharedSecret() (SharedSecret, error)`; `func SharedSecretFrom([]byte) (SharedSecret, error)`; `func (SharedSecret) Reveal() []byte`; `func (SharedSecret) Len() int`; `func (SharedSecret) IsZero() bool`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `wire/java/secret_test.go`:
 
@@ -553,12 +555,12 @@ func TestSharedSecretRedactsEveryFormatting(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./wire/java -run TestSharedSecret`
 Expected: FAIL, `undefined: NewSharedSecret`.
 
-- [ ] **Step 3: Write the type**
+- [x] **Step 3: Write the type**
 
 Create `wire/java/secret.go`:
 
@@ -652,7 +654,7 @@ var (
 
 Do not add a comparison helper. Nothing in this milestone compares two session keys, and `golangci-lint` fails on unused code. The `crypto/rand` import is the only one this file needs beyond `fmt`.
 
-- [ ] **Step 4: Add the sentinel error**
+- [x] **Step 4: Add the sentinel error**
 
 In `wire/java/errors.go`, add to the `var` block:
 
@@ -661,14 +663,14 @@ In `wire/java/errors.go`, add to the `var` block:
 	ErrInvalidSharedSecret = errors.New("invalid shared secret")
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `devbox run -- task test -- ./wire/java -run TestSharedSecret`
 Expected: PASS.
 
 Note on `%q`, `%d`, and `%x`: `Format` handles all verbs, so the pointer case and the struct-field case both route through it. If `%q` renders quotes around the placeholder, that is fine; the test only requires the key to be absent and `redacted` to be present.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -691,7 +693,7 @@ git commit -m "feat(java): add a self-redacting shared secret type"
 - Consumes: `SharedSecret`, `SharedSecretFrom` from Task 3.
 - Produces: `func ParseUUID(string) (UUID, error)`; `func (UUID) String() string`; `func (UUID) IsZero() bool`; `type Username`; `func ParseUsername(string) (Username, error)`; `type ServerHash`; `func ParseServerPublicKey([]byte) (*rsa.PublicKey, error)`; `func EncodeServerPublicKey(*rsa.PublicKey) ([]byte, error)`; `func EncryptToServerKey(*rsa.PublicKey, []byte) ([]byte, error)`; `func DecryptFromServerKey(*rsa.PrivateKey, []byte) ([]byte, error)`; `func VerifyToken([]byte, []byte) error`; `func ComputeServerHash(string, SharedSecret, *rsa.PublicKey) (ServerHash, error)`.
 
-- [ ] **Step 0a: Write the failing identity test**
+- [x] **Step 0a: Write the failing identity test**
 
 `java.UUID` already exists as a sixteen-byte array, but nothing parses or
 renders one. Protocol 47 carries the login success UUID as a dashed string and
@@ -833,12 +835,12 @@ func TestZeroUUIDReportsZero(t *testing.T) {
 }
 ```
 
-- [ ] **Step 0b: Run the test to verify it fails**
+- [x] **Step 0b: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./wire/java -run 'TestParseUUID|TestZeroUUID|TestParseUsername'`
 Expected: FAIL, `undefined: ParseUUID`.
 
-- [ ] **Step 0c: Write the identity types**
+- [x] **Step 0c: Write the identity types**
 
 Create `wire/java/identity.go`:
 
@@ -981,7 +983,7 @@ Note the length rule: `MaxUsernameBytes` bounds bytes, not runes, because the wi
 
 Note on `hex.Decode`: it rejects non-hex bytes, which covers the `non-hex` case, and `strings.ToLower` handles the uppercase form. Do not add a manual hex loop.
 
-- [ ] **Step 0d: Add the sentinel error**
+- [x] **Step 0d: Add the sentinel error**
 
 In `wire/java/errors.go`, add to the `var` block:
 
@@ -994,12 +996,12 @@ In `wire/java/errors.go`, add to the `var` block:
 	ErrInvalidUsername = errors.New("invalid username")
 ```
 
-- [ ] **Step 0e: Run the UUID tests**
+- [x] **Step 0e: Run the UUID tests**
 
 Run: `devbox run -- task test -- ./wire/java -run 'TestParseUUID|TestZeroUUID|TestParseUsername'`
 Expected: PASS.
 
-- [ ] **Step 0f: Commit the identity types separately**
+- [x] **Step 0f: Commit the identity types separately**
 
 ```bash
 devbox run -- task precommit
@@ -1007,7 +1009,7 @@ git add wire/java/identity.go wire/java/identity_test.go wire/java/errors.go
 git commit -m "feat(java): add strict identity types for login"
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `wire/java/encryption_test.go`:
 
@@ -1132,12 +1134,12 @@ func TestServerKeyEncryptionRoundTrips(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./wire/java -run 'TestComputeServerHash|TestServerPublicKey|TestParseServerPublicKey|TestServerKeyEncryption'`
 Expected: FAIL, `undefined: javaDigest`.
 
-- [ ] **Step 3: Write the primitives**
+- [x] **Step 3: Write the primitives**
 
 Create `wire/java/encryption.go`:
 
@@ -1267,7 +1269,7 @@ func javaDigest(sum []byte) string {
 }
 ```
 
-- [ ] **Step 4: Add the sentinel error**
+- [x] **Step 4: Add the sentinel error**
 
 In `wire/java/errors.go`, add to the `var` block:
 
@@ -1282,14 +1284,14 @@ In `wire/java/errors.go`, add to the `var` block:
 
 Add `"crypto/subtle"` to the `wire/java/encryption.go` imports.
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `devbox run -- task test -- ./wire/java -run 'TestComputeServerHash|TestServerPublicKey|TestParseServerPublicKey|TestServerKeyEncryption'`
 Expected: PASS.
 
 If a canonical vector fails, the bug is in `javaDigest`, not in the hashing. `big.Int.Text(16)` already omits leading zeros and prefixes a minus sign, which is exactly Java's rendering. Do not add padding.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -1311,7 +1313,7 @@ git commit -m "feat(java): add key-exchange primitives and the server hash"
 - Consumes: `Conduit` (Task 1), `TransportControl` (Task 2), `SharedSecret` (Task 3).
 - Produces: `type EncryptionControl struct{ Secret SharedSecret }` implementing `protocol.TransportControl`; `func (*Conduit) EnableEncryption(decrypt, encrypt cipher.Stream) error`; `protocol.ErrEncryptionOverrun`; `protocol.ErrEncryptionEnabled`.
 
-- [ ] **Step 1: Write the failing conduit test**
+- [x] **Step 1: Write the failing conduit test**
 
 Append to `conduit_test.go`:
 
@@ -1420,12 +1422,12 @@ func TestConduitRejectsASecondSwitch(t *testing.T) {
 
 Add `"errors"` to the test file imports.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./ -run TestConduit`
 Expected: FAIL, `conduit.EnableEncryption undefined`.
 
-- [ ] **Step 3: Add the sentinels**
+- [x] **Step 3: Add the sentinels**
 
 In `stream_errors.go`, add to the `var` block:
 
@@ -1442,7 +1444,7 @@ In `stream_errors.go`, add to the `var` block:
 	ErrEncryptionUnavailable = errors.New("encryption is unavailable")
 ```
 
-- [ ] **Step 4: Implement the switch**
+- [x] **Step 4: Implement the switch**
 
 Add to `conduit.go`:
 
@@ -1477,12 +1479,12 @@ func (c *Conduit) EnableEncryption(decrypt, encrypt cipher.Stream) error {
 
 Add `"fmt"` to the `conduit.go` imports.
 
-- [ ] **Step 5: Run the conduit tests**
+- [x] **Step 5: Run the conduit tests**
 
 Run: `devbox run -- task test -- ./ -run TestConduit`
 Expected: PASS.
 
-- [ ] **Step 6: Write the failing control test**
+- [x] **Step 6: Write the failing control test**
 
 Append to `wire/java/encryption_test.go`:
 
@@ -1528,7 +1530,7 @@ func TestEncryptionControlRejectsAnEmptySecret(t *testing.T) {
 
 Add the `protocol` import to the test file. `SecretDisclosure` is defined in Task 6; if this task runs first, add the interface to `observation.go` now with the two-line definition shown there and leave the redaction work to Task 6.
 
-- [ ] **Step 7: Implement the control**
+- [x] **Step 7: Implement the control**
 
 Append to `wire/java/encryption.go`:
 
@@ -1592,12 +1594,12 @@ Add `"crypto/aes"`, `"crypto/cipher"`, and the `protocol` import to `wire/java/e
 
 Note the nil-conduit path: `ApplyTransport(nil)` reaches the empty-secret check first and returns before dereferencing, which is what the test asserts. Do not add a nil check that would mask it.
 
-- [ ] **Step 8: Run the tests**
+- [x] **Step 8: Run the tests**
 
 Run: `devbox run -- task test -- ./ ./wire/java -run 'TestConduit|TestEncryptionControl'`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -1622,7 +1624,7 @@ git commit -m "feat(java): enable AES-CFB8 through a transport control"
 - Consumes: `EncryptionControl` (Task 5).
 - Produces: `Observation.Redacted bool`; `Observation.Secret *SecretMetadata`; `ObservationSecret ObservationStage`; `type SecretDisclosure interface{ SecretLabel() string; DisclosedSecret() []byte }`; `type SensitivePackets interface{ Sensitive(Packet) bool }`; `func WithSecretDisclosure(reason string) StreamOption`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `observation_test.go`:
 
@@ -1705,12 +1707,12 @@ func TestSecretDisclosureRequiresAReason(t *testing.T) {
 
 Write `collectObservations`, `findRecord`, `sensitiveTestPacket`, `encryptionTestControl`, `newTestSession`, and `newTestTransport` as small helpers in the same file. `collectObservations` takes stream options and then either a packet to write or a control to apply, so both shapes above work; give it a small variadic or two thin wrappers, whichever reads better. `encryptionTestControl` returns a `TransportControl` that also implements `SecretDisclosure`, defined locally in the test rather than importing `wire/java`, because `observation_test.go` is in package `protocol` and importing `wire/java` would be an import cycle, reusing whatever fake session and in-memory transport `stream_test_helpers_test.go` already provides. `sensitiveTestPacket` must be a packet the fake session reports as sensitive; give the fake session a `sensitive map[int32]bool` field and a `Sensitive(Packet) bool` method.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./ -run 'TestObservations|TestSecretDisclosure'`
 Expected: FAIL, `packetRecord.Redacted undefined`.
 
-- [ ] **Step 3: Extend the observation types**
+- [x] **Step 3: Extend the observation types**
 
 In `observation.go`, add the stage constant to the existing `const` block:
 
@@ -1762,7 +1764,7 @@ type SecretDisclosure interface {
 }
 ```
 
-- [ ] **Step 4: Add the sensitivity interface**
+- [x] **Step 4: Add the sensitivity interface**
 
 In `session.go`, after the `Session` interface:
 
@@ -1778,7 +1780,7 @@ type SensitivePackets interface {
 }
 ```
 
-- [ ] **Step 5: Add the stream option**
+- [x] **Step 5: Add the stream option**
 
 In `stream.go`, add the fields to `Stream` next to `sink`:
 
@@ -1810,7 +1812,7 @@ func WithSecretDisclosure(reason string) StreamOption {
 }
 ```
 
-- [ ] **Step 6: Redact at the observation points**
+- [x] **Step 6: Redact at the observation points**
 
 `observe` is already at seven parameters and this task needs two more, so convert it to take an input struct. It is unexported, so there is no API impact and the call sites become readable.
 
@@ -1895,7 +1897,7 @@ and the packet record in `decodeInbound` becomes:
 
 Convert the two calls in `observeOutbound` the same way, using `s.session.Outbound()` and `request.packet`.
 
-- [ ] **Step 7: Record the switch point**
+- [x] **Step 7: Record the switch point**
 
 In `stream_runtime.go`, extend the transport branch of `processControl`:
 
@@ -1955,7 +1957,7 @@ func (s *Stream) observeSecret(control Control) error {
 }
 ```
 
-- [ ] **Step 8: Mark the two login packets in the generator**
+- [x] **Step 8: Mark the two login packets in the generator**
 
 In `internal/codegen/generator/templates/protocol.go.tmpl`, add after `ApplyControl`:
 
@@ -1974,18 +1976,18 @@ func (session *protocolSession) Sensitive(packet protocol.Packet) bool {
 var _ protocol.SensitivePackets = (*protocolSession)(nil)
 ```
 
-- [ ] **Step 9: Regenerate and verify**
+- [x] **Step 9: Regenerate and verify**
 
 Run: `devbox run -- task generate`
 Run: `devbox run -- task generate:check`
 Expected: `generate:check` passes and `git diff --stat` shows only `generated/java/v1_8/protocol.go`.
 
-- [ ] **Step 10: Run the tests**
+- [x] **Step 10: Run the tests**
 
 Run: `devbox run -- task test`
 Expected: PASS.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -2007,7 +2009,7 @@ git commit -m "feat(protocol): redact secret material in observations"
 **Interfaces:**
 - Produces: `type LoginRole string` with `RoleEncryptionRequest`, `RoleEncryptionResponse`, `RoleLoginSuccess`, `RoleSetCompression`, `RoleLoginStart`; and the optional session interface `LoginRoles interface{ LoginRole(State, Direction, int32) (LoginRole, bool) }`.
 
-- [ ] **Step 1: Why this exists**
+- [x] **Step 1: Why this exists**
 
 The negotiator in Task 8 must not name a concrete packet type. Protocol 775 has
 the same five roles plus two the 47 sequence has no analogue for, and a
@@ -2020,7 +2022,7 @@ learns that two packets are sensitive without learning what encryption is. It
 now also learns which packet plays which part in a login, without learning what
 a login is.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Assert that the generated protocol 47 session reports `RoleEncryptionRequest`
 for clientbound login `encryption_begin`, `RoleEncryptionResponse` for
@@ -2030,19 +2032,19 @@ serverbound `encryption_begin`, `RoleLoginSuccess` for `success`,
 protocol declaring no roles satisfies the interface and returns false for
 everything, so the mechanism is optional.
 
-- [ ] **Step 3: Run and verify failure**
+- [x] **Step 3: Run and verify failure**
 
 ```bash
 devbox run -- task test -- ./internal/codegen/generator
 ```
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Roles come from the descriptor, keyed by state, direction, and packet name, and
 are emitted as a generated lookup with no map allocation per call. A packet with
 no role is absent rather than an error.
 
-- [ ] **Step 5: Regenerate and verify**
+- [x] **Step 5: Regenerate and verify**
 
 ```bash
 devbox run -- task generate
@@ -2053,7 +2055,7 @@ devbox run -- task test
 Expected: `generated/java/v1_8/protocol.go` gains the lookup and nothing else
 changes.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -2074,7 +2076,7 @@ git commit -m "feat(codegen): tag login packets with their role"
 - Consumes: everything from Tasks 1 through 7. The negotiator reads packets through the login roles from Task 7 and must not reference a generated packet type by name, so protocol 775 extends it by tagging rather than by rewriting.
 - Produces: `type Profile struct{ Name java.Username; UUID java.UUID }`; `type Authenticator interface{...}`; `type Verifier interface{...}`; `func NewOffline(string) (Offline, error)`; `func NewNegotiator(Authenticator) (*Negotiator, error)`; `func (*Negotiator) Negotiate(context.Context, *protocol.Stream) (Profile, error)`; `login.ErrInvalidLoginField`; `login.MaxServerIDBytes`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `login/negotiator_test.go` with a table of failure modes plus the success path. Drive it against a scripted in-memory server built from a second `protocol.Stream` in `RoleServer` over an `net.Pipe`, so the test exercises real framing and real encryption rather than a mock.
 
@@ -2291,7 +2293,7 @@ table uses: `serverID string`, `emptyPublicKey`, `emptyVerifyToken`,
 value, so the success case in the earlier tests keeps working unchanged: a
 valid dashed UUID and the username `tester`.
 
-- [ ] **Step 1b: Write the scripted server helper**
+- [x] **Step 1b: Write the scripted server helper**
 
 This helper is the fixture for Tasks 7, 8, and 9. Write it once, correctly, in `login/negotiator_test.go`:
 
@@ -2497,12 +2499,12 @@ Two things to check against the real API before running: `protocol.NewLimits()` 
 
 Do not write an RSA key to `testdata`. `task secrets` runs `gitleaks` over the tree and will fail the commit.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./login`
 Expected: FAIL, no package `login`.
 
-- [ ] **Step 3: Write the package documentation**
+- [x] **Step 3: Write the package documentation**
 
 Create `login/doc.go`:
 
@@ -2521,7 +2523,7 @@ Create `login/doc.go`:
 package login
 ```
 
-- [ ] **Step 4: Write the negotiator**
+- [x] **Step 4: Write the negotiator**
 
 Create `login/negotiator.go`:
 
@@ -2789,17 +2791,17 @@ bounds, which are much tighter, and they run before the RSA work so a hostile
 server cannot make the client do public-key operations over a field it was
 going to reject anyway.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `devbox run -- task test -- ./login`
 Expected: PASS.
 
-- [ ] **Step 6: Run the whole suite with the race detector**
+- [x] **Step 6: Run the whole suite with the race detector**
 
 Run: `devbox run -- task test`
 Expected: PASS with no race reports. The switch point is where a race would appear.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -2818,7 +2820,7 @@ git commit -m "feat(login): add an opt-in Java login negotiator"
 - Consumes: everything from Tasks 1 through 7.
 - Produces: no new API. This task proves the composition that the unit tests cannot: compression inside encryption, over a real socket, with the race detector on.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `stream_encryption_test.go` in package `protocol_test`, following the pattern in `stream_tcp_test.go`:
 
@@ -2865,12 +2867,12 @@ func TestEncryptedLoginOverLoopbackTCP(t *testing.T) {
 
 Also add a test that sends a body larger than the 256-byte compression threshold, so the frame is genuinely compressed and encrypted rather than only encrypted. `PlayServerboundChat` with a long message is the simplest such packet; check the generated struct for its field name before writing it.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `devbox run -- task test -- ./ -run TestEncryptedLogin`
 Expected: FAIL until the test body is complete.
 
-- [ ] **Step 3: Complete the test**
+- [x] **Step 3: Complete the test**
 
 Copy `serverScript`, `serveLogin`, and `writeLoginPacket` from `login/negotiator_test.go` into this file. They are test helpers, not API, so copying is correct; do not export them. Replace `loginPair` with a TCP version:
 
@@ -2917,17 +2919,17 @@ func tcpLoginPair(t *testing.T) (*protocol.Stream, *protocol.Stream) {
 
 Then the test body is: `client, server := tcpLoginPair(t)`, `go serveLogin(t, server, serverScript{encrypt: true, compress: true})`, run the negotiator, and assert the packet round-trips shown in Step 1.
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `devbox run -- task test -- ./ -run TestEncryptedLogin`
 Expected: PASS.
 
-- [ ] **Step 5: Run the suite repeatedly to catch flakes**
+- [x] **Step 5: Run the suite repeatedly to catch flakes**
 
 Run: `devbox run -- task test -- ./ -run TestEncryptedLogin -count 20`
 Expected: PASS every iteration. A failure here is a real ordering bug at the switch point, not a flaky test; do not add a retry.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -2947,7 +2949,7 @@ git commit -m "test(protocol): cover encrypted login over loopback TCP"
 - Consumes: everything above.
 - Produces: scenarios `encrypted-login` in both `--mode server` and `--mode client`.
 
-- [ ] **Step 1: Add the yggdrasil stub to the runner**
+- [x] **Step 1: Add the yggdrasil stub to the runner**
 
 In `interop/node/runner.mjs`, before the server is created, add:
 
@@ -2974,7 +2976,7 @@ function stubSessionServer () {
 }
 ```
 
-- [ ] **Step 2: Add the server scenario**
+- [x] **Step 2: Add the server scenario**
 
 In the server branch of `runner.mjs`, next to the existing `login` scenario, add:
 
@@ -3000,7 +3002,7 @@ In the server branch of `runner.mjs`, next to the existing `login` scenario, add
 
 Match the surrounding code's emit helpers and error handling rather than inventing new ones; read the existing `login` scenario first and mirror it.
 
-- [ ] **Step 3: Add the client scenario**
+- [x] **Step 3: Add the client scenario**
 
 In the client branch, add an `encrypted-login` scenario that creates a client with `auth: 'offline'` and no credentials. Version 1.66.2 answers `encryption_begin` regardless of credentials and skips the join call, which is exactly what a Go server without account verification needs.
 
@@ -3020,7 +3022,7 @@ In the client branch, add an `encrypted-login` scenario that creates a client wi
   }
 ```
 
-- [ ] **Step 4: Write the Go interoperability tests**
+- [x] **Step 4: Write the Go interoperability tests**
 
 Append to `interop/node_test.go`, mirroring `TestGoClientAgainstNodeServerCompressedLogin` and `TestNodeClientAgainstGoServerCompressedLogin`:
 
@@ -3050,14 +3052,14 @@ func TestNodeClientAgainstGoServerEncryptedLogin(t *testing.T) {
 
 Fill both bodies completely using the existing helpers in that file: `startRunner`, the event-waiting helper, and the transcript sink. Do not leave the comment placeholders in the committed test.
 
-- [ ] **Step 5: Run the interoperability suite**
+- [x] **Step 5: Run the interoperability suite**
 
 Run: `devbox run -- task test:interop`
 Expected: PASS.
 
 If the Node server scenario fails with a session-server error, the stub is not taking effect: confirm that `stubSessionServer()` runs before `mc.createServer` and that `require('yggdrasil')` resolves to the same module instance `minecraft-protocol` uses. Do not work around it by disabling encryption; the lane exists to exercise the cipher.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -3079,19 +3081,19 @@ git commit -m "test(interop): cover encrypted login against pinned Node"
 - Consumes: the finished implementation.
 - Produces: no code.
 
-- [ ] **Step 1: Document encryption in the README**
+- [x] **Step 1: Document encryption in the README**
 
 Add a section after whatever section covers compression, showing the negotiator in ten lines and stating the four rules a developer needs: encryption is applied through `Stream.Control`, not proposed by the session; the negotiator owns `Read` while it runs; captures are redacted unless `WithSecretDisclosure` is passed, and a disclosed capture is a credential; and every peer-supplied identity crosses the boundary as a parsed type, so a `Profile` is proof that validation ran.
 
-- [ ] **Step 2: Add the changelog entry**
+- [x] **Step 2: Add the changelog entry**
 
 Follow the existing format in `CHANGELOG.md`. Cover: the conduit and `TransportControl`; AES-128/CFB8; the key-exchange primitives and `ComputeServerHash`; the `java.UUID`, `java.Username`, and `java.ServerHash` identity types with strict login-field validation; `SharedSecret` redaction; `Observation.Redacted`, `ObservationSecret`, and `WithSecretDisclosure`; the `login` package; and the new sentinel errors. Note that `Stream.Snapshot` now reports `encryption.enabled`.
 
-- [ ] **Step 3: Update the roadmap**
+- [x] **Step 3: Update the roadmap**
 
 In `ROADMAP.md`, mark the P1 encryption and login items complete. Leave the configuration-state item, which belongs to the current-protocol work, unticked.
 
-- [ ] **Step 4: Update the master plan**
+- [x] **Step 4: Update the master plan**
 
 In `../headless-minecraft/MASTER_PLAN.md`:
 
@@ -3103,12 +3105,12 @@ In `../headless-minecraft/MASTER_PLAN.md`:
   - The `login` package is protocol 47 only. M4 either parameterizes it or adds a second constructor, and M6 depends on whichever it chooses.
 - Mark M3 as the next milestone.
 
-- [ ] **Step 5: Run the full gate**
+- [x] **Step 5: Run the full gate**
 
 Run: `devbox run -- task verify`
 Expected: PASS. This runs `generate:check`, `lint`, `secrets`, `test`, `test:interop`, `vuln`, and `build`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit

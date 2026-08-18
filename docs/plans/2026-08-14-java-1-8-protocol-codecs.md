@@ -2,7 +2,8 @@
 
 > **Status: complete, 2026-08-18.** Shipped as M0: the protocol 47 descriptor
 > and generated packet codecs, with no reflection in a generated runtime path
-> (`162e95d`). The checkboxes below were never ticked and are not evidence; do
+> (`162e95d`). The boxes below are ticked by outcome, checked against this
+> repository on 2026-08-18, not as a record that each step ran as written. Do
 > not re-run this plan. Note that M2.5 later changed the rule this plan encodes:
 > every schema-defined type is now compiled from its own schema, and a
 > hand-written codec backs only a name the schema declares native.
@@ -45,23 +46,23 @@
 - Consumes: the complete bytes of `source/java/1.8/protocol.json`.
 - Produces: `protodef.Parse([]byte) (*Schema, error)`, a deterministic state/direction packet inventory, named type definitions, and recursive type nodes for aliases, primitives, containers, arrays, switches, options, buffers, mappers, bitfields, bitflags, and protocol-native types.
 
-- [ ] **Step 1: Write failing parser tests**
+- [x] **Step 1: Write failing parser tests**
 
   Add minimal fixtures for every operator used by the pinned source. Assert exact decoded nodes and JSON-path errors for malformed nodes, missing switch fields, invalid count references, duplicate fields, unresolved named types, alias cycles, duplicate packet IDs, and duplicate packet names.
 
-- [ ] **Step 2: Prove the parser tests fail**
+- [x] **Step 2: Prove the parser tests fail**
 
   Run `devbox run -- task test -- ./internal/codegen/protodef` and retain the expected missing-package or missing-symbol failure in the task report.
 
-- [ ] **Step 3: Implement the recursive AST and parser**
+- [x] **Step 3: Implement the recursive AST and parser**
 
   Keep source ordering for container fields and packet inventories. Sort only map-derived names used for validation or generated output. Preserve switch keys as source strings because ProtoDef uses numeric and symbolic discriminators.
 
-- [ ] **Step 4: Validate the pinned protocol**
+- [x] **Step 4: Validate the pinned protocol**
 
   Add a test that parses `../../../source/java/1.8/protocol.json`, resolves every reachable named type, and asserts all four states and both wire directions have a packet map and packet switch.
 
-- [ ] **Step 5: Run focused checks**
+- [x] **Step 5: Run focused checks**
 
   Run `devbox run -- task fmt`, `devbox run -- task test -- ./internal/codegen/protodef`, and `devbox run -- task lint`.
 
@@ -81,23 +82,23 @@
 - Consumes: a valid `protocol.Limits` and one packet payload.
 - Produces: `java.Buffer`, owned `java.NBT`, `java.Slot`, `java.EntityMetadata`, and methods needed by generated code for all Java 1.8 ProtoDef primitives and native aliases.
 
-- [ ] **Step 1: Write failing boundary tests**
+- [x] **Step 1: Write failing boundary tests**
 
   Cover truncated values at every byte, negative lengths, collection and string limits, plugin payload limits, recursion depth, all NBT tag shapes, optional NBT, absent and present slots, entity metadata terminators, mapper failures, bitfields, remaining bytes, and trailing bytes.
 
-- [ ] **Step 2: Prove the boundary tests fail**
+- [x] **Step 2: Prove the boundary tests fail**
 
   Run `devbox run -- task test -- ./wire/java` and retain the expected missing-symbol failures in the task report.
 
-- [ ] **Step 3: Implement one bounded payload buffer**
+- [x] **Step 3: Implement one bounded payload buffer**
 
   `NewReadBuffer(payload []byte, limits protocol.Limits)` must own its input. `NewWriteBuffer(limits protocol.Limits)` accumulates at most `limits.FrameBytes()`. Every read and write error includes the logical field path supplied by generated code. Expose `Bytes()` as an owned copy and `Remaining()` for exact-consumption checks.
 
-- [ ] **Step 4: Implement NBT, slot, and entity metadata values**
+- [x] **Step 4: Implement NBT, slot, and entity metadata values**
 
   Preserve semantic values and enough type information for lossless re-encoding. Reject invalid tag IDs, negative array lengths, duplicate compound keys, over-limit payloads, and nesting deeper than `limits.RecursionDepth()`.
 
-- [ ] **Step 5: Run focused and race checks**
+- [x] **Step 5: Run focused and race checks**
 
   Run `devbox run -- task fmt`, `devbox run -- task test -- ./wire/java`, and `devbox run -- task lint`.
 
@@ -113,19 +114,19 @@
 - Consumes: `*protodef.Schema`.
 - Produces: `packetgen.Build(*protodef.Schema, Options) (*Model, error)` with ordered states, directions, packet declarations, nested Go type declarations, encode/decode operations, factories, mapper tables, and stable field paths.
 
-- [ ] **Step 1: Write failing model tests**
+- [x] **Step 1: Write failing model tests**
 
   Cover a fixed packet, nested and anonymous containers, fixed and counted arrays, switches with numeric and mapper cases, options, buffers, bitfields, NBT slots, entity metadata, colliding exported names, and unsupported source nodes.
 
-- [ ] **Step 2: Prove model tests fail**
+- [x] **Step 2: Prove model tests fail**
 
   Run `devbox run -- task test -- ./internal/codegen/packetgen` and retain the expected missing-symbol failures in the report.
 
-- [ ] **Step 3: Build one deterministic model**
+- [x] **Step 3: Build one deterministic model**
 
   Derive exported Go names without collisions, preserve source field and packet order, and give anonymous switch/container fields stable generated names. Represent every read and write as an explicit typed operation that names the required `java.Buffer` method and logical field path. Fail when a source construct has no rule; never silently replace a classified construct with `[]byte`.
 
-- [ ] **Step 4: Run focused checks**
+- [x] **Step 4: Run focused checks**
 
   Run `devbox run -- task fmt`, `devbox run -- task test -- ./internal/codegen/packetgen`, and `devbox run -- task lint`.
 
@@ -144,19 +145,19 @@
 - Consumes: `*packetgen.Model` and a generated package name.
 - Produces: `packetgen.Generate(*Model, Options) (map[string][]byte, error)` with formatted `packets.go`, `codec.go`, and `descriptor.go` source.
 
-- [ ] **Step 1: Write failing golden-source tests**
+- [x] **Step 1: Write failing golden-source tests**
 
   Assert exact formatted output for each model construct and compile one representative generated package in a temporary module. Assert output contains no `reflect`, `java.Marshal`, or `java.Unmarshal` import or call.
 
-- [ ] **Step 2: Prove rendering tests fail**
+- [x] **Step 2: Prove rendering tests fail**
 
   Run `devbox run -- task test -- ./internal/codegen/packetgen` and retain the expected failures.
 
-- [ ] **Step 3: Render direct methods and registries**
+- [x] **Step 3: Render direct methods and registries**
 
   Generated packet methods call typed `java.Buffer` operations directly. Generated decode methods assign only after each operation succeeds. Mapper and bitfield failures include the generated field path. Factory tables allocate exact concrete packet pointer types and reject duplicate keys during generation.
 
-- [ ] **Step 4: Run focused checks**
+- [x] **Step 4: Run focused checks**
 
   Run `devbox run -- task fmt`, `devbox run -- task test -- ./internal/codegen/packetgen`, and `devbox run -- task lint`.
 
@@ -177,23 +178,23 @@
 - Consumes: `*protodef.Schema`, `java.Buffer`, `protocol.Packet`, `protocol.Role`, `protocol.State`, and valid `protocol.Limits`.
 - Produces: concrete generated packet types, reflection-free `Encode` and `Decode` methods, factories keyed by state/direction/ID, `protocol.UnknownPacket`, state access on `protocol.Codec`, `v1_8.Protocol() protocol.Protocol`, and per-connection codecs returned by `NewCodec`.
 
-- [ ] **Step 1: Write failing integration and descriptor tests**
+- [x] **Step 1: Write failing integration and descriptor tests**
 
   Cover unknown packet ownership, wrong direction, wrong state, invalid role, explicit state changes, duplicate registry keys, and known-packet trailing bytes. Assert checked-in generated files contain no import or call involving `reflect`, `java.Marshal`, or `java.Unmarshal`.
 
-- [ ] **Step 2: Prove generation tests fail**
+- [x] **Step 2: Prove generation tests fail**
 
   Run `devbox run -- task test -- ./internal/codegen/generator ./generated/java/v1_8` and retain the expected failures in the task report.
 
-- [ ] **Step 3: Add stateful codec contracts and generated factories**
+- [x] **Step 3: Add stateful codec contracts and generated factories**
 
   Generated packet methods call typed `java.Buffer` operations directly. Packet factories allocate the exact concrete type. Extend `protocol.Codec` with `State() protocol.State` and `SetState(protocol.State) error`; the Java 1.8 codec starts in `handshaking`, validates the four supported states, derives inbound and outbound directions from its role, and rejects envelopes that do not match its role or current state. Export the four state constants from `v1_8`. Unknown IDs return a `protocol.Packet` whose `Value` is an owned `protocol.UnknownPacket` and whose `Payload` is a separate owned copy.
 
-- [ ] **Step 4: Integrate generation atomically**
+- [x] **Step 4: Integrate generation atomically**
 
   Keep `mcdata-gen -check` as the source of truth. Extend its explicit generated-file inventory and preserve the existing atomic replacement and rollback behavior.
 
-- [ ] **Step 5: Regenerate and verify stability**
+- [x] **Step 5: Regenerate and verify stability**
 
   Run `devbox run -- task generate`, `devbox run -- task generate:check`, and the focused tests. A second generation must produce no diff.
 
@@ -212,18 +213,18 @@
 - Consumes: the generated `v1_8.Protocol()` and checked-in protocol 47 fixtures.
 - Produces: compatibility evidence for handshake, status, login, and representative play packets, plus accurate support and roadmap documentation.
 
-- [ ] **Step 1: Add wire compatibility fixtures**
+- [x] **Step 1: Add wire compatibility fixtures**
 
   Compare generated encoding with checked-in protocol 47 byte vectors. Decode the same vectors through the generated descriptor and assert state, direction, ID, name, concrete value, and exact re-encoding. Include unknown packet payload ownership.
 
-- [ ] **Step 2: Run protocol and server compatibility tests**
+- [x] **Step 2: Run protocol and server compatibility tests**
 
   Run `devbox run -- task test -- ./generated/java/v1_8 ./wire/java`, then run the server's protocol-focused tests through its Devbox Task wrapper. Record the exact server packages and results.
 
-- [ ] **Step 3: Update project status**
+- [x] **Step 3: Update project status**
 
   Document the built-in protocol 47 descriptor and generated codecs. Mark Java 1.8 extraction complete while leaving compression, encryption, complete login, Java 26.1, and managed streams in their existing later milestones.
 
-- [ ] **Step 4: Run the complete verification gate**
+- [x] **Step 4: Run the complete verification gate**
 
   Run `devbox run -- task verify`, `git diff --check`, and `git status --short`. Confirm generated output is current and no normal generated runtime path imports `reflect`.

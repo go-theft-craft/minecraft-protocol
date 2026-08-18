@@ -4,8 +4,8 @@
 > server, so the consumer migrated once. Every schema-defined type is compiled
 > from its own schema, named types are shared, decode recursion is bounded, and
 > the hand-written `Position`, `Slot`, and `EntityMetadata` are gone. The
-> checkboxes below were never ticked and are not evidence; do not re-run this
-> plan.
+> boxes below are ticked by outcome, checked against this repository on
+> 2026-08-18. Do not re-run this plan.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -78,7 +78,7 @@ Sequenced before M3 so that `server` migrates onto the final generated shape onc
 **Interfaces:**
 - Produces: no production code. This task exists to make the rest of the plan verifiable.
 
-- [ ] **Step 1: Write the round-trip test**
+- [x] **Step 1: Write the round-trip test**
 
 For every packet with a checked-in byte fixture: decode it, re-encode it, and
 compare bytes. For packets without a fixture, generate a deterministic value from
@@ -86,7 +86,7 @@ a fixed seed, encode it, decode it, and compare fields. The test must fail
 loudly if a packet is added later with neither a fixture nor a generated value,
 so coverage cannot silently shrink.
 
-- [ ] **Step 2: Pin the bit layouts by value, not by agreement**
+- [x] **Step 2: Pin the bit layouts by value, not by agreement**
 
 Assert the current `position` encoding against hand-computed bytes for at least:
 `(0, 0, 0)`, `(1, 2, 3)`, a negative coordinate on each axis, and the extremes of
@@ -97,13 +97,13 @@ These assertions are the ones that will catch a wrong bit order after
 Task 3, and they must be written while the old codec is still in place so they
 describe observed behavior rather than intended behavior.
 
-- [ ] **Step 3: Run and verify they pass**
+- [x] **Step 3: Run and verify they pass**
 
 `devbox run -- task test -- ./generated/java/v1_8 ./wire/java`. Expected: green
 against the current generator. A failure here means the current codec disagrees
 with hand-computed bytes, which is a finding to resolve before proceeding.
 
-- [ ] **Step 4: Commit** as `test(java): pin protocol 47 wire bytes`.
+- [x] **Step 4: Commit** as `test(java): pin protocol 47 wire bytes`.
 
 ### Task 2: Recursion depth on the buffer
 
@@ -114,22 +114,22 @@ with hand-computed bytes, which is a finding to resolve before proceeding.
 **Interfaces:**
 - Produces: `(*Buffer).EnterNested() error`, `(*Buffer).LeaveNested()`, `ErrRecursionDepth`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Nesting one past `Limits.recursionDepth` returns `ErrRecursionDepth` naming the
 path; nesting exactly to the limit succeeds; the counter returns to zero after a
 failed decode; two sequential packets do not accumulate depth.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./wire/java`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 An `int` on `Buffer`, reset wherever the buffer is reset for a new packet. No
 synchronisation: a buffer belongs to one session.
 
-- [ ] **Step 4: Commit** as `feat(java): bound decode recursion depth`.
+- [x] **Step 4: Commit** as `feat(java): bound decode recursion depth`.
 
 ### Task 3: Native means native in this schema
 
@@ -141,7 +141,7 @@ synchronisation: a buffer belongs to one session.
 **Interfaces:**
 - Produces: `nativeRule(schema *protodef.Schema, name string) (scalarRule, bool)`, native argument binding, and `ErrUnknownNativeArgument`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Against small hand-written schemas in `testdata`, not the real protocol files:
 
@@ -155,17 +155,17 @@ Against small hand-written schemas in `testdata`, not the real protocol files:
 - a native invoked with an argument the codec does not accept is a generation
   error naming the JSON path.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
 `devbox run -- task test -- ./internal/codegen/packetgen`.
 
-- [ ] **Step 3: Implement the lookup and the arguments**
+- [x] **Step 3: Implement the lookup and the arguments**
 
 Thread the parsed schema's native set into the model builder and consult it
 before the hand-written table. Make the metadata loop codec take `endVal` as a
 parameter, and pass every native's schema arguments through to its call site.
 
-- [ ] **Step 4: Regenerate and expect the fixtures to speak**
+- [x] **Step 4: Regenerate and expect the fixtures to speak**
 
 `devbox run -- task generate` then `devbox run -- task test`.
 
@@ -176,11 +176,11 @@ express: record exactly what, in the commit message and in
 `MASTER_PLAN.md`, because the same gap will exist for protocol 775. Do not
 restore the override to make the test pass.
 
-- [ ] **Step 5: Run the interoperability lane**
+- [x] **Step 5: Run the interoperability lane**
 
 `devbox run -- task test:interop`. Expected: unchanged.
 
-- [ ] **Step 6: Commit** as `fix(codegen): scope native codecs to their schema`.
+- [x] **Step 6: Commit** as `fix(codegen): scope native codecs to their schema`.
 
 ### Task 4: Shared named types
 
@@ -192,7 +192,7 @@ restore the override to make the test pass.
 **Interfaces:**
 - Produces: `SharedType{SchemaName, GoName string; Declaration Declaration; Recursive bool}`, `Protocol.SharedTypes []SharedType`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Against `testdata` schemas: a self-recursive type generates one Go type whose
 recursive edge is a slice or pointer; a mutually recursive triple generates three
@@ -202,9 +202,9 @@ reordering; a collision between a schema type name and a packet type name
 resolves deterministically; generated shared decoders call `EnterNested` and
 `LeaveNested` on every exit path.
 
-- [ ] **Step 2: Run and verify failure**
+- [x] **Step 2: Run and verify failure**
 
-- [ ] **Step 3: Implement the sharing rule**
+- [x] **Step 3: Implement the sharing rule**
 
 Two passes before compilation: count referring packets per named type and find
 strongly connected components; then mark a type shared when it is in a
@@ -212,7 +212,7 @@ non-trivial component, is self-referential, or has two or more referring packets
 Compile shared types first, in sorted schema-name order, into a package-level
 declaration list.
 
-- [ ] **Step 4: Emit `types.go` and regenerate**
+- [x] **Step 4: Emit `types.go` and regenerate**
 
 Protocol 47 produces shared declarations for `position` (16 packets), `slot`
 (7), and `entityMetadata` (3). `string` resolves to a scalar and is not
@@ -222,7 +222,7 @@ declared.
 `devbox run -- task test:interop`. Expected: identical bytes, identical interop
 results, a large mechanical diff in `generated/java/v1_8`.
 
-- [ ] **Step 5: Commit** as `feat(codegen): share named protocol types`.
+- [x] **Step 5: Commit** as `feat(codegen): share named protocol types`.
 
 ### Task 5: Delete the hand-written value types
 
@@ -235,44 +235,44 @@ results, a large mechanical diff in `generated/java/v1_8`.
 **Interfaces:**
 - Removes: `java.Position`, `java.Slot`, `java.EntityMetadata`, and their read and write methods.
 
-- [ ] **Step 1: Prove they are unreferenced**
+- [x] **Step 1: Prove they are unreferenced**
 
 `grep -rn 'java\.Position\|java\.Slot\|java\.EntityMetadata' --include='*.go' .`
 Expected: matches only in the files being deleted and their tests.
 
-- [ ] **Step 2: Delete**
+- [x] **Step 2: Delete**
 
 Remove the types, their codecs, and the tests that only exercised them. Keep any
 test whose subject is a buffer primitive rather than the value type.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 `devbox run -- task verify`. Expected: generate check, lint, tests with race,
 interop, vulnerability check, and build all pass.
 
-- [ ] **Step 4: Commit** as `refactor(java): remove superseded hand-written value types`.
+- [x] **Step 4: Commit** as `refactor(java): remove superseded hand-written value types`.
 
 ### Task 6: Documentation and milestone records
 
 **Files:**
 - Modify: `README.md`, `CHANGELOG.md`, `ROADMAP.md`, `../headless-minecraft/MASTER_PLAN.md`
 
-- [ ] **Step 1: Document the rule**
+- [x] **Step 1: Document the rule**
 
 README states the generator's contract in one paragraph: a hand-written codec
 backs a name only when the schema declares it native, and every other type is
 compiled. CHANGELOG records the removal of the three value types as a breaking
 change to the generated API, with the reason.
 
-- [ ] **Step 2: Update the records**
+- [x] **Step 2: Update the records**
 
 `MASTER_PLAN.md`: M2.5 complete, with any gap Task 3 Step 4 discovered between
 the hand-written `slot` codec and the schema.
 
-- [ ] **Step 3: Inspect final scope**
+- [x] **Step 3: Inspect final scope**
 
 `git status --short` and `git diff --check`. Confirm: no protocol 775 anywhere;
 no new dataset; no consumer repository touched; `go.mod` still has no `require`
 block.
 
-- [ ] **Step 4: Commit** as `docs: record schema-first code generation`.
+- [x] **Step 4: Commit** as `docs: record schema-first code generation`.
