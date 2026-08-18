@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/go-theft-craft/minecraft-protocol"
 )
@@ -233,6 +234,14 @@ func inflateExact(envelope []byte, size int) ([]byte, error) {
 	return body, nil
 }
 
+// compressorPool reuses zlib writers across packets. Constructing one costs
+// far more than compressing a typical packet body, so every encoder resets a
+// pooled writer instead. Reset restores full writer state, so a writer that
+// saw an error is still safe to pool.
+var compressorPool = sync.Pool{
+	New: func() any { return zlib.NewWriter(io.Discard) },
+}
+
 // EncodeCompression wraps one packet body in the configured frame envelope.
 //
 // The returned slice may alias packetBody when compression is disabled.
@@ -282,7 +291,10 @@ func EncodeCompression(
 	var compressed bytes.Buffer
 	compressed.Write(header[:headerBytes])
 
-	compressor := zlib.NewWriter(&compressed)
+	compressor := compressorPool.Get().(*zlib.Writer)
+	defer compressorPool.Put(compressor)
+
+	compressor.Reset(&compressed)
 	if _, err := compressor.Write(packetBody); err != nil {
 		return nil, fmt.Errorf("compress packet body: %w", err)
 	}
