@@ -123,7 +123,7 @@ each has taken it or recorded why not. This is Task 3.
 - Consumes from the package under test: `script(t *testing.T, batches ...[]protocol.Packet) (*world.World, []event.Event)`, `play(value any) protocol.Packet`, and `playLogin(entityID int32) protocol.Packet`, all defined in `internal/adapter/v26_1/reduce_test.go` in package `v26_1_test`.
 - Produces: nothing other tasks import. Task 2 runs the test this task writes.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `internal/adapter/v26_1/velocity_test.go`:
 
@@ -213,7 +213,7 @@ func TestSpawnVelocityDecodesWhatAVanillaServerSent(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run it against the pinned release and watch it fail**
+- [x] **Step 2: Run it against the pinned release and watch it fail**
 
 The point of this step is to see the defect this repository ships today, which
 means resolving `minecraft-protocol` from `go.mod` and not from the workspace.
@@ -233,7 +233,7 @@ at speeds nothing summoned them with.
 If it passes here, stop: either the pin is no longer `v0.5.0` or the workspace is
 still in play. Check with `devbox run -- env GOWORK=off go list -m github.com/go-theft-craft/minecraft-protocol`.
 
-- [ ] **Step 3: Take the release in both modules**
+- [x] **Step 3: Take the release in both modules**
 
 Run:
 
@@ -258,7 +258,7 @@ grep -n 'minecraft-protocol' go.mod examples/go.mod
 
 Expected: `v0.6.0` in both, and no `replace` for `minecraft-protocol` in either.
 
-- [ ] **Step 4: Run the test and verify it passes**
+- [x] **Step 4: Run the test and verify it passes**
 
 Run:
 
@@ -268,7 +268,7 @@ devbox run -- env GOWORK=off go test ./internal/adapter/v26_1/ -run TestSpawnVel
 
 Expected: PASS, both subtests.
 
-- [ ] **Step 5: Run the whole gate**
+- [x] **Step 5: Run the whole gate**
 
 Run:
 
@@ -282,7 +282,7 @@ and corrects the login sequence inside this module's `login` package, so no
 caller here changes. If something fails to compile, that is a finding worth
 recording rather than working around.
 
-- [ ] **Step 6: Record it in the changelog**
+- [x] **Step 6: Record it in the changelog**
 
 Append to `CHANGELOG.md`, after the last entry of the `### Added` list, so the
 file reads `Added` then `Fixed` the way Keep a Changelog orders them:
@@ -301,7 +301,7 @@ file reads `Added` then `Fixed` the way Keep a Changelog orders them:
   cannot see a byte order at all.
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /home/ocharnyshevich/pet.projects/go-theft-craft/headless-minecraft
@@ -330,7 +330,7 @@ machine and never in CI. With it, `task verify` builds against
 `verify` resolves modules the way CI does, while `test:fast` — the edit loop, and
 the reason the workspace exists — keeps it.
 
-- [ ] **Step 1: Reproduce the divergence**
+- [x] **Step 1: Reproduce the divergence**
 
 Run, with the workspace in place (`ls go.work` should find it; if there is no
 `go.work` on this machine, create one for this step with
@@ -347,7 +347,7 @@ devbox run -- task test
 Expected: PASS — the pin says `v0.5.0` and the gate does not notice, which is the
 bug in the gate. Leave the reverted pin in place for Step 3.
 
-- [ ] **Step 2: Change the lanes**
+- [x] **Step 2: Change the lanes**
 
 In `Taskfile.yml`, prefix every command in the tasks `verify` runs with
 `env GOWORK=off`, and say why once. `deps` is included because `go mod tidy`
@@ -418,7 +418,7 @@ Leave `test:fast`, `test:vanilla`, `lint`, `fmt`, `fmt:check`, `secrets`, and
 `server:vanilla` alone. `test:vanilla` is a live lane run on request, and the
 formatting and secret lanes do not resolve modules.
 
-- [ ] **Step 3: Run the same lane and watch it fail**
+- [x] **Step 3: Run the same lane and watch it fail**
 
 The pin is still reverted from Step 1.
 
@@ -432,7 +432,7 @@ Expected: FAIL, in `TestSpawnVelocityDecodesWhatAVanillaServerSent`, reporting a
 `{4800 7953 7937}` for the first case. That failure is the whole point: the gate
 now sees what CI sees.
 
-- [ ] **Step 4: Restore the pin and verify green**
+- [x] **Step 4: Restore the pin and verify green**
 
 ```bash
 devbox run -- go mod edit -require=github.com/go-theft-craft/minecraft-protocol@v0.6.0
@@ -445,7 +445,7 @@ Expected: `pin restored exactly` prints, and `verify` is green. If `git diff`
 reports a change, the Step 1 revert has leaked into the commit — fix it before
 going on.
 
-- [ ] **Step 5: Record it in the changelog**
+- [x] **Step 5: Record it in the changelog**
 
 Append to the `### Fixed` section Task 1 created in `CHANGELOG.md`:
 
@@ -458,7 +458,7 @@ Append to the `### Fixed` section Task 1 created in `CHANGELOG.md`:
   two modules together is what it is for.
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -481,7 +481,7 @@ git commit -m "build: make verify resolve the modules go.mod pins"
 
 Work in `/home/ocharnyshevich/pet.projects/go-theft-craft/minecraft-protocol`.
 
-- [ ] **Step 1: Check the consumer list against the trees**
+- [x] **Step 1: Check the consumer list against the trees**
 
 The list is only worth writing if it is complete on the day it is written.
 
@@ -502,7 +502,7 @@ Expected, as of 2026-08-18: `server/go.mod` at `v0.6.0`,
 `relay/examples/go.mod` at `v0.6.0`. If a repository appears that is not in that
 list, add it to the table in Step 2 rather than dropping it.
 
-- [ ] **Step 2: Write the consumer section**
+- [x] **Step 2: Write the consumer section**
 
 In `RELEASING.md`, replace the `## Dependency policy` section — the whole
 section, whose current text names a headless release rule and a `proxy`
@@ -537,7 +537,7 @@ directive for it.
 The [Go module version documentation](https://go.dev/doc/modules/version-numbers) defines Go's stability meaning. The [Go module reference](https://go.dev/ref/mod#major-version-suffixes) defines major-version suffixes.
 ```
 
-- [ ] **Step 3: Put uptake in the release flow**
+- [x] **Step 3: Put uptake in the release flow**
 
 In the numbered list under `## Release flow`, replace step 7:
 
@@ -557,7 +557,7 @@ and append after the current step 11:
 12. Open the version bump in every repository under [Consumers](#consumers), and run each one's verify against it. A consumer that should not take this release records why, in its own changelog.
 ```
 
-- [ ] **Step 4: Check the document still reads straight through**
+- [x] **Step 4: Check the document still reads straight through**
 
 Run:
 
@@ -575,7 +575,7 @@ There is no changelog entry for this task. `CHANGELOG.md` records user-visible
 changes to the module, and this changes how this repository releases, not what a
 caller compiles against.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 devbox run -- task precommit
@@ -596,7 +596,7 @@ git commit -m "docs: name this module's consumers, and make uptake part of a rel
 
 Work in `/home/ocharnyshevich/pet.projects/go-theft-craft/minecraft-protocol`.
 
-- [ ] **Step 1: Verify the claim about the legacy consumers before writing it**
+- [x] **Step 1: Verify the claim about the legacy consumers before writing it**
 
 The roadmap is about to say that no shared package is being shadowed in the
 private repositories. Check it rather than assert it. Run this in each private
@@ -615,7 +615,7 @@ Record only the conclusion. Do not paste paths, package names, or file listings
 from those repositories into this public repository, here or in the commit
 message.
 
-- [ ] **Step 2: Update the chart node**
+- [x] **Step 2: Update the chart node**
 
 In the mermaid chart at the top of `ROADMAP.md`, replace:
 
@@ -629,7 +629,7 @@ with:
     P4["P4: shared consumers<br/>complete"]
 ```
 
-- [ ] **Step 3: Rewrite the section**
+- [x] **Step 3: Rewrite the section**
 
 Replace the whole `## P4: shared consumers` section — heading line included —
 with:
@@ -667,7 +667,7 @@ Status: complete.
   is not finished without.
 ```
 
-- [ ] **Step 4: Check the surrounding text for the same staleness**
+- [x] **Step 4: Check the surrounding text for the same staleness**
 
 The old section opened with "Server and `headless-minecraft` migration comes
 before protocol 775", which stopped being true when P2 shipped protocol 775.
@@ -682,7 +682,7 @@ Expected: no output.
 Then read the P5 section immediately below and leave it alone — its dependency on
 P4 is satisfied by this task, and its own contents are P5's work.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 devbox run -- task precommit
