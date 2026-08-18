@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.5.0 - 2026-08-18
+
 ### Added
 
 - `generated/java/v26_1`: `Physics()` answers for Java 26.1.2 —
