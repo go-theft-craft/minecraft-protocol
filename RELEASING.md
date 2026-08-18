@@ -88,11 +88,12 @@ Release only from a clean `main` branch whose CI checks pass.
 4. Commit the release preparation.
 5. Run `devbox run -- task release:check VERSION=vMAJOR.MINOR.PATCH`.
 6. Run generation checks when generated protocol or data files changed.
-7. Run the server, proxy, and headless-client compatibility suites when their shared contracts changed.
+7. Run the verify task of each repository under [Consumers](#consumers) whose shared contracts changed.
 8. Create an annotated `vMAJOR.MINOR.PATCH` tag on the verified commit.
 9. Push the commit and the tag.
 10. Create a GitHub release from the matching changelog section.
 11. Confirm that `go list -m github.com/go-theft-craft/minecraft-protocol@vMAJOR.MINOR.PATCH` resolves the release.
+12. Open the version bump in every repository under [Consumers](#consumers), and run each one's verify against it. A consumer that should not take this release records why, in its own changelog.
 
 `release:check` rejects a dirty tree, a local `replace` directive, and an invalid version. Do not move or reuse a published tag. Publish a new patch release for a correction.
 
@@ -106,8 +107,35 @@ Adopt GoReleaser when this repository ships the planned `mcproto` command. Its
 scope will be reproducible cross-platform binaries, checksums, provenance, and
 GitHub release assets. Go module tags remain the source of module versions.
 
-## Dependency policy
+## Consumers
 
-Tag `minecraft-protocol` before a dependent `headless-minecraft` release. The headless repository must use a released module version and must not contain a local `replace` directive in a published tag.
+These repositories require this module:
+
+| Repository | What it takes |
+| --- | --- |
+| `server` | the root package, `wire/java`, `generated/java/v1_8`, `generated/java/v26_1`, `data`, and `login`, vendored. Its examples module carries the same version indirectly |
+| `minecraft-simulation` | `data`, `generated/java/v1_8`, and `generated/java/v26_1` |
+| `headless-minecraft` | the root package, both generated Java profiles, `data`, and `login` — in its root module and again in its examples module, which pins its own copy |
+| `relay` | the examples module only. The core module requires nothing, and a release must never be the reason that changes |
+
+The legacy proxy is not on this list. It consumes the relay framework and the
+simulation, requires this module nowhere, and its codec owns its own fixed-width
+readers by a recorded decision — the legacy protocol shares nothing with modern
+Java Edition beyond the byte order of those numbers, so depending on a codec for
+another protocol would add coupling and remove nothing.
+
+A release is not finished when the tag is pushed. It is finished when every
+repository above requires it, or has recorded why it does not.
+
+0.6.0 is why this rule is written down. It corrected a quantised-vector byte
+order, and `headless-minecraft` — the one consumer whose read path that defect
+reached — stayed on 0.5.0 and kept decoding every entity velocity a 26.1 server
+sent into a number that was not the velocity. Nothing was red: its local gate
+resolved a Go workspace pointing at this working tree, so the fix looked present
+there and was absent in everything it built.
+
+Tag this module before a dependent release. A dependent's published tag must use
+a released version of this module and must not carry a local `replace` directive
+for it.
 
 The [Go module version documentation](https://go.dev/doc/modules/version-numbers) defines Go's stability meaning. The [Go module reference](https://go.dev/ref/mod#major-version-suffixes) defines major-version suffixes.
