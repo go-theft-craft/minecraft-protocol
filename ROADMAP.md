@@ -162,8 +162,19 @@ Status: complete.
 ## P5: stable contracts
 
 - Publish `v1.0.0` after public APIs have compatibility tests.
+  **The tests exist as of 2026-08-18:** `task api:check` compares every
+  exported package — the generated ones included — against the committed
+  export-data baseline under `api/` through `apidiff`, `verify` runs it, and
+  `task api:accept` rewrites the baseline deliberately. The tag itself waits
+  where M10's does: on the online-mode lane and the human-gated capture the
+  master plan names, so a reader of either roadmap reaches the same answer.
 - Document support windows for built-in protocol versions.
-- Require migration notes for every later breaking change.
+  `docs/version-names.md` is where this starts: which name protocol 47
+  advertises, which names its data, and how the family/build split works for
+  775.
+- Require migration notes for every later breaking change. The mechanism is
+  the baseline: an incompatible change fails `api:check` until the baseline
+  is rewritten in the same commit, which is where the migration note belongs.
 
 ## Deferred conformance work
 
