@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.6.0 - 2026-08-18
+
 ### Fixed
 
 - `wire/java`: `LPVec3` now reads and writes the byte order vanilla uses, so
