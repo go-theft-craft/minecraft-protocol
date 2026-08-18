@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.8.0 - 2026-08-18
+
 ### Added
 
 - `wire/java/chunk` reads the chunk column that a chunk packet carries as one
