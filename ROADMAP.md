@@ -10,7 +10,7 @@ flowchart LR
     P3a["P3a: managed stream<br/>and compression<br/>complete"]
     P3b["P3b: encryption and<br/>login lifecycle<br/>complete"]
     P3c["P3c: router, capture,<br/>replay, and mcproto CLI<br/>complete"]
-    P4["P4: migrate server<br/>and proxy consumers<br/>in progress"]
+    P4["P4: shared consumers<br/>complete"]
     P5["P5: stable v1 contracts"]
     PX["Later: Bedrock family"]
 
@@ -130,29 +130,34 @@ Status: complete.
 
 ## P4: shared consumers
 
-Status: the migration is done; the uptake is not. What is left is scheduled by
-[the P4 plan](docs/superpowers/plans/2026-08-18-p4-shared-consumers.md), which
-checked each bullet below against the working trees on 2026-08-18.
+Status: complete.
 
-- Migrated `server` to the shared Java 1.8 packages. It owns no wire code at
-  all: `pkg/gamedata`, `cmd/codegen`, and `cmd/dmd` are gone, every packet is a
-  generated type, and its byte-parity fixtures still match.
-- **Superseded:** migrating `proxy` imports. The legacy proxy requires `relay`
-  and `minecraft-simulation` and requires this module nowhere; its codec owns
-  its byte primitives by a recorded decision, because the legacy protocol shares
-  nothing with modern Java Edition beyond the byte order of its fixed-width
-  numbers.
-- Connected `headless-minecraft` to the current Java profile, on both protocol
-  47 and protocol 775.
-
-Two consumers arrived after P4 was written and belong to it now:
-`minecraft-simulation` and `relay`'s examples module, both on `v0.6.0` — and
-`relay`'s core module requires nothing, which is a property to keep.
-
-What the plan still owns: making the local gate resolve what CI resolves, so a
-Go workspace cannot make a stale pin look current, and writing the uptake step
-into the release flow so the next fix reaches consumers by process rather than
-by memory.
+- `server` runs on the shared Java 1.8 packages. Its own packet types, its
+  packet code generation, and the schema fetcher that fed them are deleted; the
+  connection writes generated values through the managed stream, and the
+  byte-parity fixtures it captured before the migration still pass unchanged.
+  The two constants it kept local are kept deliberately: it advertises `1.8.8`
+  where this module says `1.8.9`, and reconciling those names is a decision on
+  its own rather than a side effect of a migration.
+- `minecraft-simulation` reads the generated datasets for both Java profiles and
+  states no game value of its own. It became a consumer after this phase was
+  written, which is why the phase's original wording does not mention it.
+- `headless-minecraft` connects on both built-in Java profiles — protocol 47 and
+  protocol 775 — with an adapter each, and its conformance lane runs the same six
+  scenarios against a real 1.8.9 server and a real 26.1.2 server.
+- The legacy proxy does not consume this module, and the migration this phase
+  originally planned for it is not the right change. It consumes the proxy
+  framework and the simulation, and its codec owns its own fixed-width readers
+  on a recorded decision: the legacy protocol shares nothing with modern Java
+  Edition beyond the byte order of those numbers, so depending on a codec for
+  another protocol would add coupling and remove nothing. Checked again when this
+  phase closed: nothing there shadows a package this module publishes.
+- Uptake, not migration, turned out to be the risk. 0.6.0 corrected a
+  quantised-vector byte order, and the one consumer that read those vectors
+  stayed a release behind with every check green, because its local gate resolved
+  a Go workspace pointing at this working tree. Its gate now resolves what its
+  `go.mod` pins, and [RELEASING.md](RELEASING.md) names the consumers a release
+  is not finished without.
 
 ## P5: stable contracts
 
