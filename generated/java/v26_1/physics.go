@@ -1203,6 +1203,8 @@ func newPhysics() data.Physics {
 		},
 		SinTable: newSinTable(),
 		EntityMotion: data.EntityMotionIndex{
+			"arrow":  {Gravity: 0.05, HorizontalDrag: 0.9900000095367432, VerticalDrag: 0.9900000095367432, StepHeight: 0},
+			"item":   {Gravity: 0.04, HorizontalDrag: 0.9800000190734863, VerticalDrag: 0.98, StepHeight: 0},
 			"player": {Gravity: 0.08, HorizontalDrag: 0.9100000262260437, VerticalDrag: 0.9800000190734863, StepHeight: 0.6000000238418579},
 		},
 	}

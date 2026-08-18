@@ -197,7 +197,7 @@
         "name": "physics",
         "file": "physics.json",
         "mediaType": "application/json",
-        "sha256": "93af4c6710d43cf2aa18e42a811f492bfb48d97ab4a794fb18b7e02c2e4fff50"
+        "sha256": "3d99fc31bbcd9b12e2d7ff030f591bdcfb2a79bc33a7fe551b720a85417a6d69"
       },
       {
         "name": "blockMovement",
