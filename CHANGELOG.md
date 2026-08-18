@@ -56,6 +56,21 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   `data.BlockMovementRegistry`; a version package generated from these templates
   gets the methods for free.
 
+### Fixed
+
+- A packet that arrives as the connection ends reaches the reader. A peer that
+  kicks writes its disconnect and closes, so the frame and the EOF behind it
+  land together: the read pump hands the frame over and then reads the EOF,
+  which stops the stream and closes the shared budget while the coordinator is
+  still holding the decoded packet. Neither its observation record nor its queue
+  slot could be charged to a closed budget, and the packet was discarded — so a
+  reader saw a bare EOF and lost the one packet that says why the connection
+  ended. Teardown now drops the observation and keeps the packet: the reader
+  gets it, and `Read` drains what is queued on the termination path as well,
+  because a delivery and a termination can become ready in the same instant and
+  a select picks between ready cases at random. A reservation still waiting for
+  capacity when the budget closes no longer costs its packet either.
+
 ## 0.6.0 - 2026-08-18
 
 ### Fixed

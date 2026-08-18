@@ -163,6 +163,23 @@ func (b *budget) acquireUntil(stop <-chan struct{}, items, bytes int) error {
 	}
 }
 
+// charge takes capacity without waiting and without asking, even from a closed
+// budget.
+//
+// It exists for the packets a terminating stream still has to deliver. By then
+// the reservation path is gone — close refuses every request — and the reader
+// still releases what it takes, so charging here is what keeps that release
+// balanced. Nothing else may use it: the ceiling it steps over is the one every
+// other caller waits behind, and what it admits is bounded by the frames
+// already read off the transport.
+func (b *budget) charge(items, bytes int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.items += items
+	b.bytes += bytes
+}
+
 // release returns capacity and wakes whatever now fits.
 func (b *budget) release(items, bytes int) {
 	b.mu.Lock()

@@ -230,9 +230,16 @@ func (s *Stream) handOff(pending *pendingInbound) {
 	select {
 	case <-pending.waiter.done():
 		if pending.waiter.failure() != nil {
+			// Refused capacity, on a budget that closes with the transport.
+			s.deliverArrival(pending.item.packet, pending.item.bytes)
+
 			return
 		}
 	default:
+		// Still queued behind the budget, which will never grant it now.
+		s.queued.cancel(pending.waiter)
+		s.deliverArrival(pending.item.packet, pending.item.bytes)
+
 		return
 	}
 
@@ -344,7 +351,7 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 	// bytes even when the frame turns out to be undecodable. Redaction is
 	// therefore decided from the frame rather than from a packet that does
 	// not exist yet.
-	if err := s.observe(observationInput{
+	if err := s.observeArrival(observationInput{
 		direction: s.session.Inbound(),
 		stage:     ObservationRawFrame,
 		frame:     frameID,
@@ -370,7 +377,7 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 		s.session.ApplyTransition(decision.transition)
 	}
 
-	if err := s.observe(observationInput{
+	if err := s.observeArrival(observationInput{
 		direction: s.session.Inbound(),
 		stage:     ObservationPacket,
 		frame:     frameID,
@@ -386,13 +393,66 @@ func (s *Stream) decodeInbound(ctx context.Context, frame Frame) (*pendingInboun
 	charge := len(packet.Payload)
 	waiter, err := s.queued.reserve(1, charge)
 	if err != nil {
-		return nil, fmt.Errorf("queue inbound packet: %w", err)
+		if !s.ending() {
+			return nil, fmt.Errorf("queue inbound packet: %w", err)
+		}
+
+		// The queue closed with the transport while this packet was being
+		// decoded. Refusing it here would discard a packet that has already
+		// arrived, so it goes straight to the reader instead.
+		s.deliverArrival(packet, charge)
+
+		return nil, nil
 	}
 
 	return &pendingInbound{
 		item:   inboundItem{packet: packet, bytes: charge},
 		waiter: waiter,
 	}, nil
+}
+
+// observeArrival records one observation about an inbound frame, and reports
+// only a fault that is not the connection ending.
+//
+// observe fails when the shared budget closes, and stop is what closes it, so a
+// record that cannot be queued means the transport is already gone. A capture
+// that loses its last record is truncated; a reader that loses the packet loses
+// the disconnect that explains the ending, which is the packet this is most
+// often about. The record goes, the packet stays.
+func (s *Stream) observeArrival(input observationInput) error {
+	err := s.observe(input)
+	if err == nil || s.ending() {
+		return nil
+	}
+
+	return err
+}
+
+// ending reports whether the stream has been told to stop. stop closes
+// s.stopping before it closes the budget, so a budget that refuses while this
+// is true refused because the connection is over.
+func (s *Stream) ending() bool {
+	select {
+	case <-s.stopping:
+		return true
+	default:
+		return false
+	}
+}
+
+// deliverArrival hands the reader a packet decoded as the stream was ending.
+//
+// The budget is charged rather than reserved: the reservation path is closed by
+// then, and Read releases what it takes, so charging is what keeps that release
+// balanced. The send never blocks, because the reader may be gone too.
+func (s *Stream) deliverArrival(packet Packet, charge int) {
+	s.queued.charge(1, charge)
+
+	select {
+	case s.inboundPackets <- inboundItem{packet: packet, bytes: charge}:
+	default:
+		s.queued.release(1, charge)
+	}
 }
 
 // processWrite encodes, frames, and writes one accepted packet. It reports
@@ -909,6 +969,16 @@ func (s *Stream) Read(ctx context.Context) (Packet, error) {
 		s.queued.release(1, item.bytes)
 		return item.packet, nil
 	case <-s.done:
+		// Termination and a delivery can become ready in the same instant, and
+		// a select picks between ready cases at random. Draining here as well
+		// is what makes the rule above hold in either order.
+		select {
+		case item := <-s.inboundPackets:
+			s.queued.release(1, item.bytes)
+			return item.packet, nil
+		default:
+		}
+
 		return Packet{}, s.terminalError()
 	case <-ctx.Done():
 		return Packet{}, ctx.Err()
