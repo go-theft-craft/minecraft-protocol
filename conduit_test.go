@@ -145,3 +145,128 @@ func TestConduitRejectsASecondSwitch(t *testing.T) {
 		t.Fatalf("error = %v, want ErrEncryptionEnabled", err)
 	}
 }
+
+// The two halves installed separately must leave the conduit exactly where one
+// combined switch would, because that is the only reason to allow the split.
+func TestConduitHalvesComposeAsOneSwitch(t *testing.T) {
+	key := []byte("0123456789abcdef")
+	var sink bytes.Buffer
+
+	_, peerEncrypt := testCiphers(t, key)
+	inbound := make([]byte, len("from the peer"))
+	peerEncrypt.XORKeyStream(inbound, []byte("from the peer"))
+
+	conduit := newConduit(Transport{
+		Reader:    bytes.NewReader(inbound),
+		Writer:    &sink,
+		Interrupt: func() error { return nil },
+	})
+
+	decrypt, encrypt := testCiphers(t, key)
+	if err := conduit.EnableReadEncryption(decrypt); err != nil {
+		t.Fatalf("EnableReadEncryption: %v", err)
+	}
+	if err := conduit.EnableWriteEncryption(encrypt); err != nil {
+		t.Fatalf("EnableWriteEncryption: %v", err)
+	}
+
+	got := make([]byte, len(inbound))
+	if _, err := io.ReadFull(conduit, got); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if string(got) != "from the peer" {
+		t.Fatalf("decrypted %q, want %q", got, "from the peer")
+	}
+
+	if _, err := conduit.Write([]byte("to the peer")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	peerDecrypt, _ := testCiphers(t, key)
+	recovered := make([]byte, sink.Len())
+	peerDecrypt.XORKeyStream(recovered, sink.Bytes())
+	if string(recovered) != "to the peer" {
+		t.Fatalf("peer recovered %q, want %q", recovered, "to the peer")
+	}
+
+	if got := conduit.pipeline()["encryption.enabled"]; got != "true" {
+		t.Fatalf("encryption.enabled = %q, want %q", got, "true")
+	}
+}
+
+// The inbound half keeps the guard: unread bytes mean the pump is part-way
+// through a frame it began in the clear, and decrypting its tail would hand back
+// a packet that is half one thing and half another.
+func TestConduitReadHalfStillRefusesAPartFrame(t *testing.T) {
+	conduit := newConduit(Transport{
+		Reader:    bytes.NewReader([]byte("a frame the pump began in the clear")),
+		Writer:    io.Discard,
+		Interrupt: func() error { return nil },
+	})
+	if _, err := conduit.Read(make([]byte, 5)); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	decrypt, _ := testCiphers(t, []byte("0123456789abcdef"))
+	if err := conduit.EnableReadEncryption(decrypt); !errors.Is(err, ErrEncryptionOverrun) {
+		t.Fatalf("error = %v, want ErrEncryptionOverrun", err)
+	}
+	if got := conduit.pipeline()["encryption.enabled"]; got != "false" {
+		t.Fatal("a refused switch must leave the inbound half off")
+	}
+}
+
+// The outbound half has no read buffer to care about. A negotiator installs it
+// while the pump still holds whatever arrived during the response write, and
+// that must not be read as a reason to refuse.
+func TestConduitWriteHalfIgnoresTheReadBuffer(t *testing.T) {
+	var sink bytes.Buffer
+	conduit := newConduit(Transport{
+		Reader:    bytes.NewReader([]byte("bytes that arrived meanwhile")),
+		Writer:    &sink,
+		Interrupt: func() error { return nil },
+	})
+	if _, err := conduit.Read(make([]byte, 5)); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	_, encrypt := testCiphers(t, []byte("0123456789abcdef"))
+	if err := conduit.EnableWriteEncryption(encrypt); err != nil {
+		t.Fatalf("EnableWriteEncryption with a full read buffer: %v", err)
+	}
+	if _, err := conduit.Write([]byte("out")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if sink.String() == "out" {
+		t.Fatal("the outbound half was not installed")
+	}
+}
+
+// Each half refuses its own second install, so a caller that switches twice is
+// told which one it repeated rather than silently rekeying.
+func TestConduitRefusesASecondSwitchPerHalf(t *testing.T) {
+	key := []byte("0123456789abcdef")
+	conduit := newConduit(Transport{
+		Reader:    bytes.NewReader(nil),
+		Writer:    io.Discard,
+		Interrupt: func() error { return nil },
+	})
+
+	decrypt, encrypt := testCiphers(t, key)
+	if err := conduit.EnableReadEncryption(decrypt); err != nil {
+		t.Fatalf("EnableReadEncryption: %v", err)
+	}
+
+	again, _ := testCiphers(t, key)
+	if err := conduit.EnableReadEncryption(again); !errors.Is(err, ErrEncryptionEnabled) {
+		t.Fatalf("second inbound switch = %v, want ErrEncryptionEnabled", err)
+	}
+
+	// The outbound half is still free, because the halves are independent.
+	if err := conduit.EnableWriteEncryption(encrypt); err != nil {
+		t.Fatalf("EnableWriteEncryption after an inbound switch: %v", err)
+	}
+	_, twice := testCiphers(t, key)
+	if err := conduit.EnableWriteEncryption(twice); !errors.Is(err, ErrEncryptionEnabled) {
+		t.Fatalf("second outbound switch = %v, want ErrEncryptionEnabled", err)
+	}
+}

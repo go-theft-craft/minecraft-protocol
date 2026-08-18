@@ -126,10 +126,52 @@ func javaDigest(sum []byte) string {
 // after the write cannot encrypt the response packet itself.
 type EncryptionControl struct {
 	Secret SharedSecret
+	// Half selects which direction to switch. The zero value switches both,
+	// which is what a caller that can switch them together wants.
+	//
+	// A Java login cannot switch them together. The inbound half is due before
+	// the response is written, because the server begins encrypting as soon as
+	// it reads that response; the outbound half is due after, because the
+	// response frame itself goes out in the clear. Naming a half is how a
+	// negotiator orders the two.
+	Half EncryptionHalf
+}
+
+// EncryptionHalf names one direction of a cipher switch.
+type EncryptionHalf uint8
+
+const (
+	// EncryptionBoth switches both directions. It is the zero value.
+	EncryptionBoth EncryptionHalf = iota
+	// EncryptionInbound switches what this side reads.
+	EncryptionInbound
+	// EncryptionOutbound switches what this side writes.
+	EncryptionOutbound
+)
+
+// String implements fmt.Stringer, so an observation names the half rather than
+// printing a number a reader has to look up.
+func (h EncryptionHalf) String() string {
+	switch h {
+	case EncryptionBoth:
+		return "both"
+	case EncryptionInbound:
+		return "inbound"
+	case EncryptionOutbound:
+		return "outbound"
+	default:
+		return "unknown"
+	}
 }
 
 // ControlName implements protocol.Control.
-func (EncryptionControl) ControlName() string { return "java.encryption" }
+func (c EncryptionControl) ControlName() string {
+	if c.Half == EncryptionBoth {
+		return "java.encryption"
+	}
+
+	return "java.encryption." + c.Half.String()
+}
 
 // SecretLabel implements protocol.SecretDisclosure. A stream calls it on every
 // switch, disclosing or not, so a redacted capture still says what kind of
@@ -159,11 +201,23 @@ func (c EncryptionControl) ApplyTransport(conduit *protocol.Conduit) error {
 	}
 
 	// Java uses the key as its own initialization vector, and the mode is
-	// CFB8 rather than the standard library's block-wide CFB.
-	return conduit.EnableEncryption(
-		newCFB8Decrypter(block, key),
-		newCFB8Encrypter(block, key),
-	)
+	// CFB8 rather than the standard library's block-wide CFB. Each half is
+	// built only when it is installed: a CFB8 stream carries its position, and
+	// two halves installed at different moments are two independent streams
+	// that each begin at the first byte of their own direction.
+	switch c.Half {
+	case EncryptionInbound:
+		return conduit.EnableReadEncryption(newCFB8Decrypter(block, key))
+	case EncryptionOutbound:
+		return conduit.EnableWriteEncryption(newCFB8Encrypter(block, key))
+	case EncryptionBoth:
+		return conduit.EnableEncryption(
+			newCFB8Decrypter(block, key),
+			newCFB8Encrypter(block, key),
+		)
+	default:
+		return fmt.Errorf("%w: unknown encryption half %d", ErrInvalidSharedSecret, c.Half)
+	}
 }
 
 var (

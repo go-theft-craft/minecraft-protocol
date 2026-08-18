@@ -35,6 +35,9 @@ type serverScript struct {
 	compress   bool
 	disconnect string
 	stall      bool
+	// refuseAfterEncrypt writes a disconnect the instant the server's own
+	// cipher is in, which is what a server refusing an online login does.
+	refuseAfterEncrypt string
 
 	// Malformed-field overrides. Each is empty or false in a healthy script.
 	serverID         string
@@ -170,6 +173,14 @@ func serveLogin(t *testing.T, stream *protocol.Stream, script serverScript) {
 		}
 		if err := stream.Control(ctx, java.EncryptionControl{Secret: secret}); err != nil {
 			t.Errorf("enable server encryption: %v", err)
+
+			return
+		}
+
+		if script.refuseAfterEncrypt != "" {
+			writeLoginPacket(t, stream, &v1_8.LoginClientboundDisconnect{
+				Reason: script.refuseAfterEncrypt,
+			})
 
 			return
 		}
@@ -396,5 +407,43 @@ func TestNegotiateRejectsMalformedServerFields(t *testing.T) {
 				t.Fatalf("error = %v, want %v", err, testCase.want)
 			}
 		})
+	}
+}
+
+// A server refusing an online login encrypts, writes the reason, and closes. The
+// client is still between writing its encryption response and installing its own
+// cipher when those bytes land, so the reason arrives while this side is, for one
+// moment, still reading in the clear.
+//
+// Reading it as plaintext produces a nonsense frame length and a stream that
+// fails on garbage, and the close then fails the outbound switch on the way out.
+// Either one is capable of replacing the answer with the noise that followed it.
+// What the caller must get back is the reason.
+func TestNegotiateReportsARefusalSentTheInstantEncryptionBegins(t *testing.T) {
+	// Repeated, because the window it closes is one a single run may step over
+	// by luck. Bounded, because a reopened window strands the negotiation on a
+	// stream that has failed, and a regression is worth more as a failure than
+	// as a suite that hangs.
+	for range 25 {
+		client, server := loginPair(t)
+		go serveLogin(t, server, serverScript{
+			encrypt:            true,
+			refuseAfterEncrypt: "You are banned from this server",
+		})
+
+		negotiator, err := login.NewNegotiator(offlineTester(t))
+		if err != nil {
+			t.Fatalf("NewNegotiator: %v", err)
+		}
+
+		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+		_, err = negotiator.Negotiate(ctx, client)
+		cancel()
+		if !errors.Is(err, login.ErrLoginDisconnected) {
+			t.Fatalf("error = %v, want ErrLoginDisconnected", err)
+		}
+		if !strings.Contains(err.Error(), "banned") {
+			t.Fatalf("error = %v, want it to carry the reason", err)
+		}
 	}
 }

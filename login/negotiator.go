@@ -161,9 +161,17 @@ func (n *Negotiator) Negotiate(ctx context.Context, stream *protocol.Stream) (Pr
 	}
 
 	var confirmed Profile
+	// held is an outbound cipher switch that failed after the peer went away.
+	// It is answered by the next read, and returned only if that read has
+	// nothing to say.
+	var held error
 	for {
 		packet, err := stream.Read(ctx)
 		if err != nil {
+			if held != nil {
+				return Profile{}, held
+			}
+
 			return Profile{}, fmt.Errorf("read login packet: %w", err)
 		}
 
@@ -197,7 +205,14 @@ func (n *Negotiator) Negotiate(ctx context.Context, stream *protocol.Stream) (Pr
 		switch role {
 		case protocol.RoleEncryptionRequest:
 			if err := n.exchangeKeys(ctx, stream, exchange, packet); err != nil {
-				return Profile{}, err
+				var lost outboundSwitchError
+				if !errors.As(err, &lost) {
+					return Profile{}, err
+				}
+				// The peer closed while the outbound half was going in, which
+				// is what a server refusing this login does right after writing
+				// why. Keep the failure and read: the reason outranks it.
+				held = err
 			}
 
 		case protocol.RoleSetCompression:
@@ -365,16 +380,54 @@ func (n *Negotiator) exchangeKeys(
 	if err != nil {
 		return fmt.Errorf("build encryption response: %w", err)
 	}
+	// The inbound cipher goes in before the response, not after it. The server
+	// begins encrypting the moment it reads that response and owes this side no
+	// pause: a server refusing the login writes its disconnect immediately. Any
+	// byte the read pump takes before the cipher is installed is handed out as
+	// plaintext, and an encrypted disconnect read as plaintext is a nonsense
+	// frame length -- the stream then fails on garbage instead of reporting the
+	// reason it was just given.
+	//
+	// Installing it early is safe because there is nothing left to read in the
+	// clear: the encryption request was the server's last plaintext packet.
+	if err := stream.Control(ctx, java.EncryptionControl{
+		Secret: secret,
+		Half:   java.EncryptionInbound,
+	}); err != nil {
+		return fmt.Errorf("enable inbound encryption: %w", err)
+	}
+
 	if err := stream.Write(ctx, response); err != nil {
 		return fmt.Errorf("write encryption response: %w", err)
 	}
 
-	if err := stream.Control(ctx, java.EncryptionControl{Secret: secret}); err != nil {
-		return fmt.Errorf("enable encryption: %w", err)
+	// The outbound cipher goes in after, because the response frame itself is
+	// the last thing this side sends in the clear.
+	if err := stream.Control(ctx, java.EncryptionControl{
+		Secret: secret,
+		Half:   java.EncryptionOutbound,
+	}); err != nil {
+		return outboundSwitchError{err: err}
 	}
 
 	return nil
 }
+
+// outboundSwitchError marks an outbound cipher switch that did not happen
+// because the stream had already ended.
+//
+// It is not fatal on its own. A server refusing a login writes the reason and
+// closes, and the close is what fails the switch -- so reporting the switch
+// would replace the answer the caller wants with the noise that followed it.
+// The reason is already on this side by then, and the next read is what finds
+// it. This survives only if that read finds nothing better.
+type outboundSwitchError struct{ err error }
+
+func (e outboundSwitchError) Error() string {
+	return "enable outbound encryption: " + e.err.Error()
+}
+
+func (e outboundSwitchError) Unwrap() error { return e.err }
 
 // validateEncryptionRequest checks every field of an encryption request before
 // any of it is used. The public key is checked by ParseServerPublicKey; these

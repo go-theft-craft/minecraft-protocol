@@ -4,6 +4,51 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Fixed
+
+- `wire/java`: `LPVec3` now reads and writes the byte order vanilla uses, so
+  every velocity a real 26.1.2 server sends decodes to the velocity it sent.
+  The upper thirty-two bits of the packed vector are big endian on the wire --
+  what Netty's `writeByte, writeByte, writeInt` produces -- and this package
+  wrote and read them little endian. Because it was wrong in both directions
+  the round-trip tests passed, while an entity's spawn or velocity packet
+  yielded a plausible number unrelated to its motion: an arrow summoned with
+  `Motion:[0.1d,0.0d,0.0d]` decoded as `{0.600, 0.994, 0.992}` and now decodes
+  as `{0.100, 0, 0}`. A new test reads velocity fields captured from a pinned
+  vanilla server, which is the only shape of test that could have caught it.
+
+- `login`: an online login refused by the server now reports the reason it was
+  given rather than a corrupt stream. The client wrote its encryption response
+  and only then installed its cipher, and the server begins encrypting the moment
+  it reads that response -- so a server that replies immediately, which is what
+  one refusing a login does, landed ciphertext in the window between. The read
+  pump handed those bytes out as plaintext and the stream failed on a nonsense
+  frame length; the peer's close then failed the cipher switch on the way out,
+  replacing the reason with the noise that followed it. Measured at 19 failures
+  per 300 runs against a real server before, and 0 after.
+
+### Added
+
+- `java/26.1`: the physics dataset now carries item and arrow motion constants
+  beside the player's, so a consumer can move all three families. They are
+  transcribed from `ItemEntity` and `AbstractArrow` and confirmed in bytecode,
+  the way 1.8.9's twelve were. Three of them differ from 1.8.9 in a way a shared
+  number would get wrong: both gravities are `double` literals here and `float`
+  literals there (0.04 against 0.03999999910593033, 0.05 against
+  0.05000000074505806), and the item's vertical drag became a `double` 0.98
+  while the horizontal drag in the same statement stayed the `float`
+  0.9800000190734863.
+- `Conduit.EnableReadEncryption` and `Conduit.EnableWriteEncryption` install one
+  half of a cipher switch, and `java.EncryptionControl` takes a `Half` field
+  selecting `EncryptionInbound`, `EncryptionOutbound`, or -- as the zero value --
+  both. The two halves of a Java login fall due at different moments: the inbound
+  one before the encryption response is written, because the server starts
+  encrypting as soon as it reads it, and the outbound one after, because that
+  response frame is the last thing sent in the clear. `EnableEncryption` still
+  installs both at once and is unchanged for callers that can switch together.
+  The inbound half keeps the unread-bytes check that guards a part-read frame;
+  the outbound half has no read buffer to check.
+
 ## 0.5.0 - 2026-08-18
 
 ### Added

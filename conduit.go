@@ -84,12 +84,11 @@ func (c *Conduit) Write(p []byte) (int, error) {
 	return c.writer.Write(p)
 }
 
-// EnableEncryption installs the per-direction ciphers.
+// EnableEncryption installs both ciphers at once.
 //
-// It refuses when the read buffer already holds unread bytes. Those bytes
-// arrived before the switch and would have been handed out as plaintext, so
-// accepting the switch would corrupt the very next frame with no way to tell
-// why. Failing here names the cause at the cause.
+// A peer that can switch both halves together should: it is one call and one
+// refusal. A login cannot, because the two halves become due at different
+// moments, which is what EnableReadEncryption and EnableWriteEncryption are for.
 func (c *Conduit) EnableEncryption(decrypt, encrypt cipher.Stream) error {
 	if decrypt == nil || encrypt == nil {
 		return fmt.Errorf("%w: nil cipher", ErrEncryptionUnavailable)
@@ -101,12 +100,84 @@ func (c *Conduit) EnableEncryption(decrypt, encrypt cipher.Stream) error {
 	if c.decrypt != nil || c.encrypt != nil {
 		return ErrEncryptionEnabled
 	}
-	if c.pending > 0 {
-		return fmt.Errorf("%w: %d unread bytes", ErrEncryptionOverrun, c.pending)
+	if err := c.readSwitchable(); err != nil {
+		return err
 	}
 
 	c.decrypt = decrypt
 	c.encrypt = encrypt
+
+	return nil
+}
+
+// EnableReadEncryption installs the inbound cipher on its own.
+//
+// The inbound half is due before the outbound one. A peer starts encrypting the
+// moment it has what it needs to -- for Java, the moment it reads the encryption
+// response -- and it owes this side no pause while this side catches up. Between
+// writing that response and installing a cipher, every byte the read pump takes
+// is handed out as plaintext, so a peer that replies immediately, as one
+// refusing a login does, is decoded as garbage: a nonsense frame length, and a
+// stream that fails without ever saying what it was told.
+//
+// Installing this half first closes that window. It is safe to install early
+// because the protocol says what is inbound: after the encryption request there
+// is nothing left for the peer to send in the clear, so there is no plaintext
+// for an early cipher to corrupt.
+func (c *Conduit) EnableReadEncryption(decrypt cipher.Stream) error {
+	if decrypt == nil {
+		return fmt.Errorf("%w: nil cipher", ErrEncryptionUnavailable)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.decrypt != nil {
+		return ErrEncryptionEnabled
+	}
+	if err := c.readSwitchable(); err != nil {
+		return err
+	}
+
+	c.decrypt = decrypt
+
+	return nil
+}
+
+// EnableWriteEncryption installs the outbound cipher on its own.
+//
+// It has no read buffer to check. The outbound half is due only once the last
+// plaintext packet is on the wire, and what this side has already written is not
+// something a cipher installed now can reach.
+func (c *Conduit) EnableWriteEncryption(encrypt cipher.Stream) error {
+	if encrypt == nil {
+		return fmt.Errorf("%w: nil cipher", ErrEncryptionUnavailable)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.encrypt != nil {
+		return ErrEncryptionEnabled
+	}
+
+	c.encrypt = encrypt
+
+	return nil
+}
+
+// readSwitchable reports whether the inbound cipher can be installed now. The
+// caller holds the mutex.
+//
+// Unread bytes mean the read pump is part-way through a frame it began in the
+// clear. Installing a cipher now would decrypt the rest of that frame and hand
+// back a packet that is half one thing and half another, so the switch is
+// refused and says why. It is not a guess about the peer: read-ahead is exactly
+// how a pump ends up holding the tail of a frame.
+func (c *Conduit) readSwitchable() error {
+	if c.pending > 0 {
+		return fmt.Errorf("%w: %d unread bytes", ErrEncryptionOverrun, c.pending)
+	}
 
 	return nil
 }
