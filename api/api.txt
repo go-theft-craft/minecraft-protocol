@@ -1,0 +1,19 @@
+# The frozen public surface of github.com/go-theft-craft/minecraft-protocol.
+# One export-data file per package; task api:check compares them
+# through apidiff and task api:accept rewrites them on purpose.
+github.com/go-theft-craft/minecraft-protocol github.com_go-theft-craft_minecraft-protocol.export
+github.com/go-theft-craft/minecraft-protocol/capture github.com_go-theft-craft_minecraft-protocol_capture.export
+github.com/go-theft-craft/minecraft-protocol/data github.com_go-theft-craft_minecraft-protocol_data.export
+github.com/go-theft-craft/minecraft-protocol/generated/java/current github.com_go-theft-craft_minecraft-protocol_generated_java_current.export
+github.com/go-theft-craft/minecraft-protocol/generated/java/v1_8 github.com_go-theft-craft_minecraft-protocol_generated_java_v1_8.export
+github.com/go-theft-craft/minecraft-protocol/generated/java/v26_1 github.com_go-theft-craft_minecraft-protocol_generated_java_v26_1.export
+github.com/go-theft-craft/minecraft-protocol/history github.com_go-theft-craft_minecraft-protocol_history.export
+github.com/go-theft-craft/minecraft-protocol/interop github.com_go-theft-craft_minecraft-protocol_interop.export
+github.com/go-theft-craft/minecraft-protocol/login github.com_go-theft-craft_minecraft-protocol_login.export
+github.com/go-theft-craft/minecraft-protocol/middleware github.com_go-theft-craft_minecraft-protocol_middleware.export
+github.com/go-theft-craft/minecraft-protocol/protocols github.com_go-theft-craft_minecraft-protocol_protocols.export
+github.com/go-theft-craft/minecraft-protocol/replay github.com_go-theft-craft_minecraft-protocol_replay.export
+github.com/go-theft-craft/minecraft-protocol/router github.com_go-theft-craft_minecraft-protocol_router.export
+github.com/go-theft-craft/minecraft-protocol/source/manifest github.com_go-theft-craft_minecraft-protocol_source_manifest.export
+github.com/go-theft-craft/minecraft-protocol/wire/java github.com_go-theft-craft_minecraft-protocol_wire_java.export
+github.com/go-theft-craft/minecraft-protocol/wire/java/chunk github.com_go-theft-craft_minecraft-protocol_wire_java_chunk.export

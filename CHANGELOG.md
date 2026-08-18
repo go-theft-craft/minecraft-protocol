@@ -4,6 +4,19 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Added
+
+- `task api:check` and `task api:accept`: the public surface is frozen under
+  `api/` as per-package export data compared through `apidiff`, so M9.4
+  through M9.8 and everything after them see their own API change in their
+  own diff rather than a reviewer at `v1.0.0` discovering an accumulated
+  surface nobody chose. The tooling lives in the nested `apicompat` module,
+  so this module's `go.mod` stays dependency-free for its consumers.
+
+- `docs/version-names.md`: which name protocol 47 advertises (`1.8.8`) and
+  which names its data (`1.8.9`), written down and pinned by a test, changing
+  no byte — M3 changed none either, and what was missing was the record.
+
 ## 0.8.0 - 2026-08-18
 
 ### Added
