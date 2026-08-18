@@ -4,6 +4,17 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Fixed
+
+- A write the peer already has is reported as written. `Write` returned
+  `ErrStreamClosed` for a frame the transport had taken when the connection
+  ended before the call returned — because the write pump's result and the stop
+  become ready in the same instant, where a select picks between ready cases at
+  random, and because the frame's observation could not be charged to a budget
+  that closes with the transport. Both told a caller to send again something the
+  peer already had. The outbound side now follows the rule the inbound side
+  does: what a closing stream cannot record is the record.
+
 ## 0.7.0 - 2026-08-18
 
 ### Added

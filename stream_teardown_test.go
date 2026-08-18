@@ -124,3 +124,62 @@ func waitUntilEnding(t *testing.T, stream *Stream) {
 		}
 	}
 }
+
+// TestStreamReportsAWriteThePeerAlreadyHasAsWritten pins the outbound half of
+// the same rule.
+//
+// A frame the transport has taken is written, whatever the connection does a
+// moment later. The stream reported one as failed in two ways: its observation
+// could not be charged to a budget that closes with the transport, and the stop
+// and the write pump's result become ready in the same instant, where a select
+// picks between ready cases at random. Both told a caller to send again
+// something the peer already had — and a client acknowledging its placement to a
+// server that then hung up read the acknowledgement it had just delivered as a
+// connection that ended before it was placed.
+func TestStreamReportsAWriteThePeerAlreadyHasAsWritten(t *testing.T) {
+	t.Parallel()
+
+	sink := newRecordingSink()
+	blocker := make(chan struct{})
+	sink.mu.Lock()
+	sink.block = blocker
+	sink.mu.Unlock()
+	defer close(blocker)
+
+	// A sink that never returns holds the budget item of the record it is
+	// stuck on, so the write below reaches the transport and then has to wait
+	// for room to record itself. That is the window the peer closes in.
+	harness := startRuntime(t, 2, WithObservationSink(sink))
+
+	written := make(chan error, 1)
+	go func() {
+		written <- harness.stream.Write(context.Background(), Packet{ID: 2, Payload: []byte{0x02}})
+	}()
+	waitForFrames(t, harness.writer, 1)
+
+	harness.reader.fail(io.EOF)
+
+	select {
+	case err := <-written:
+		if err != nil {
+			t.Fatalf("Write() = %v, want nil: the peer already has the frame", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Write never returned after the peer hung up")
+	}
+}
+
+// waitForFrames blocks until the transport has taken at least count frames.
+func waitForFrames(t *testing.T, writer *syncWriter, count int) {
+	t.Helper()
+
+	deadline := time.After(5 * time.Second)
+	for writer.writeCount() < count {
+		select {
+		case <-deadline:
+			t.Fatalf("the transport took %d frames, want %d", writer.writeCount(), count)
+		default:
+			time.Sleep(time.Millisecond)
+		}
+	}
+}

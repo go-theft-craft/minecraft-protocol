@@ -514,33 +514,73 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 
 	select {
 	case err := <-result:
-		if err != nil {
-			request.finish(err)
-			s.fail(fmt.Errorf("write outbound frame: %w", err))
-			s.stop()
+		return s.finishWrite(request, decision, err, writtenFrame{
+			id: frameID, before: before, frame: frame, payload: payload,
+		})
 
-			return false
-		}
-		if decision.commit {
-			s.session.ApplyTransition(decision.transition)
+	case <-s.stopping:
+		// A stop and the pump's result become ready in the same instant when
+		// the peer closes as this frame goes out, and a select picks between
+		// ready cases at random. A frame the transport has taken is written
+		// whatever the stream does next, and reporting it as a failed write
+		// tells the caller to send again something the peer already has.
+		select {
+		case err := <-result:
+			return s.finishWrite(request, decision, err, writtenFrame{
+				id: frameID, before: before, frame: frame, payload: payload,
+			})
+		default:
 		}
 
-		if err := s.observeOutbound(frameID, before, frame, request.packet, payload); err != nil {
+		request.finish(ErrStreamClosed)
+
+		return false
+	}
+}
+
+// writtenFrame is what the observation of a completed write needs.
+type writtenFrame struct {
+	id      uint64
+	before  Snapshot
+	frame   Frame
+	payload []byte
+}
+
+// finishWrite reports the outcome of a write the pump has finished with, and
+// says whether the coordinator should keep running.
+func (s *Stream) finishWrite(
+	request *writeRequest,
+	decision transitionDecision,
+	err error,
+	written writtenFrame,
+) bool {
+	if err != nil {
+		request.finish(err)
+		s.fail(fmt.Errorf("write outbound frame: %w", err))
+		s.stop()
+
+		return false
+	}
+	if decision.commit {
+		s.session.ApplyTransition(decision.transition)
+	}
+
+	if err := s.observeOutbound(written.id, written.before, written.frame, request.packet, written.payload); err != nil {
+		if !s.ending() {
 			request.finish(err)
 			s.fail(err)
 			s.stop()
 
 			return false
 		}
-		request.finish(nil)
 
-		return true
-
-	case <-s.stopping:
-		request.finish(ErrStreamClosed)
-
-		return false
+		// The same rule the inbound side follows: the budget closes with the
+		// transport, and what a closing stream cannot record is the record.
+		// The frame is on the wire either way.
 	}
+	request.finish(nil)
+
+	return true
 }
 
 // observeRejected records a write the stream accepted and then refused.
