@@ -4,13 +4,13 @@ The roadmap records dependency order, not release dates. Completed work remains 
 
 ```mermaid
 flowchart LR
-    P0["P0: repository foundation<br/>in progress"]
+    P0["P0: repository foundation<br/>complete"]
     P1["P1: extract Java 1.8<br/>wire, data, and generator<br/>complete"]
     P2["P2: generate Java 26.1<br/>and all PrismarineJS data<br/>complete"]
     P3a["P3a: managed stream<br/>and compression<br/>complete"]
     P3b["P3b: encryption and<br/>login lifecycle<br/>complete"]
     P3c["P3c: router, capture,<br/>replay, and mcproto CLI<br/>complete"]
-    P4["P4: migrate server<br/>and proxy consumers"]
+    P4["P4: migrate server<br/>and proxy consumers<br/>complete"]
     P5["P5: stable v1 contracts"]
     PX["Later: Bedrock family"]
 
@@ -77,8 +77,7 @@ Status: complete.
 
 ## P3b: encryption and login lifecycle
 
-Status: complete, except for the modern-login transitions, which need the
-protocol 775 codecs that P2 generates.
+Status: complete.
 
 - Added AES-CFB8 at the transport boundary, in the correct pipeline order,
   through a conduit that transforms bytes as it hands them out.
@@ -89,8 +88,13 @@ protocol 775 codecs that P2 generates.
   to the stream.
 - Added secret redaction in observations, with disclosure behind an explicit,
   reasoned opt-in.
-- Add configuration and play transitions for modern Java login, keeping every
-  automatic transition optional.
+- Added configuration and play transitions for modern Java login, keeping every
+  automatic transition optional. This is the item P3b could not finish without
+  P2's codecs; it closed in P2, where `Negotiator` became version-neutral
+  through `protocol.LoginExchange` and a full 775 login was driven through
+  configuration into play. `login.Acceptor` is a separate matter: it is written
+  against the `v1_8` generated types, so nothing here can *serve* a 775 login,
+  and closing that is scheduled by M10.
 
 ## P3b.5: schema-first code generation
 
@@ -126,11 +130,15 @@ Status: complete.
 
 ## P4: shared consumers
 
-Server and `headless-minecraft` migration comes before protocol 775.
+Status: complete.
 
-- Migrate `server` to the shared Java 1.8 packages.
-- Migrate `proxy` imports while keeping the legacy protocol internal.
-- Connect `headless-minecraft` to the current Java profile.
+- Migrated `server` to the shared Java 1.8 packages. It owns no wire code at
+  all: `pkg/protocol` and `pkg/gamedata` are gone, every packet is a generated
+  type, and its byte-parity fixtures still match.
+- Migrated the proxy. The framework half of that work became the `relay`
+  repository, which pins released versions of this one.
+- Connected `headless-minecraft` to the current Java profile, on both protocol
+  47 and protocol 775.
 
 ## P5: stable contracts
 

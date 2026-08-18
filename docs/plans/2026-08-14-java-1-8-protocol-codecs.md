@@ -1,5 +1,12 @@
 # Java 1.8 Protocol Codecs Implementation Plan
 
+> **Status: complete, 2026-08-18.** Shipped as M0: the protocol 47 descriptor
+> and generated packet codecs, with no reflection in a generated runtime path
+> (`162e95d`). The checkboxes below were never ticked and are not evidence; do
+> not re-run this plan. Note that M2.5 later changed the rule this plan encodes:
+> every schema-defined type is now compiled from its own schema, and a
+> hand-written codec backs only a name the schema declares native.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or execute this plan inline one task at a time. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Publish a complete built-in `java/1.8.9` protocol 47 descriptor whose generated packet codecs do not use reflection.

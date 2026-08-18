@@ -1,5 +1,10 @@
 # Managed Stream and Compression Implementation Plan
 
+> **Status: complete, 2026-08-18.** Shipped as M1 (`8625ea7`), including the
+> pinned Node `minecraft-protocol` 1.66.2 interoperability lane that is now a
+> required gate. The checkboxes below were never ticked and are not evidence; do
+> not re-run this plan. `ROADMAP.md`'s P3a section is the summary of what landed.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or execute this plan inline one task at a time. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the framed `protocol.Codec` with an edition-neutral asynchronous stream that supports protocol 47 framing, compression, automatic transitions, developer controls, bounded resources, graceful disconnect, legacy ping, and conformance tests.

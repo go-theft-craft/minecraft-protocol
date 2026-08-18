@@ -1,5 +1,15 @@
 # Encryption and Login Lifecycle Implementation Plan
 
+> **Status: complete, 2026-08-18.** Shipped as M2: AES-CFB8 at the transport
+> boundary, the Java key exchange, strict login identity types, observation
+> redaction, and the opt-in `login` negotiator. The one item this plan could not
+> finish — the configuration and play transitions modern Java login needs —
+> closed in M4: `Negotiator` is version-neutral through `protocol.LoginExchange`
+> and `login/negotiator_v26_1_test.go` drives a full 775 login through
+> configuration into play. `login.Acceptor` is still protocol 47 only, and that
+> is M10's, not this plan's. The checkboxes below were never ticked and are not
+> evidence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add AES-128/CFB8 encryption below framing and a developer-controllable Java login sequence to `minecraft-protocol`, on protocol 47.

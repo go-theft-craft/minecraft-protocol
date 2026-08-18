@@ -1,5 +1,14 @@
 # relay Proxy Framework Implementation Plan
 
+> **Status: complete, 2026-08-18, and it shipped somewhere else.** This plan
+> built the `relay` repository, not this one: `github.com/go-theft-craft/relay`,
+> now at `0.4.x`, whose own copy of this plan at
+> `docs/2026-08-16-relay-proxy-framework.md` is the executed one with every step
+> ticked. The copy here is the draft and is not maintained — three later
+> documents beside it in `relay` amend it, on compression that changes
+> mid-session, the encryption remainder, and enforcing the sink contract. Do not
+> re-run this plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build `github.com/go-theft-craft/relay`, a protocol-agnostic TCP proxy framework, plus a worked Minecraft example in a second module.

@@ -1,5 +1,12 @@
 # Schema-First Code Generation Implementation Plan
 
+> **Status: complete, 2026-08-18.** Shipped as M2.5, before M3 migrated the
+> server, so the consumer migrated once. Every schema-defined type is compiled
+> from its own schema, named types are shared, decode recursion is bounded, and
+> the hand-written `Position`, `Slot`, and `EntityMetadata` are gone. The
+> checkboxes below were never ticked and are not evidence; do not re-run this
+> plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Compile every schema-defined type from the schema, keep hand-written codecs only for names the schema declares native, share named types instead of inlining them, and change no protocol 47 wire byte.
