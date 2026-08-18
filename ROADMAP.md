@@ -10,7 +10,7 @@ flowchart LR
     P3a["P3a: managed stream<br/>and compression<br/>complete"]
     P3b["P3b: encryption and<br/>login lifecycle<br/>complete"]
     P3c["P3c: router, capture,<br/>replay, and mcproto CLI<br/>complete"]
-    P4["P4: migrate server<br/>and proxy consumers<br/>complete"]
+    P4["P4: migrate server<br/>and proxy consumers<br/>in progress"]
     P5["P5: stable v1 contracts"]
     PX["Later: Bedrock family"]
 
@@ -130,15 +130,29 @@ Status: complete.
 
 ## P4: shared consumers
 
-Status: complete.
+Status: the migration is done; the uptake is not. What is left is scheduled by
+[the P4 plan](docs/superpowers/plans/2026-08-18-p4-shared-consumers.md), which
+checked each bullet below against the working trees on 2026-08-18.
 
 - Migrated `server` to the shared Java 1.8 packages. It owns no wire code at
-  all: `pkg/protocol` and `pkg/gamedata` are gone, every packet is a generated
-  type, and its byte-parity fixtures still match.
-- Migrated the proxy. The framework half of that work became the `relay`
-  repository, which pins released versions of this one.
+  all: `pkg/gamedata`, `cmd/codegen`, and `cmd/dmd` are gone, every packet is a
+  generated type, and its byte-parity fixtures still match.
+- **Superseded:** migrating `proxy` imports. The legacy proxy requires `relay`
+  and `minecraft-simulation` and requires this module nowhere; its codec owns
+  its byte primitives by a recorded decision, because the legacy protocol shares
+  nothing with modern Java Edition beyond the byte order of its fixed-width
+  numbers.
 - Connected `headless-minecraft` to the current Java profile, on both protocol
   47 and protocol 775.
+
+Two consumers arrived after P4 was written and belong to it now:
+`minecraft-simulation` and `relay`'s examples module, both on `v0.6.0` — and
+`relay`'s core module requires nothing, which is a property to keep.
+
+What the plan still owns: making the local gate resolve what CI resolves, so a
+Go workspace cannot make a stale pin look current, and writing the uptake step
+into the release flow so the next fix reaches consumers by process rather than
+by memory.
 
 ## P5: stable contracts
 
