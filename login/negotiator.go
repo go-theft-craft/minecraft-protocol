@@ -298,14 +298,15 @@ func (n *Negotiator) stopsAt(state protocol.State) bool {
 	return n.terminal != "" && n.terminal == state
 }
 
-// The two states a caller can ask to stop at are named here rather than
-// imported, because importing a version package to name a state is the version
-// dependency this negotiator exists without. Both names are the protocol's
-// own, and a version that used different ones would report different states
-// through the same interface.
+// The states this package names are named here rather than imported, because
+// importing a version package to name a state is the version dependency both
+// halves of the sequence exist without. Every name is the protocol's own, and
+// a version that used different ones would report different states through the
+// same interface.
 const (
 	stateLogin         protocol.State = "login"
 	stateConfiguration protocol.State = "configuration"
+	statePlay          protocol.State = "play"
 )
 
 // parseIdentity turns what a server said into a Profile.

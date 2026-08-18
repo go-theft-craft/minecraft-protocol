@@ -116,6 +116,101 @@ func (loginExchange) Answer(role protocol.LoginRole) (protocol.Packet, bool) {
 	}
 }
 
+func (loginExchange) ReadLoginStart(packet protocol.Packet) (protocol.LoginIdentity, error) {
+	value, ok := packet.Value.(*LoginServerboundLoginStart)
+	if !ok {
+		return protocol.LoginIdentity{}, fmt.Errorf("read {{ .RegistrationKey }} login start: packet is %T", packet.Value)
+	}
+
+	// The client states a UUID here and a server is not bound by it: offline
+	// mode derives one from the name and online mode uses the account's. It
+	// is reported because it arrived, not because it is to be trusted.
+	identity := protocol.LoginIdentity{Username: value.Username}
+	if !value.PlayerUUID.IsZero() {
+		identity.UUID = value.PlayerUUID.String()
+	}
+
+	return identity, nil
+}
+
+func (loginExchange) WriteEncryptionRequest(request protocol.EncryptionRequest) (protocol.Packet, error) {
+	value := &LoginClientboundEncryptionBegin{
+		ServerID:           request.ServerID,
+		PublicKey:          request.PublicKey,
+		VerifyToken:        request.VerifyToken,
+		ShouldAuthenticate: request.ShouldAuthenticate,
+	}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, nil
+}
+
+func (loginExchange) ReadEncryptionResponse(packet protocol.Packet) ([]byte, []byte, error) {
+	value, ok := packet.Value.(*LoginServerboundEncryptionBegin)
+	if !ok {
+		return nil, nil, fmt.Errorf("read {{ .RegistrationKey }} encryption response: packet is %T", packet.Value)
+	}
+
+	return value.SharedSecret, value.VerifyToken, nil
+}
+
+func (loginExchange) WriteSetCompression(threshold int32) (protocol.Packet, bool) {
+	value := &LoginClientboundCompress{Threshold: threshold}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, true
+}
+
+func (loginExchange) WriteLoginSuccess(identity protocol.LoginIdentity) (protocol.Packet, error) {
+	// This version puts the UUID on the wire as sixteen bytes, so an identity
+	// without one cannot be confirmed. A server reaching success has decided
+	// who the player is; refusing here is how it finds out it has not.
+	player, err := java.ParseUUID(identity.UUID)
+	if err != nil {
+		return protocol.Packet{}, fmt.Errorf("build {{ .RegistrationKey }} login success: %w", err)
+	}
+
+	value := &LoginClientboundSuccess{UUID: player, Username: identity.Username}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, nil
+}
+
+func (loginExchange) WriteLoginDisconnect(reason string) (protocol.Packet, error) {
+	// The login state's reason is still a JSON chat component in this
+	// version. The configuration state's is NBT, and a server that has got
+	// that far is past what this exchange builds.
+	value := &LoginClientboundDisconnect{Reason: fmt.Sprintf("{%q:%q}", "text", reason)}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, nil
+}
+
+func (loginExchange) Announce(role protocol.LoginRole) (protocol.Packet, bool) {
+	switch role {
+	case protocol.RoleConfigurationFinished:
+		value := &ConfigurationClientboundFinishConfiguration{}
+
+		return protocol.Packet{
+			State: StateConfiguration, Direction: protocol.DirectionClientbound,
+			ID: value.PacketID(), Value: value,
+		}, true
+	default:
+		// The pack offer is not here on purpose. Which packs a server would
+		// send registry data for is a statement about its content, and a
+		// server that makes one builds the packet from this package.
+		return protocol.Packet{}, false
+	}
+}
+
 // DisconnectReason covers both states a modern login can be disconnected in.
 // The configuration reason is an NBT text component, which this reports as a
 // disconnect with no text rather than inventing a rendering of it.

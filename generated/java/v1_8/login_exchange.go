@@ -70,6 +70,80 @@ func (loginExchange) Answer(protocol.LoginRole) (protocol.Packet, bool) {
 	return protocol.Packet{}, false
 }
 
+func (loginExchange) ReadLoginStart(packet protocol.Packet) (protocol.LoginIdentity, error) {
+	value, ok := packet.Value.(*LoginServerboundLoginStart)
+	if !ok {
+		return protocol.LoginIdentity{}, fmt.Errorf("read java/1.8.9 login start: packet is %T", packet.Value)
+	}
+
+	// This version carries no UUID here, so there is none to report and none
+	// for a server to be tempted by. The server derives or looks up its own.
+	return protocol.LoginIdentity{Username: value.Username}, nil
+}
+
+func (loginExchange) WriteEncryptionRequest(request protocol.EncryptionRequest) (protocol.Packet, error) {
+	// ShouldAuthenticate has nowhere to go. A protocol 47 server that asks
+	// for encryption always expects the session-server join, which is what
+	// ReadEncryptionRequest reports on the other side of the same wire.
+	value := &LoginClientboundEncryptionBegin{
+		ServerID:    request.ServerID,
+		PublicKey:   request.PublicKey,
+		VerifyToken: request.VerifyToken,
+	}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, nil
+}
+
+func (loginExchange) ReadEncryptionResponse(packet protocol.Packet) ([]byte, []byte, error) {
+	value, ok := packet.Value.(*LoginServerboundEncryptionBegin)
+	if !ok {
+		return nil, nil, fmt.Errorf("read java/1.8.9 encryption response: packet is %T", packet.Value)
+	}
+
+	return value.SharedSecret, value.VerifyToken, nil
+}
+
+func (loginExchange) WriteSetCompression(threshold int32) (protocol.Packet, bool) {
+	value := &LoginClientboundCompress{Threshold: threshold}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, true
+}
+
+func (loginExchange) WriteLoginSuccess(identity protocol.LoginIdentity) (protocol.Packet, error) {
+	// This version states the UUID as dashed text, which is the form
+	// LoginIdentity already carries.
+	value := &LoginClientboundSuccess{UUID: identity.UUID, Username: identity.Username}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, nil
+}
+
+func (loginExchange) WriteLoginDisconnect(reason string) (protocol.Packet, error) {
+	// A login disconnect reason is a JSON chat component in every Java
+	// version that has one, so the rendering is the same wherever this
+	// appears: the plain text, in a component that carries nothing else.
+	value := &LoginClientboundDisconnect{Reason: fmt.Sprintf("{%q:%q}", "text", reason)}
+
+	return protocol.Packet{
+		State: StateLogin, Direction: protocol.DirectionClientbound,
+		ID: value.PacketID(), Value: value,
+	}, nil
+}
+
+// Announce reports no step, for the same reason Answer does: this version's
+// login ends at success, so a server has nothing left to state.
+func (loginExchange) Announce(protocol.LoginRole) (protocol.Packet, bool) {
+	return protocol.Packet{}, false
+}
+
 func (loginExchange) DisconnectReason(packet protocol.Packet) (string, bool) {
 	value, ok := packet.Value.(*LoginClientboundDisconnect)
 	if !ok {

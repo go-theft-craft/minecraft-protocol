@@ -4,6 +4,34 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Added
+
+- `login`: `Acceptor` serves a protocol 775 login. It named `generated/java/v1_8`
+  at ten call sites and now names no version at all, driving both protocols
+  through `protocol.LoginExchange` the way `Negotiator` already did. A 775 login
+  does not end at success: the client's acknowledgement moves both sides to
+  configuration, and the finish handshake and its answer are what reach play.
+  The two halves are now tested against each other on both protocols over one
+  connection, offline, encrypted, and compressed.
+
+- `login`: `WithConfiguration` sets the step an acceptor runs while a
+  connection is in a configuration state. A real client will not leave that
+  state until it has registries, tags, and data packs, none of which is
+  protocol, so the acceptor opens the state and hands it to whoever owns the
+  content. The default sends nothing, which is enough for a client that answers
+  what it is sent and is not enough for a vanilla one.
+
+- `protocol.LoginExchange` gains the server half of the sequence:
+  `ReadLoginStart`, `WriteEncryptionRequest`, `ReadEncryptionResponse`,
+  `WriteSetCompression`, `WriteLoginSuccess`, `WriteLoginDisconnect`, and
+  `Announce`. The interface previously declared only a client's methods, which
+  is why the server half had to reach past it. Both generated protocols
+  implement all seven.
+
+  This is a breaking change for anything outside this module that implements
+  `protocol.LoginExchange`; a version package generated from these templates
+  gets the methods for free.
+
 ## 0.6.0 - 2026-08-18
 
 ### Fixed

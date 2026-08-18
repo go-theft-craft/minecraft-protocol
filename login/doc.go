@@ -16,7 +16,15 @@
 // implements only the offline authenticator, and makes no network request of
 // its own.
 //
-// This package is protocol 47 only. Protocol 775 changes the login packets
-// themselves, so generalizing it belongs with the milestone that generates
-// them.
+// Neither half names a version. Both are written against
+// protocol.LoginExchange and protocol.LoginRole, so one negotiator and one
+// acceptor drive protocol 47, whose login ends at success, and protocol 775,
+// whose login continues through a configuration state before reaching play.
+//
+// What a configuration state should contain is somebody else's too. A real
+// client will not leave it until it has registries, tags, and data packs, and
+// none of that is protocol. The acceptor opens the state and runs the step
+// given to it by WithConfiguration; with no step it sends nothing, which is
+// enough for a client that answers what it is sent and is not enough for a
+// vanilla one.
 package login

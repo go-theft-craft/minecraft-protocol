@@ -34,6 +34,12 @@ type EncryptionRequest struct {
 // almost nothing else — not packet names, not IDs, not field types, not even
 // which states the sequence passes through.
 //
+// It holds both halves of the sequence, not one. A protocol that can be logged
+// into can be logged in from, and splitting the halves into two interfaces
+// would let a version implement one and leave the other to reach past the seam
+// and name its packets directly — which is what the server half did until
+// there was a server half.
+//
 // An implementation is stateless. It reads and writes no session state, so a
 // caller may use it from its own goroutine while the stream runs.
 type LoginExchange interface {
@@ -55,6 +61,44 @@ type LoginExchange interface {
 	// is a structured component reports the disconnect with an empty reason
 	// rather than inventing a rendering of it.
 	DisconnectReason(Packet) (string, bool)
+
+	// ReadLoginStart reads the account a client claimed when it opened a
+	// login. The UUID is empty where the client presented none, and a server
+	// assigns one either way: the field arrives from a peer that has proved
+	// nothing yet.
+	ReadLoginStart(Packet) (LoginIdentity, error)
+	// WriteEncryptionRequest builds a server's request to encrypt. A version
+	// with nowhere to put ShouldAuthenticate drops it, because the field
+	// exists to state something protocol 47 has no way to state.
+	WriteEncryptionRequest(EncryptionRequest) (Packet, error)
+	// ReadEncryptionResponse reads a client's answer to one. Both values are
+	// still encrypted to the server's public key; decrypting them belongs to
+	// whoever holds the private half, which is never this.
+	ReadEncryptionResponse(Packet) (secret, verifyToken []byte, err error)
+	// WriteSetCompression builds the packet that sets a compression
+	// threshold mid-login, and reports false for a protocol that has none.
+	WriteSetCompression(threshold int32) (Packet, bool)
+	// WriteLoginSuccess builds the packet that confirms an account. The
+	// identity carries both fields: a server that has reached this point has
+	// decided who the player is, and a version that puts the UUID on the
+	// wire as bytes needs one it can parse.
+	WriteLoginSuccess(LoginIdentity) (Packet, error)
+	// WriteLoginDisconnect builds the packet that refuses a login, with the
+	// reason rendered the way this protocol states one in the login state.
+	// The states after login state a reason differently, and a server that
+	// gets that far reports its own.
+	WriteLoginDisconnect(reason string) (Packet, error)
+	// Announce builds a packet a server sends to take a step of the sequence
+	// itself, the way Answer builds the client's replies to those steps:
+	// RoleConfigurationFinished states that configuration is over. A protocol
+	// without that step reports false, which is how protocol 47 says its
+	// login ends at success.
+	//
+	// Content is not a step. A server that offers data packs or sends
+	// registries writes those packets itself, from the version package it
+	// already has, because what is in them is the game rather than the
+	// protocol.
+	Announce(LoginRole) (Packet, bool)
 }
 
 // LoginExchanges is the optional interface a session implements when its
