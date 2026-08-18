@@ -212,10 +212,13 @@ details.
 Two datasets come from a different source than the rest of the bundle.
 `physics.json` holds block slipperiness and the trigonometry table measured from
 a verified Mojang server jar, plus entity motion constants transcribed from a
-local research workspace. `blockMovement.json` holds whether each block stops
-something walking into it, read from the game's own answer — upstream publishes
-what a block is called and what it drops, and never says whether an entity can
-occupy its cell. Both versions carry one, and they are not keyed alike: 1.8.9
+local research workspace. `blockMovement.json` holds three facts about each block, read
+from the game's own answers — upstream publishes what a block is called and what
+it drops, and never says whether an entity can occupy its cell, whether the
+block falls when undermined, or whether it can be climbed. The last two are
+there because a route that digs has to know the first before it digs, and
+because no collision shape carries the second: a ladder's box is empty, so a
+caller reading shapes alone cannot tell one from air. Both versions carry one, and they are not keyed alike: 1.8.9
 hangs the fact off a block's material, so every state of a block answers
 together, and 26.1.2 computes it per state from that state's own collision
 shape, so its measurement is keyed by state range. The document declares which
@@ -232,6 +235,15 @@ unknown block is a block to refuse. The same reasoning applies within a
 version: `ByState` reports whether it knows, and `ByID` declines to answer for
 a block whose states disagree with each other rather than rounding to whichever
 answer most of them give.
+
+Falling and climbing are read through `FallsByState`, `FallsByID`,
+`ClimbableByState`, and `ClimbableByID`, under the same rule — an unmeasured
+block reports that it is not described, and a caller that reads that as "does
+not fall" undermines a column the measurement never mentioned. They differ from
+the movement fact in one way worth knowing: both hang off the block in both
+measured versions, so neither `ByID` form has to decline. The two versions do
+not agree on the answers, and are not meant to. 1.8.9 has two climbable blocks
+and 26.1.2 has nine; the dragon egg falls in 26.1.2 and does not in 1.8.9.
 
 Use the generated Java 1.8 data directly:
 

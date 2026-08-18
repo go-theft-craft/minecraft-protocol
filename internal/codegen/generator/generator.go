@@ -1187,14 +1187,22 @@ type blockMovementEntryTmpl struct {
 	ID             int
 	Name           string
 	BlocksMovement bool
+	// Falls and Climbable are per block in both encodings, which is why they
+	// are rendered from this list for either template rather than from the
+	// ranges. Neither has ever needed a state exception.
+	Falls     bool
+	Climbable bool
 	// Mixed marks a block whose states do not all answer alike, so the
 	// generated registry can decline to answer for the block as a whole.
 	Mixed bool
 }
 
 type blockMovementRangeTmpl struct {
-	From           int
-	To             int
+	From int
+	To   int
+	// ID is the block the span belongs to, so a lookup that resolved a state
+	// to a range can go on to ask the per-block facts about it.
+	ID             int
 	Name           string
 	BlocksMovement bool
 }
@@ -1223,6 +1231,8 @@ func loadBlockMovement(raw []byte) (any, error) {
 			ID             int    `json:"id"`
 			Name           string `json:"name"`
 			BlocksMovement bool   `json:"blocksMovement"`
+			Falls          bool   `json:"falls"`
+			Climbable      bool   `json:"climbable"`
 			StateRange     *struct {
 				From int `json:"from"`
 				To   int `json:"to"`
@@ -1248,12 +1258,15 @@ func loadBlockMovement(raw []byte) (any, error) {
 			ID:             block.ID,
 			Name:           block.Name,
 			BlocksMovement: block.BlocksMovement,
+			Falls:          block.Falls,
+			Climbable:      block.Climbable,
 			Mixed:          len(block.StateExceptions) != 0,
 		}
 		if block.StateRange != nil {
 			ranges = append(ranges, blockMovementRangeTmpl{
 				From:           block.StateRange.From,
 				To:             block.StateRange.To,
+				ID:             block.ID,
 				Name:           block.Name,
 				BlocksMovement: block.BlocksMovement,
 			})

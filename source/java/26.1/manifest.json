@@ -187,7 +187,7 @@
   ],
   "extracted": {
     "tool": "mcreference",
-    "toolRevision": "443d99da3c3af651c04f4d60842f433bc8131943",
+    "toolRevision": "e78ac4f018f8d0d9dff5887c783ec4c3b3c47b56",
     "minecraftVersion": "26.1.2",
     "side": "server",
     "jarSha256": "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42",
@@ -203,7 +203,7 @@
         "name": "blockMovement",
         "file": "blockMovement.json",
         "mediaType": "application/json",
-        "sha256": "f080bfe9480be0feee2e6f9596d9ecec2570a8360a8d7eec779eeebb9af65d4b"
+        "sha256": "0340b0a2012e84f555b439ad031320ccb2aaad8451635265b5e5172097e5b352"
       }
     ]
   }

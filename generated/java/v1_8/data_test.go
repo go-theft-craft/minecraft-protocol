@@ -791,3 +791,119 @@ func TestBlockMovementIsCallerOwned(t *testing.T) {
 		t.Fatal("BlockMovement returned an aliased index")
 	}
 }
+
+// TestGravelFallsAndSoulSandDoesNot pins the measurement a route that digs
+// depends on.
+//
+// Material will not substitute for it, and that is the whole reason it is
+// measured: soul sand shares Material.sand with gravel and stays where it is.
+// A caller deriving "falls" from the material would undermine a gravel column
+// correctly and refuse to walk under soul sand for no reason.
+func TestGravelFallsAndSoulSandDoesNot(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	for _, test := range []struct {
+		name  string
+		id    data.BlockID
+		want  bool
+		known bool
+	}{
+		{name: "gravel", id: 13, want: true, known: true},
+		{name: "sand", id: 12, want: true, known: true},
+		{name: "anvil", id: 145, want: true, known: true},
+		{name: "soul sand", id: 88, want: false, known: true},
+		{name: "stone", id: 1, want: false, known: true},
+		// The dragon egg teleports rather than falling in this version, and it
+		// does not extend the falling class. It is here because it is the one
+		// block a reader is most likely to assume the other way.
+		{name: "dragon egg", id: 122, want: false, known: true},
+		{name: "a block this version does not have", id: 4000, want: false, known: false},
+	} {
+		got, known := movement.FallsByID(test.id)
+		if got != test.want || known != test.known {
+			t.Errorf("FallsByID(%s) = %v, %v, want %v, %v", test.name, got, known, test.want, test.known)
+		}
+	}
+}
+
+// TestALadderIsClimbableAndStoneIsNot pins the fact no collision shape carries.
+//
+// A ladder's box is empty, so a caller reading shapes alone cannot tell one
+// from air. This version names the two climbable blocks directly in
+// EntityLivingBase.isOnLadder, and those two are what the measurement holds.
+func TestALadderIsClimbableAndStoneIsNot(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	for _, test := range []struct {
+		name  string
+		id    data.BlockID
+		want  bool
+		known bool
+	}{
+		{name: "ladder", id: 65, want: true, known: true},
+		{name: "vine", id: 106, want: true, known: true},
+		{name: "stone", id: 1, want: false, known: true},
+		{name: "air", id: 0, want: false, known: true},
+		{name: "a block this version does not have", id: 4000, want: false, known: false},
+	} {
+		got, known := movement.ClimbableByID(test.id)
+		if got != test.want || known != test.known {
+			t.Errorf("ClimbableByID(%s) = %v, %v, want %v, %v", test.name, got, known, test.want, test.known)
+		}
+	}
+}
+
+// TestFallingAndClimbingReadAChunkState pins that the new facts go through the
+// same shift the movement fact does.
+//
+// A ladder carries its facing in the metadata, so every state of it is
+// climbable; a lookup that forgot the shift would ask about block 65's
+// metadata rather than about block 65 and answer for something else entirely.
+func TestFallingAndClimbingReadAChunkState(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	for _, meta := range []data.BlockStateID{2, 3, 4, 5} {
+		if climbable, known := movement.ClimbableByState(65<<4 | meta); !climbable || !known {
+			t.Errorf("a ladder facing %d is climbable = %v, known = %v; want true, true", meta, climbable, known)
+		}
+	}
+	if falls, known := movement.FallsByState(13 << 4); !falls || !known {
+		t.Errorf("gravel falls = %v, known = %v; want true, true", falls, known)
+	}
+	if _, known := movement.FallsByState(4000 << 4); known {
+		t.Error("a state no block has claimed a falling answer")
+	}
+}
+
+// TestAnUnmeasuredBlockReportsNotDescribed pins the registry's rule, extended
+// to the two new facts.
+//
+// Unknown is not a negative. A caller that reads a missing answer as "does not
+// fall" digs out the bottom of a column the measurement never mentioned, and
+// one that reads it as "not climbable" walks around a ladder forever.
+func TestAnUnmeasuredBlockReportsNotDescribed(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	if _, known := movement.FallsByID(0xFFFF); known {
+		t.Error("an unmeasured block claimed a falling answer")
+	}
+	if _, known := movement.ClimbableByID(0xFFFF); known {
+		t.Error("an unmeasured block claimed a climbable answer")
+	}
+}

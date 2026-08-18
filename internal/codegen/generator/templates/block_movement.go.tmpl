@@ -3,7 +3,13 @@ package {{ .Package }}
 
 import "github.com/go-theft-craft/minecraft-protocol/data"
 
-type blockMovementRegistry struct{ byID data.BlockMovementIndex }
+type blockMovementRegistry struct {
+	byID data.BlockMovementIndex
+	// falls and climbable are keyed by block for the same reason byID is: in
+	// this version neither fact hangs off a state.
+	falls     map[data.BlockID]bool
+	climbable map[data.BlockID]bool
+}
 
 // newBlockMovementRegistry returns the measurement of which blocks stop
 // something walking into them, taken from the game's own material.
@@ -12,11 +18,23 @@ type blockMovementRegistry struct{ byID data.BlockMovementIndex }
 // the material hangs off the block rather than off one of its states, so every
 // state of a block answers together.
 func newBlockMovementRegistry() data.BlockMovementRegistry {
-	return &blockMovementRegistry{byID: data.BlockMovementIndex{
+	return &blockMovementRegistry{
+		byID: data.BlockMovementIndex{
 {{- range .Data.Blocks }}
-		{{ .ID }}: {{ .BlocksMovement }}, // {{ .Name }}
+			{{ .ID }}: {{ .BlocksMovement }}, // {{ .Name }}
 {{- end }}
-	}}
+		},
+		falls: map[data.BlockID]bool{
+{{- range .Data.Blocks }}
+			{{ .ID }}: {{ .Falls }}, // {{ .Name }}
+{{- end }}
+		},
+		climbable: map[data.BlockID]bool{
+{{- range .Data.Blocks }}
+			{{ .ID }}: {{ .Climbable }}, // {{ .Name }}
+{{- end }}
+		},
+	}
 }
 
 // ByState answers for a state as {{ .Data.StateEncoding }}, which is how this
@@ -32,6 +50,28 @@ func (registry *blockMovementRegistry) ByState(state data.BlockStateID) (bool, b
 func (registry *blockMovementRegistry) ByID(id data.BlockID) (bool, bool) {
 	blocks, known := registry.byID[id]
 	return blocks, known
+}
+
+// FallsByState resolves the state to its block and answers for that, because
+// in this version falling is a fact about the block.
+func (registry *blockMovementRegistry) FallsByState(state data.BlockStateID) (bool, bool) {
+	return registry.FallsByID(data.BlockID(state >> {{ .Data.StateShift }}))
+}
+
+func (registry *blockMovementRegistry) FallsByID(id data.BlockID) (bool, bool) {
+	falls, known := registry.falls[id]
+	return falls, known
+}
+
+// ClimbableByState resolves the state to its block, for the same reason
+// FallsByState does.
+func (registry *blockMovementRegistry) ClimbableByState(state data.BlockStateID) (bool, bool) {
+	return registry.ClimbableByID(data.BlockID(state >> {{ .Data.StateShift }}))
+}
+
+func (registry *blockMovementRegistry) ClimbableByID(id data.BlockID) (bool, bool) {
+	climbable, known := registry.climbable[id]
+	return climbable, known
 }
 
 func (registry *blockMovementRegistry) All() data.BlockMovementIndex {

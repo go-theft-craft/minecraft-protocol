@@ -87,9 +87,10 @@ every transitive dependency it installs.
 `source/java/1.8/physics.json` contains numeric constants measured from a
 Minecraft Java Edition 1.8.9 server jar obtained from Mojang, together with
 constants transcribed by maintainers from a local research workspace.
-`source/java/1.8/blockMovement.json` contains, per block, its registry name and
-whether the game's material stops an entity walking into it, measured from the
-same jar. The `extracted` block in `source/java/1.8/manifest.json` records the
+`source/java/1.8/blockMovement.json` contains, per block, its registry name,
+whether the game's material stops an entity walking into it, whether the block
+extends the game's falling class, and whether the game treats it as climbable,
+all measured from the same jar. The `extracted` block in `source/java/1.8/manifest.json` records the
 extraction tool, its revision, the Minecraft version, the side, and the SHA-256
 digest of the jar as Mojang published it, so the provenance can be checked
 against Mojang's own metadata.
@@ -101,7 +102,10 @@ obtained from Mojang, recorded by the `extracted` block in
 version's own rather than this project's: the block measurement is keyed by state
 range because that version computes the answer per state, and the physics
 document records the player alone, because the player is what has been used and a
-constant nobody uses is a constant nobody checks.
+constant nobody uses is a constant nobody checks. Its climbable fact is read
+from the block tag the jar carries rather than from a running game, because a
+tag is bound by a data pack on a server reload and not by the bootstrap the
+dumper runs.
 
 This repository contains no Minecraft jar, no mapping file, no decompiled Java
 source, and no game asset. It contains measured values and the registry names

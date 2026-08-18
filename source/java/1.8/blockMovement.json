@@ -7,992 +7,1388 @@
     {
       "id": 0,
       "name": "minecraft:air",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 1,
       "name": "minecraft:stone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 2,
       "name": "minecraft:grass",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 3,
       "name": "minecraft:dirt",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 4,
       "name": "minecraft:cobblestone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 5,
       "name": "minecraft:planks",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 6,
       "name": "minecraft:sapling",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 7,
       "name": "minecraft:bedrock",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 8,
       "name": "minecraft:flowing_water",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 9,
       "name": "minecraft:water",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 10,
       "name": "minecraft:flowing_lava",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 11,
       "name": "minecraft:lava",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 12,
       "name": "minecraft:sand",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": true,
+      "climbable": false
     },
     {
       "id": 13,
       "name": "minecraft:gravel",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": true,
+      "climbable": false
     },
     {
       "id": 14,
       "name": "minecraft:gold_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 15,
       "name": "minecraft:iron_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 16,
       "name": "minecraft:coal_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 17,
       "name": "minecraft:log",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 18,
       "name": "minecraft:leaves",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 19,
       "name": "minecraft:sponge",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 20,
       "name": "minecraft:glass",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 21,
       "name": "minecraft:lapis_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 22,
       "name": "minecraft:lapis_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 23,
       "name": "minecraft:dispenser",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 24,
       "name": "minecraft:sandstone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 25,
       "name": "minecraft:noteblock",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 26,
       "name": "minecraft:bed",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 27,
       "name": "minecraft:golden_rail",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 28,
       "name": "minecraft:detector_rail",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 29,
       "name": "minecraft:sticky_piston",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 30,
       "name": "minecraft:web",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 31,
       "name": "minecraft:tallgrass",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 32,
       "name": "minecraft:deadbush",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 33,
       "name": "minecraft:piston",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 34,
       "name": "minecraft:piston_head",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 35,
       "name": "minecraft:wool",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 36,
       "name": "minecraft:piston_extension",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 37,
       "name": "minecraft:yellow_flower",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 38,
       "name": "minecraft:red_flower",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 39,
       "name": "minecraft:brown_mushroom",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 40,
       "name": "minecraft:red_mushroom",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 41,
       "name": "minecraft:gold_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 42,
       "name": "minecraft:iron_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 43,
       "name": "minecraft:double_stone_slab",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 44,
       "name": "minecraft:stone_slab",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 45,
       "name": "minecraft:brick_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 46,
       "name": "minecraft:tnt",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 47,
       "name": "minecraft:bookshelf",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 48,
       "name": "minecraft:mossy_cobblestone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 49,
       "name": "minecraft:obsidian",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 50,
       "name": "minecraft:torch",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 51,
       "name": "minecraft:fire",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 52,
       "name": "minecraft:mob_spawner",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 53,
       "name": "minecraft:oak_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 54,
       "name": "minecraft:chest",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 55,
       "name": "minecraft:redstone_wire",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 56,
       "name": "minecraft:diamond_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 57,
       "name": "minecraft:diamond_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 58,
       "name": "minecraft:crafting_table",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 59,
       "name": "minecraft:wheat",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 60,
       "name": "minecraft:farmland",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 61,
       "name": "minecraft:furnace",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 62,
       "name": "minecraft:lit_furnace",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 63,
       "name": "minecraft:standing_sign",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 64,
       "name": "minecraft:wooden_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 65,
       "name": "minecraft:ladder",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": true
     },
     {
       "id": 66,
       "name": "minecraft:rail",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 67,
       "name": "minecraft:stone_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 68,
       "name": "minecraft:wall_sign",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 69,
       "name": "minecraft:lever",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 70,
       "name": "minecraft:stone_pressure_plate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 71,
       "name": "minecraft:iron_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 72,
       "name": "minecraft:wooden_pressure_plate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 73,
       "name": "minecraft:redstone_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 74,
       "name": "minecraft:lit_redstone_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 75,
       "name": "minecraft:unlit_redstone_torch",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 76,
       "name": "minecraft:redstone_torch",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 77,
       "name": "minecraft:stone_button",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 78,
       "name": "minecraft:snow_layer",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 79,
       "name": "minecraft:ice",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 80,
       "name": "minecraft:snow",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 81,
       "name": "minecraft:cactus",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 82,
       "name": "minecraft:clay",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 83,
       "name": "minecraft:reeds",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 84,
       "name": "minecraft:jukebox",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 85,
       "name": "minecraft:fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 86,
       "name": "minecraft:pumpkin",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 87,
       "name": "minecraft:netherrack",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 88,
       "name": "minecraft:soul_sand",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 89,
       "name": "minecraft:glowstone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 90,
       "name": "minecraft:portal",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 91,
       "name": "minecraft:lit_pumpkin",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 92,
       "name": "minecraft:cake",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 93,
       "name": "minecraft:unpowered_repeater",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 94,
       "name": "minecraft:powered_repeater",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 95,
       "name": "minecraft:stained_glass",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 96,
       "name": "minecraft:trapdoor",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 97,
       "name": "minecraft:monster_egg",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 98,
       "name": "minecraft:stonebrick",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 99,
       "name": "minecraft:brown_mushroom_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 100,
       "name": "minecraft:red_mushroom_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 101,
       "name": "minecraft:iron_bars",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 102,
       "name": "minecraft:glass_pane",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 103,
       "name": "minecraft:melon_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 104,
       "name": "minecraft:pumpkin_stem",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 105,
       "name": "minecraft:melon_stem",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 106,
       "name": "minecraft:vine",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": true
     },
     {
       "id": 107,
       "name": "minecraft:fence_gate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 108,
       "name": "minecraft:brick_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 109,
       "name": "minecraft:stone_brick_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 110,
       "name": "minecraft:mycelium",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 111,
       "name": "minecraft:waterlily",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 112,
       "name": "minecraft:nether_brick",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 113,
       "name": "minecraft:nether_brick_fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 114,
       "name": "minecraft:nether_brick_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 115,
       "name": "minecraft:nether_wart",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 116,
       "name": "minecraft:enchanting_table",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 117,
       "name": "minecraft:brewing_stand",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 118,
       "name": "minecraft:cauldron",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 119,
       "name": "minecraft:end_portal",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 120,
       "name": "minecraft:end_portal_frame",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 121,
       "name": "minecraft:end_stone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 122,
       "name": "minecraft:dragon_egg",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 123,
       "name": "minecraft:redstone_lamp",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 124,
       "name": "minecraft:lit_redstone_lamp",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 125,
       "name": "minecraft:double_wooden_slab",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 126,
       "name": "minecraft:wooden_slab",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 127,
       "name": "minecraft:cocoa",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 128,
       "name": "minecraft:sandstone_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 129,
       "name": "minecraft:emerald_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 130,
       "name": "minecraft:ender_chest",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 131,
       "name": "minecraft:tripwire_hook",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 132,
       "name": "minecraft:tripwire",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 133,
       "name": "minecraft:emerald_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 134,
       "name": "minecraft:spruce_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 135,
       "name": "minecraft:birch_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 136,
       "name": "minecraft:jungle_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 137,
       "name": "minecraft:command_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 138,
       "name": "minecraft:beacon",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 139,
       "name": "minecraft:cobblestone_wall",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 140,
       "name": "minecraft:flower_pot",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 141,
       "name": "minecraft:carrots",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 142,
       "name": "minecraft:potatoes",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 143,
       "name": "minecraft:wooden_button",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 144,
       "name": "minecraft:skull",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 145,
       "name": "minecraft:anvil",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": true,
+      "climbable": false
     },
     {
       "id": 146,
       "name": "minecraft:trapped_chest",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 147,
       "name": "minecraft:light_weighted_pressure_plate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 148,
       "name": "minecraft:heavy_weighted_pressure_plate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 149,
       "name": "minecraft:unpowered_comparator",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 150,
       "name": "minecraft:powered_comparator",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 151,
       "name": "minecraft:daylight_detector",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 152,
       "name": "minecraft:redstone_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 153,
       "name": "minecraft:quartz_ore",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 154,
       "name": "minecraft:hopper",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 155,
       "name": "minecraft:quartz_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 156,
       "name": "minecraft:quartz_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 157,
       "name": "minecraft:activator_rail",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 158,
       "name": "minecraft:dropper",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 159,
       "name": "minecraft:stained_hardened_clay",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 160,
       "name": "minecraft:stained_glass_pane",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 161,
       "name": "minecraft:leaves2",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 162,
       "name": "minecraft:log2",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 163,
       "name": "minecraft:acacia_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 164,
       "name": "minecraft:dark_oak_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 165,
       "name": "minecraft:slime",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 166,
       "name": "minecraft:barrier",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 167,
       "name": "minecraft:iron_trapdoor",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 168,
       "name": "minecraft:prismarine",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 169,
       "name": "minecraft:sea_lantern",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 170,
       "name": "minecraft:hay_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 171,
       "name": "minecraft:carpet",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 172,
       "name": "minecraft:hardened_clay",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 173,
       "name": "minecraft:coal_block",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 174,
       "name": "minecraft:packed_ice",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 175,
       "name": "minecraft:double_plant",
-      "blocksMovement": false
+      "blocksMovement": false,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 176,
       "name": "minecraft:standing_banner",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 177,
       "name": "minecraft:wall_banner",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 178,
       "name": "minecraft:daylight_detector_inverted",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 179,
       "name": "minecraft:red_sandstone",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 180,
       "name": "minecraft:red_sandstone_stairs",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 181,
       "name": "minecraft:double_stone_slab2",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 182,
       "name": "minecraft:stone_slab2",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 183,
       "name": "minecraft:spruce_fence_gate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 184,
       "name": "minecraft:birch_fence_gate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 185,
       "name": "minecraft:jungle_fence_gate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 186,
       "name": "minecraft:dark_oak_fence_gate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 187,
       "name": "minecraft:acacia_fence_gate",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 188,
       "name": "minecraft:spruce_fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 189,
       "name": "minecraft:birch_fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 190,
       "name": "minecraft:jungle_fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 191,
       "name": "minecraft:dark_oak_fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 192,
       "name": "minecraft:acacia_fence",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 193,
       "name": "minecraft:spruce_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 194,
       "name": "minecraft:birch_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 195,
       "name": "minecraft:jungle_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 196,
       "name": "minecraft:acacia_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     },
     {
       "id": 197,
       "name": "minecraft:dark_oak_door",
-      "blocksMovement": true
+      "blocksMovement": true,
+      "falls": false,
+      "climbable": false
     }
   ]
 }

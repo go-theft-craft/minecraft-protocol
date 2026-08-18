@@ -10,8 +10,12 @@ import (
 // blockMovementRange is the span of state identifiers one block owns, and the
 // answer that span gives.
 type blockMovementRange struct {
-	from   data.BlockStateID
-	to     data.BlockStateID
+	from data.BlockStateID
+	to   data.BlockStateID
+	// id is the block the span belongs to. It is carried so that a state can
+	// be resolved to a block for the facts that are per block in this version
+	// even though stopping movement is not.
+	id     data.BlockID
 	blocks bool
 }
 
@@ -22,6 +26,12 @@ type blockMovementRegistry struct {
 	// byID answers for a whole block, and deliberately omits any block whose
 	// states disagree.
 	byID data.BlockMovementIndex
+	// falls and climbable are keyed by block, and every block is present. In
+	// this version stopping movement is computed per state from that state's
+	// own collision shape, but falling is the block's class and climbing is a
+	// block tag, so neither has a state to disagree with.
+	falls     map[data.BlockID]bool
+	climbable map[data.BlockID]bool
 }
 
 // newBlockMovementRegistry returns the measurement of which states stop
@@ -39,7 +49,7 @@ func newBlockMovementRegistry() data.BlockMovementRegistry {
 	return &blockMovementRegistry{
 		ranges: []blockMovementRange{
 {{- range .Data.Ranges }}
-			{ {{- .From }}, {{ .To }}, {{ .BlocksMovement }}}, // {{ .Name }}
+			{ {{- .From }}, {{ .To }}, {{ .ID }}, {{ .BlocksMovement }}}, // {{ .Name }}
 {{- end }}
 		},
 		exceptions: map[data.BlockStateID]bool{
@@ -52,6 +62,16 @@ func newBlockMovementRegistry() data.BlockMovementRegistry {
 {{- if not .Mixed }}
 			{{ .ID }}: {{ .BlocksMovement }}, // {{ .Name }}
 {{- end }}
+{{- end }}
+		},
+		falls: map[data.BlockID]bool{
+{{- range .Data.Blocks }}
+			{{ .ID }}: {{ .Falls }}, // {{ .Name }}
+{{- end }}
+		},
+		climbable: map[data.BlockID]bool{
+{{- range .Data.Blocks }}
+			{{ .ID }}: {{ .Climbable }}, // {{ .Name }}
 {{- end }}
 		},
 	}
@@ -90,6 +110,59 @@ func (registry *blockMovementRegistry) ByState(state data.BlockStateID) (bool, b
 func (registry *blockMovementRegistry) ByID(id data.BlockID) (bool, bool) {
 	blocks, known := registry.byID[id]
 	return blocks, known
+}
+
+// blockOf resolves a state identifier to the block that owns it.
+//
+// There is no arithmetic that does this in a version whose states are registry
+// indices, so it is the same binary search ByState runs. It exists because
+// falling and climbing are per-block facts that a caller nonetheless holds a
+// state for.
+func (registry *blockMovementRegistry) blockOf(state data.BlockStateID) (data.BlockID, bool) {
+	index := sort.Search(len(registry.ranges), func(i int) bool {
+		return registry.ranges[i].to >= state
+	})
+	if index == len(registry.ranges) || registry.ranges[index].from > state {
+		return 0, false
+	}
+
+	return registry.ranges[index].id, true
+}
+
+// FallsByState resolves the state to its block and answers for that.
+//
+// Unlike ByState there is no exception to check first: this version computes
+// stopping movement per state, but a block either extends the falling class or
+// does not, and every state of it answers alike.
+func (registry *blockMovementRegistry) FallsByState(state data.BlockStateID) (bool, bool) {
+	id, known := registry.blockOf(state)
+	if !known {
+		return false, false
+	}
+
+	return registry.FallsByID(id)
+}
+
+func (registry *blockMovementRegistry) FallsByID(id data.BlockID) (bool, bool) {
+	falls, known := registry.falls[id]
+	return falls, known
+}
+
+// ClimbableByState resolves the state to its block, for the reason
+// FallsByState gives. Climbing is a block tag in this version, so it too is
+// settled for every state of a block at once.
+func (registry *blockMovementRegistry) ClimbableByState(state data.BlockStateID) (bool, bool) {
+	id, known := registry.blockOf(state)
+	if !known {
+		return false, false
+	}
+
+	return registry.ClimbableByID(id)
+}
+
+func (registry *blockMovementRegistry) ClimbableByID(id data.BlockID) (bool, bool) {
+	climbable, known := registry.climbable[id]
+	return climbable, known
 }
 
 // All returns the measurement keyed by block. It omits any block whose states

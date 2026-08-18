@@ -32,6 +32,30 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   `protocol.LoginExchange`; a version package generated from these templates
   gets the methods for free.
 
+- `data.BlockMovementRegistry` gains `FallsByState`, `FallsByID`,
+  `ClimbableByState`, and `ClimbableByID`, and both built-in Java profiles
+  answer them. Whether a block is pulled down when undermined and whether a body
+  can climb its column are two facts nothing else in the stack supplies: a route
+  that digs has to know the first before it digs, and no collision shape carries
+  the second, because a ladder's box is empty and reads as air.
+
+  Both are measured out of the same Mojang jars the movement fact comes from,
+  in the same extraction pass, and ride in the same `blockMovement.json` records
+  rather than on `data.Block` — upstream publishes neither, and a fact measured
+  from a jar belongs with the measurement whose provenance the manifest records.
+  Neither is derivable from what is already published: soul sand shares
+  `Material.sand` with gravel and does not fall.
+
+  The two versions state the facts in different places and each is read where
+  its own game reads it. 1.8.9 names the falling class and the two climbable
+  blocks directly; 26.1.2 has a falling class and a climbable block tag, and
+  lists nine blocks rather than two. Both are per block, so unlike `ByID` the
+  new accessors never decline because a block's states disagree.
+
+  This is a breaking change for anything outside this module that implements
+  `data.BlockMovementRegistry`; a version package generated from these templates
+  gets the methods for free.
+
 ## 0.6.0 - 2026-08-18
 
 ### Fixed

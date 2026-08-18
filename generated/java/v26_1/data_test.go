@@ -301,3 +301,148 @@ func TestSlipperinessMatchesVanilla(t *testing.T) {
 		t.Errorf("%d blocks differ from the default slipperiness, want 5", slippery)
 	}
 }
+
+// TestMeasuredFallingAnswersByBlock pins the fact a route that digs depends on,
+// and the difference between it and the movement fact beside it.
+//
+// This version computes stopping movement per state, so that measurement is
+// keyed by state range. Falling is not: a block either extends FallingBlock or
+// does not, and every state of it answers alike. Soul sand is the case that
+// says why this is measured rather than derived — it shares its material with
+// gravel in the version this project also supports, and it stays put in both.
+func TestMeasuredFallingAnswersByBlock(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+	if movement == nil {
+		t.Fatal("the measured version publishes no block movement registry")
+	}
+
+	for _, test := range []struct {
+		name  string
+		id    data.BlockID
+		want  bool
+		known bool
+	}{
+		{name: "gravel", id: 40, want: true, known: true},
+		{name: "sand", id: 37, want: true, known: true},
+		{name: "anvil", id: 467, want: true, known: true},
+		// The dragon egg does extend the falling class in this version, where
+		// it did not in 1.8.9. It is asserted in both so the divergence is
+		// recorded rather than discovered.
+		{name: "dragon egg", id: 394, want: true, known: true},
+		{name: "soul sand", id: 286, want: false, known: true},
+		{name: "stone", id: 1, want: false, known: true},
+		{name: "a block this version does not have", id: 60000, want: false, known: false},
+	} {
+		got, known := movement.FallsByID(test.id)
+		if got != test.want || known != test.known {
+			t.Errorf("FallsByID(%s) = %v, %v, want %v, %v", test.name, got, known, test.want, test.known)
+		}
+	}
+}
+
+// TestMeasuredClimbableAnswersTheGamesTag pins the nine blocks this version
+// calls climbable.
+//
+// The list is the game's own climbable block tag rather than a reading of what
+// looks climbable, and it is longer than 1.8.9's two. Scaffolding and the cave
+// vines are the entries a caller porting from the older version would miss.
+func TestMeasuredClimbableAnswersTheGamesTag(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	for _, test := range []struct {
+		name  string
+		id    data.BlockID
+		want  bool
+		known bool
+	}{
+		{name: "ladder", id: 221, want: true, known: true},
+		{name: "vine", id: 366, want: true, known: true},
+		{name: "scaffolding", id: 837, want: true, known: true},
+		{name: "cave vines", id: 1107, want: true, known: true},
+		{name: "stone", id: 1, want: false, known: true},
+		{name: "air", id: 0, want: false, known: true},
+		{name: "a block this version does not have", id: 60000, want: false, known: false},
+	} {
+		got, known := movement.ClimbableByID(test.id)
+		if got != test.want || known != test.known {
+			t.Errorf("ClimbableByID(%s) = %v, %v, want %v, %v", test.name, got, known, test.want, test.known)
+		}
+	}
+}
+
+// TestFallingAndClimbingResolveAStateToItsBlock pins the lookup that has no
+// arithmetic behind it.
+//
+// A state identifier here is a registry index, so nothing shifts it back to a
+// block; the registry has to search its ranges. A ladder owns eight states and
+// a vine thirty-two, and every one of them has to come back climbable — a
+// lookup that searched wrongly would answer for a neighbouring block and look
+// entirely plausible doing it.
+func TestFallingAndClimbingResolveAStateToItsBlock(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	for state := data.BlockStateID(5719); state <= 5726; state++ {
+		if climbable, known := movement.ClimbableByState(state); !climbable || !known {
+			t.Errorf("ladder state %d climbable = %v, known = %v; want true, true", state, climbable, known)
+		}
+	}
+	for _, state := range []data.BlockStateID{8358, 8370, 8389} {
+		if climbable, known := movement.ClimbableByState(state); !climbable || !known {
+			t.Errorf("vine state %d climbable = %v, known = %v; want true, true", state, climbable, known)
+		}
+	}
+	// One either side of the ladder's span, to catch a search that is off by
+	// one and would otherwise pass every case above.
+	for _, state := range []data.BlockStateID{5718, 5727} {
+		if climbable, _ := movement.ClimbableByState(state); climbable {
+			t.Errorf("state %d, which is not a ladder, reported climbable", state)
+		}
+	}
+	if falls, known := movement.FallsByState(124); !falls || !known {
+		t.Errorf("gravel falls = %v, known = %v; want true, true", falls, known)
+	}
+	if _, known := movement.FallsByState(60000); known {
+		t.Error("a state past the end of the registry claimed a falling answer")
+	}
+}
+
+// TestFallingIsSettledEvenWhereMovementIsNot pins the one block whose states
+// disagree about stopping movement, and records that it agrees about falling.
+//
+// resin_brick_wall is the reason this version's movement measurement cannot be
+// keyed by block: it is the one wall not registered forceSolidOn, so its
+// unconnected states have no collision shape. ByID declines for it. The two
+// new facts do not, because neither is computed from a shape.
+func TestFallingIsSettledEvenWhereMovementIsNot(t *testing.T) {
+	set, err := Data()
+	if err != nil {
+		t.Fatalf("Data: %v", err)
+	}
+	movement := set.BlockMovement()
+
+	const resinBrickWall data.BlockID = 379
+
+	if _, known := movement.ByID(resinBrickWall); known {
+		t.Fatal("ByID answered for the block whose states disagree; the fixture this test rests on has moved")
+	}
+	falls, known := movement.FallsByID(resinBrickWall)
+	if !known || falls {
+		t.Errorf("resin brick wall falls = %v, known = %v; want false, true", falls, known)
+	}
+	climbable, known := movement.ClimbableByID(resinBrickWall)
+	if !known || climbable {
+		t.Errorf("resin brick wall climbable = %v, known = %v; want false, true", climbable, known)
+	}
+}
