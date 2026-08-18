@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.7.1 - 2026-08-18
+
 ### Fixed
 
 - A write the peer already has is reported as written. `Write` returned
