@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.7.2 - 2026-08-18
+
 ### Fixed
 
 - A write in flight when the peer leaves reports what the transport did with it.
