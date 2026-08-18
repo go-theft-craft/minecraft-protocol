@@ -38,10 +38,94 @@ func TestLPVec3EncodesZeroAsOneByte(t *testing.T) {
 	}
 }
 
-// TestLPVec3RoundTripsBytes is the assertion that actually constrains the
-// layout. The encoding is lossy, so a float round-trip proves little; encoding
-// what was decoded and getting the same bytes back proves the bit positions,
-// the little-endian packing, and the scale handling together.
+// TestLPVec3ReadsWhatAVanillaServerSent is the only test here that could have
+// caught the byte order, and it is the reason it exists.
+//
+// Every other test in this file writes with this package and reads with this
+// package, so a layout that is wrong in both directions round-trips perfectly.
+// It was: the upper thirty-two bits were written little endian, where vanilla
+// writes them big endian, and every velocity a real server sent decoded into a
+// plausible number that was not the velocity. The bytes below are not
+// constructed — they are the velocity fields of two spawn packets captured
+// through the relay proxy from a pinned vanilla 26.1.2 server on 2026-08-18,
+// for two arrows summoned with motion the operator stated:
+//
+//	summon minecraft:arrow -4.5 -55.0 9.5  {Motion:[0.10d,0.0d,0.0d]}
+//	summon minecraft:arrow -4.5 -52.0 11.5 {Motion:[0.0d,0.0d,0.05d]}
+//
+// The recording is in oracle-evidence/2026-08-18-relay-775, digest
+// 65fa45c61d4667ff9c23de29a508a246e5224fe538d6779c4ea5c3f2709bbdde.
+func TestLPVec3ReadsWhatAVanillaServerSent(t *testing.T) {
+	limits := bufferLimits(t)
+
+	// The encoding quantises to about one part in 32766 of the scale, and the
+	// scale here is 1, so a component is good to roughly 3e-5.
+	const quantum = 1e-4
+
+	cases := []struct {
+		name    string
+		encoded []byte
+		want    LPVec3
+	}{
+		{
+			name:    "an arrow summoned with 0.1 on X",
+			encoded: []byte{0x29, 0x33, 0x7f, 0xfe, 0xff, 0xfe},
+			want:    LPVec3{X: 0.1},
+		},
+		{
+			name:    "an arrow summoned with 0.05 on Z",
+			encoded: []byte{0xf9, 0xff, 0x86, 0x64, 0xff, 0xfd},
+			want:    LPVec3{Z: 0.05},
+		},
+		{
+			// An item summoned with no motion. Vanilla writes the whole vector
+			// as one zero byte, and this half already matched.
+			name:    "an item summoned at rest",
+			encoded: []byte{0x00},
+			want:    LPVec3{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			reader, err := NewReadBuffer(tc.encoded, limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := reader.ReadLPVec3("vec")
+			if err != nil {
+				t.Fatalf("ReadLPVec3: %v", err)
+			}
+			if reader.Remaining() != 0 {
+				t.Errorf("%d bytes left unread", reader.Remaining())
+			}
+			if math.Abs(got.X-tc.want.X) > quantum ||
+				math.Abs(got.Y-tc.want.Y) > quantum ||
+				math.Abs(got.Z-tc.want.Z) > quantum {
+				t.Fatalf("value = %+v, want about %+v", got, tc.want)
+			}
+
+			// And back out again, byte for byte: a reader fixed on its own
+			// would leave every vector this library sends unreadable by a
+			// vanilla client.
+			writer, err := NewWriteBuffer(limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.WriteLPVec3("vec", got); err != nil {
+				t.Fatalf("WriteLPVec3: %v", err)
+			}
+			if encoded := writer.Bytes(); !bytes.Equal(encoded, tc.encoded) {
+				t.Fatalf("re-encoded % x, want % x", encoded, tc.encoded)
+			}
+		})
+	}
+}
+
+// TestLPVec3RoundTripsBytes constrains the bit positions and the scale
+// handling. It cannot constrain the byte order — it writes and reads with the
+// same code, so a layout wrong in both directions passes it. That is what
+// TestLPVec3ReadsWhatAVanillaServerSent is for.
 func TestLPVec3RoundTripsBytes(t *testing.T) {
 	limits := bufferLimits(t)
 

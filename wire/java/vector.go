@@ -36,8 +36,13 @@ const (
 	// following as a VarInt.
 	lpVec3ContinuationBit = 0x4
 
-	// lpVec3PackedBytes is the fixed part of the encoding: a 48-bit little
-	// endian integer holding three flag bits and three fifteen-bit components.
+	// lpVec3PackedBytes is the fixed part of the encoding: a 48-bit integer
+	// holding three flag bits and three fifteen-bit components.
+	//
+	// It is not one integer in one byte order. The two low bytes are written
+	// low first, and the remaining thirty-two bits are written big endian, in
+	// that order — which is what a Netty writeByte, writeByte, writeInt
+	// produces and is the layout a vanilla server puts on the wire.
 	lpVec3PackedBytes = 6
 
 	lpVec3ShiftX = 3
@@ -67,7 +72,9 @@ func (b *Buffer) ReadLPVec3(path string) (LPVec3, error) {
 	}
 
 	raw := b.data[b.offset : b.offset+lpVec3PackedBytes]
-	packed := uint64(binary.LittleEndian.Uint32(raw[0:4])) | uint64(binary.LittleEndian.Uint16(raw[4:6]))<<32
+	packed := uint64(binary.BigEndian.Uint32(raw[2:6]))<<16 |
+		uint64(raw[1])<<8 |
+		uint64(raw[0])
 	b.offset += lpVec3PackedBytes
 
 	scale := int64(raw[0] & lpVec3ScaleMask)
@@ -119,8 +126,9 @@ func (b *Buffer) WriteLPVec3(path string, value LPVec3) error {
 	packed := uint64(first) | packedX<<lpVec3ShiftX | packedY<<lpVec3ShiftY | packedZ<<lpVec3ShiftZ
 
 	raw := make([]byte, lpVec3PackedBytes)
-	binary.LittleEndian.PutUint32(raw[0:4], uint32(packed))
-	binary.LittleEndian.PutUint16(raw[4:6], uint16(packed>>32))
+	raw[0] = byte(packed)
+	raw[1] = byte(packed >> 8)
+	binary.BigEndian.PutUint32(raw[2:6], uint32(packed>>16))
 	if err := b.append(path, raw); err != nil {
 		return err
 	}
