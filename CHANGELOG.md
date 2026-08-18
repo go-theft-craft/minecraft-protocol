@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.7.0 - 2026-08-18
+
 ### Added
 
 - `login`: `Acceptor` serves a protocol 775 login. It named `generated/java/v1_8`
