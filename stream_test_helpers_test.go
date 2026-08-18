@@ -129,9 +129,27 @@ type syncWriter struct {
 	written bytes.Buffer
 	err     error
 	writes  int
+	// gate holds a write inside the transport call, so a test can arrange the
+	// state a connection dying mid-write leaves behind.
+	gate    chan struct{}
+	entered chan struct{}
 }
 
 func (w *syncWriter) Write(data []byte) (int, error) {
+	w.mu.Lock()
+	gate, entered := w.gate, w.entered
+	w.mu.Unlock()
+
+	if gate != nil {
+		if entered != nil {
+			select {
+			case entered <- struct{}{}:
+			default:
+			}
+		}
+		<-gate
+	}
+
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -141,6 +159,30 @@ func (w *syncWriter) Write(data []byte) (int, error) {
 	}
 
 	return w.written.Write(data)
+}
+
+// hold makes the next transport write block until the returned release is
+// called, and reports when the write has entered.
+func (w *syncWriter) hold() (entered <-chan struct{}, release func()) {
+	gate := make(chan struct{})
+	arrived := make(chan struct{}, 1)
+
+	w.mu.Lock()
+	w.gate = gate
+	w.entered = arrived
+	w.mu.Unlock()
+
+	var once sync.Once
+
+	return arrived, func() {
+		once.Do(func() {
+			w.mu.Lock()
+			w.gate = nil
+			w.entered = nil
+			w.mu.Unlock()
+			close(gate)
+		})
+	}
 }
 
 func (w *syncWriter) bytesWritten() []byte {

@@ -4,6 +4,18 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+### Fixed
+
+- A write in flight when the peer leaves reports what the transport did with it.
+  `Write` returned `ErrStreamClosed` for a frame that was on its way out, so a
+  caller was told to send again something the peer already had: bytes reach a
+  peer before the transport call returns, and the coordinator gave up on the
+  stop rather than waiting for the write pump. It now waits — the stop it would
+  race interrupts the transport, so the pump reports whether or not the
+  connection survived — and the pump no longer abandons the outcome of a frame
+  it has already written. This is the last of the windows `0.7.1` began closing;
+  it was the one that survived it.
+
 ## 0.7.1 - 2026-08-18
 
 ### Fixed

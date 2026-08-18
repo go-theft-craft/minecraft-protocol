@@ -199,11 +199,11 @@ func (s *Stream) writePump() {
 		select {
 		case job := <-s.writeJobs:
 			err := s.framer.WriteFrame(s.conduit, job.frame)
-			select {
-			case job.result <- err:
-			case <-s.stopping:
-				return
-			}
+			// Every job's result channel is its own and buffered, so this
+			// never blocks and never needs the stream to still be running.
+			// Waiting on stopping here dropped the outcome of a frame that had
+			// already gone out, and the caller was told its write failed.
+			job.result <- err
 		case <-s.stopping:
 			return
 		}
@@ -512,30 +512,17 @@ func (s *Stream) processWrite(ctx context.Context, request *writeRequest) bool {
 		return false
 	}
 
-	select {
-	case err := <-result:
-		return s.finishWrite(request, decision, err, writtenFrame{
-			id: frameID, before: before, frame: frame, payload: payload,
-		})
-
-	case <-s.stopping:
-		// A stop and the pump's result become ready in the same instant when
-		// the peer closes as this frame goes out, and a select picks between
-		// ready cases at random. A frame the transport has taken is written
-		// whatever the stream does next, and reporting it as a failed write
-		// tells the caller to send again something the peer already has.
-		select {
-		case err := <-result:
-			return s.finishWrite(request, decision, err, writtenFrame{
-				id: frameID, before: before, frame: frame, payload: payload,
-			})
-		default:
-		}
-
-		request.finish(ErrStreamClosed)
-
-		return false
-	}
+	// The pump owns this frame now, and what it did with it is the only honest
+	// answer to give the caller. Watching for the stop as well reported a write
+	// as refused while it was on its way out — the peer had it, and the caller
+	// was told to send it again — because bytes reach the peer before the
+	// transport call returns, and because a select picks between ready cases at
+	// random when both the result and the stop are ready. This cannot hang: the
+	// stop that would race it interrupts the transport, so the pump's write
+	// call returns whether or not the connection survived it.
+	return s.finishWrite(request, decision, <-result, writtenFrame{
+		id: frameID, before: before, frame: frame, payload: payload,
+	})
 }
 
 // writtenFrame is what the observation of a completed write needs.
@@ -696,12 +683,26 @@ func (s *Stream) sendDisconnect(ctx context.Context, reason string) error {
 			return fmt.Errorf("write disconnect packet: %w", err)
 		}
 	case <-s.stopping:
-		return ErrStreamClosed
+		// The same rule the ordinary write path follows: a disconnect the
+		// transport has taken has been said, and a shutdown that reports it as
+		// refused describes this stream rather than what the peer received.
+		select {
+		case err := <-result:
+			if err != nil {
+				return fmt.Errorf("write disconnect packet: %w", err)
+			}
+		default:
+			return ErrStreamClosed
+		}
 	case <-ctx.Done():
 		return ctx.Err()
 	}
 
-	return s.observeOutbound(frameID, before, frame, packet, payload)
+	if err := s.observeOutbound(frameID, before, frame, packet, payload); err != nil && !s.ending() {
+		return err
+	}
+
+	return nil
 }
 
 // Shutdown ends the stream politely: it stops accepting new writes, finishes

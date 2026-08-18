@@ -183,3 +183,44 @@ func waitForFrames(t *testing.T, writer *syncWriter, count int) {
 		}
 	}
 }
+
+// TestStreamReportsAWriteThatWasInFlightWhenThePeerLeft covers the window the
+// one above does not: the frame has not finished leaving when the peer closes.
+//
+// Bytes reach a peer before the transport call returns, so "the pump has not
+// reported yet" never meant "nothing was sent". Giving up on the stop reported
+// a delivered frame as refused, and told the caller to send again something the
+// peer already had. The pump is the only witness, and the stop it races
+// interrupts the transport, so waiting for it is bounded.
+func TestStreamReportsAWriteThatWasInFlightWhenThePeerLeft(t *testing.T) {
+	t.Parallel()
+
+	harness := startRuntime(t, 8)
+
+	entered, release := harness.writer.hold()
+	defer release()
+
+	written := make(chan error, 1)
+	go func() {
+		written <- harness.stream.Write(context.Background(), Packet{ID: 3, Payload: []byte{0x03}})
+	}()
+
+	// The write is inside the transport when the peer goes.
+	<-entered
+	harness.reader.fail(io.EOF)
+	waitUntilEnding(t, harness.stream)
+	release()
+
+	select {
+	case err := <-written:
+		if err != nil {
+			t.Fatalf("Write() = %v, want nil: the transport took the frame", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Write never returned")
+	}
+
+	if count := harness.writer.writeCount(); count != 1 {
+		t.Errorf("the transport took %d frames, want 1", count)
+	}
+}
