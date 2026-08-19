@@ -13,6 +13,16 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
   surface nobody chose. The tooling lives in the nested `apicompat` module,
   so this module's `go.mod` stays dependency-free for its consumers.
 
+- `livecheck` measures play. `TestLivePlayMeasuresLimits` stays in play for a
+  window, answering the four things a server stops streaming without —
+  `keep_alive`, `teleport_confirm`, `player_loaded`, and
+  `chunk_batch_received` — and reports the largest raw frame and the largest
+  decoded body per state, so login's registry data and play's chunk data are
+  no longer one number. Nothing in the library changed: the defaults hold
+  against a real 26.1.2 server with 214x and 139x headroom, and
+  `livecheck/README.md` records the two runs and what one seed at one view
+  distance cannot say.
+
 - `docs/version-names.md`: which name protocol 47 advertises (`1.8.8`) and
   which names its data (`1.8.9`), written down and pinned by a test, changing
   no byte — M3 changed none either, and what was missing was the record.

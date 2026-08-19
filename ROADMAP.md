@@ -56,7 +56,14 @@ Status: complete.
   negotiator never answered `select_known_packs`, which stalls a real login in
   configuration; that is fixed. The resource limits now stand on traffic
   through login: 12,564 bytes largest raw frame against a 2 MiB limit, 32,316
-  bytes largest decoded body against 8 MiB. Play is not measured.
+  bytes largest decoded body against 8 MiB.
+- Measured play, 2026-08-19, which the login run could not: the check now stays
+  in play and answers what a server needs answered to keep streaming. Against
+  Paper 26.1.2 build 74 and vanilla 26.1.2, a default world at view distance
+  10, the largest thing play produced was a chunk packet: across three runs
+  nothing exceeded 9,777 bytes on the wire or 60,174 bytes decoded, so both
+  defaults hold with 214x and 139x headroom. Play is measured; `livecheck/README.md` holds the run, the server
+  settings it depended on, and what one seed at one view distance cannot say.
 
 ## P3a: managed stream and compression
 
