@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -470,7 +471,10 @@ func TestRunAcceptsStableVersionKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(version), `VersionName     string = "1.8.9"`) {
+	// The gap between the name and its type is gofmt's, and it changes with
+	// whatever else is in the const block. Matching it literally made a
+	// comment added above VersionName fail this test.
+	if !regexp.MustCompile(`VersionName\s+string = "1\.8\.9"`).Match(version) {
 		t.Fatalf("version.go does not use the target as the public name:\n%s", version)
 	}
 }
