@@ -4,6 +4,8 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 
 ## Unreleased
 
+## 0.9.0 - 2026-08-19
+
 ### Added
 
 - `task api:check` and `task api:accept`: the public surface is frozen under
@@ -26,6 +28,18 @@ This file records notable user-visible changes. It follows [Keep a Changelog](ht
 - `docs/version-names.md`: which name protocol 47 advertises (`1.8.8`) and
   which names its data (`1.8.9`), written down and pinned by a test, changing
   no byte — M3 changed none either, and what was missing was the record.
+
+### Changed
+
+- `wire/java`: `EncodeCompression` resets a pooled zlib writer rather than
+  constructing one per packet. Constructing the writer cost more than
+  compressing a typical body: a small compressed packet drops from ~86us and
+  ~814KB of allocation to ~5us and a few hundred bytes, and bodies at every
+  size improve. No byte on the wire changes — a decoder cannot tell the
+  difference — so a consumer takes this by upgrading and does nothing else.
+  New throughput benchmarks cover the levers behind the number: compression
+  on and off, the threshold, payload entropy, CFB8 encryption, framing, and
+  the conduit's encrypted write path.
 
 ## 0.8.0 - 2026-08-18
 
